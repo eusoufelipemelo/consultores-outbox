@@ -425,6 +425,28 @@ td .strong { color: var(--text); font-weight: 600; }
 .notice svg { color: var(--brand); flex: none; margin-top: 1px; }
 
 /* ============================================================
+   KANBAN (funil)
+   ============================================================ */
+.kanban { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
+.kan-col { flex: 0 0 264px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+.kan-head { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.kan-head b { flex: 1; font-size: 13px; }
+.kan-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.kan-count { background: var(--surface-3); color: var(--text-soft); font-size: 11px; font-weight: 700; min-width: 22px; height: 20px; border-radius: 999px; display: grid; place-items: center; padding: 0 6px; }
+.kan-sub { font-size: 12px; color: var(--text-mut); margin: 2px 0 10px; min-height: 14px; }
+.kan-list { display: flex; flex-direction: column; gap: 8px; min-height: 60px; border-radius: 10px; transition: background .15s; padding: 2px; }
+.kan-list.over { background: var(--brand-soft); outline: 2px dashed var(--brand); outline-offset: -2px; }
+.kan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; cursor: grab; box-shadow: var(--shadow-sm); transition: transform .1s, box-shadow .2s; }
+.kan-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kan-card.dragging { opacity: .4; cursor: grabbing; }
+.kan-card b { font-size: 14px; }
+.kan-grip { color: var(--text-mut); opacity: 0; transition: .2s; }
+.kan-card:hover .kan-grip { opacity: 1; }
+.kan-val { font-size: 13px; font-weight: 700; color: var(--brand); margin-top: 4px; }
+.kan-meta { font-size: 12px; color: var(--text-soft); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+.kan-meta.mut { color: var(--text-mut); }
+
+/* ============================================================
    RESPONSIVO — sidebar drawer
    ============================================================ */
 .scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 39; }

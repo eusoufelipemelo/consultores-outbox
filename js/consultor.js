@@ -4,7 +4,9 @@
 const Consultor = {
   NAV: [
     { id: 'overview',   label: 'Visão Geral',      icon: 'overview' },
+    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
+    { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
@@ -14,8 +16,10 @@ const Consultor = {
 
   titles: {
     overview:   ['Visão Geral', 'Acompanhe suas metas em tempo real'],
+    funil:      ['Funil de Vendas', 'Arraste seus contatos entre as etapas'],
     clientes:   ['Meus Clientes', 'Cadastre e gerencie seus clientes'],
-    comissao:   ['Vendas & Comissão', 'Lance vendas e solicite sua comissão'],
+    orcamentos: ['Orçamentos', 'Crie propostas e acompanhe os aceites'],
+    comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
     ajuda:      ['Dúvidas & Guia', 'Como usar o sistema'],
@@ -276,8 +280,13 @@ const Consultor = {
         ${this.kpi('receipt', reqs.filter(r=>r.status!=='pago'&&r.status!=='recusado').length, 'Solicitações em aberto', 'Pagamento em até 3 dias úteis')}
       </div>
 
-      <div class="row between alc" style="margin-bottom:18px;flex-wrap:wrap;gap:12px">
-        <h3 style="font-size:16px">Suas vendas</h3>
+      <div class="row between alc" style="margin-bottom:14px;flex-wrap:wrap;gap:12px">
+        <div class="seg" id="sale-filter">
+          <button class="on" data-f="all">Todas (${vendas.length})</button>
+          <button data-f="aguardando">Aguardando (${vendas.filter(s=>s.statusProposta==='aguardando').length})</button>
+          <button data-f="aprovada">Aprovadas (${vendas.filter(s=>s.statusProposta==='aprovada').length})</button>
+          <button data-f="recusada">Recusadas (${vendas.filter(s=>s.statusProposta==='recusada').length})</button>
+        </div>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <button class="btn brand" id="add-sale">${UI.icon('plus',16)} Lançar venda</button>
           <button class="btn ghost" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.brl(com.valor)})</button>
@@ -291,44 +300,140 @@ const Consultor = {
         ${this.reqList(reqs)}
       </div>`;
 
-    const drawSales = () => {
+    const draw = (f) => {
+      const rows = vendas.filter(s => f === 'all' || s.statusProposta === f);
       const el = document.getElementById('sale-table');
-      if (!vendas.length) { el.innerHTML = this.empty('cart', 'Nenhuma venda lançada', 'Lance sua primeira venda. Sua comissão aparece no topo na hora.'); return; }
+      if (!rows.length) { el.innerHTML = this.empty('cart', 'Nenhuma venda aqui', 'Lance uma venda ou ajuste o filtro de acompanhamento.'); return; }
       el.innerHTML = `<div class="table-wrap"><table><thead><tr>
-        <th>Data</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Status comissão</th></tr></thead><tbody>
-        ${vendas.map(s => {
+        <th>Data</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Proposta</th><th>Comissão</th><th></th></tr></thead><tbody>
+        ${rows.map(s => {
           const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
           const stMap = { disponivel: ['warn', 'Disponível'], solicitada: ['gray', 'Solicitada'], paga: ['green', 'Paga'] };
           const st = stMap[s.statusComissao] || ['gray', s.statusComissao];
+          const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
+          const temDesc = s.descontoTipo && s.descontoValor > 0;
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td>
-            <td>${p?p.nome:s.produto}</td><td class="strong">${OB.brl(s.valor)}</td>
-            <td><span class="chip ${st[0]}">${st[1]}</span></td></tr>`;
+            <td>${p?p.nome:s.produto}</td>
+            <td><span class="strong">${OB.brl(s.valor)}</span>${temDesc?`<br><span class="mut" style="font-size:11px">de ${OB.brl(s.valorBruto)} · -${s.descontoTipo==='percent'?s.descontoValor+'%':OB.brl(s.descontoValor)}</span>`:''}</td>
+            <td><span class="chip ${pr.chip}">${pr.nome}</span></td>
+            <td>${s.statusProposta==='aprovada'?`<span class="chip ${st[0]}">${st[1]}</span>`:'<span class="mut" style="font-size:12px">—</span>'}</td>
+            <td class="row" style="gap:6px;justify-content:flex-end">
+              ${s.statusProposta!=='aprovada'?`<button class="iconbtn" data-aprovar="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
+              ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-recusar="${s.id}" title="Marcar recusada">${UI.icon('x',16)}</button>`:''}
+              <button class="iconbtn" data-edit="${s.id}" title="Editar / desconto" ${s.statusComissao!=='disponivel'?'disabled':''}>${UI.icon('edit',16)}</button>
+              <button class="iconbtn" data-del="${s.id}" title="Excluir" ${s.statusComissao!=='disponivel'?'disabled':''}>${UI.icon('trash',16)}</button>
+            </td></tr>`;
         }).join('')}
       </tbody></table></div>`;
+      el.querySelectorAll('[data-aprovar]').forEach(b => b.onclick = () => this.setStatusProposta(b.dataset.aprovar, 'aprovada'));
+      el.querySelectorAll('[data-recusar]').forEach(b => b.onclick = () => this.setStatusProposta(b.dataset.recusar, 'recusada'));
+      el.querySelectorAll('[data-edit]').forEach(b => { if (!b.disabled) b.onclick = () => this.editarVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.edit)); });
+      el.querySelectorAll('[data-del]').forEach(b => { if (!b.disabled) b.onclick = () => this.excluirVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.del)); });
     };
-    drawSales();
+    draw('all');
+    document.querySelectorAll('#sale-filter button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#sale-filter button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); draw(b.dataset.f);
+    });
 
     document.getElementById('add-sale').onclick = () => this.saleModal();
     const rc = document.getElementById('req-com');
     if (rc) rc.onclick = () => this.solicitarComissao(com);
   },
 
-  saleModal() {
+  /* marca proposta aprovada/recusada/aguardando */
+  setStatusProposta(saleId, status) {
+    const s = OB.salesOf(this.u().id).find(x => x.id === saleId); if (!s) return;
+    s.statusProposta = status;
+    if (status !== 'aprovada' && s.statusComissao === 'disponivel') { /* mantém disponivel; só não conta */ }
+    OB.updateSale(s);
+    UI.toast('Proposta atualizada', OB.STATUS_PROPOSTA[status].nome, 'ok');
+    App.refreshCommission(true);
+    this.render('comissao');
+  },
+
+  /* editar valor + aplicar desconto (R$ ou %) */
+  editarVenda(s) {
+    if (!s) return;
+    const u = this.u();
+    UI.modal({
+      title: 'Editar venda',
+      sub: 'Ajuste o valor e aplique desconto se quiser',
+      body: `
+        <div class="field"><label>Valor bruto (R$) <span class="req">*</span></label><input id="ed-bruto" type="number" min="0" step="50" value="${s.valorBruto||s.valor}"/></div>
+        <div class="grid-2">
+          <div class="field"><label>Tipo de desconto</label>
+            <select id="ed-tipo"><option value="">Sem desconto</option><option value="reais" ${s.descontoTipo==='reais'?'selected':''}>Em reais (R$)</option><option value="percent" ${s.descontoTipo==='percent'?'selected':''}>Em porcentagem (%)</option></select></div>
+          <div class="field"><label>Valor do desconto</label><input id="ed-desc" type="number" min="0" step="1" value="${s.descontoValor||0}"/></div>
+        </div>
+        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.brl(s.valor)}</b></div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ed-save">Salvar</button>`
+    });
+    const calc = () => {
+      const bruto = parseFloat(document.getElementById('ed-bruto').value) || 0;
+      const tipo = document.getElementById('ed-tipo').value;
+      const d = parseFloat(document.getElementById('ed-desc').value) || 0;
+      let final = bruto;
+      if (tipo === 'reais') final = Math.max(0, bruto - d);
+      else if (tipo === 'percent') final = Math.max(0, bruto * (1 - Math.min(d, 100) / 100));
+      document.getElementById('ed-final').textContent = OB.brl(Math.round(final));
+      return { bruto, tipo, d, final: Math.round(final) };
+    };
+    ['ed-bruto', 'ed-tipo', 'ed-desc'].forEach(id => document.getElementById(id).oninput = calc);
+    document.getElementById('ed-tipo').onchange = calc;
+    document.getElementById('ed-save').onclick = () => {
+      const c = calc();
+      if (!c.bruto || c.bruto <= 0) return UI.toast('Informe o valor', '', 'err');
+      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final });
+      OB.updateSale(s);
+      UI.closeModal(); UI.toast('Venda atualizada', '', 'ok');
+      App.refreshCommission(true);
+      this.render('comissao');
+    };
+  },
+
+  /* excluir venda (só se a comissão ainda estiver disponível) */
+  excluirVenda(s) {
+    if (!s) return;
+    if (s.statusComissao !== 'disponivel') return UI.toast('Não é possível excluir', 'Esta venda já entrou em uma solicitação de comissão', 'err');
+    const cli = OB.clientById(s.clientId);
+    UI.confirm('Excluir venda', `Remover a venda de ${cli ? cli.nome : 'cliente'} (${OB.brl(s.valor)})? Esta ação não pode ser desfeita.`, () => {
+      OB.removeSale(s.id);
+      UI.toast('Venda excluída', '', 'ok');
+      App.refreshCommission(true);
+      this.render('comissao');
+    }, 'Excluir');
+  },
+
+  saleModal(opts) {
+    opts = opts || {};
     const u = this.u();
     const clientes = OB.clientsOf(u.id);
     if (!clientes.length) return UI.confirm('Cadastre um cliente', 'Você precisa ter ao menos um cliente para lançar uma venda. Deseja cadastrar agora?', () => App.go('clientes'), 'Cadastrar cliente');
+    const orcamento = opts.orcamento; // se true, é uma proposta (aguardando)
     UI.modal({
-      title: 'Lançar venda',
-      sub: 'A comissão é atualizada automaticamente no topo da tela',
+      title: orcamento ? 'Novo orçamento' : 'Lançar venda',
+      sub: orcamento ? 'Crie uma proposta para enviar ao cliente' : 'A comissão é atualizada automaticamente no topo da tela',
       body: `
         <div class="field"><label>Cliente <span class="req">*</span></label>
-          <select id="s-cli">${clientes.map(c => `<option value="${c.id}">${c.nome} (${c.tipo})</option>`).join('')}</select></div>
-        <div class="field"><label>Produto <span class="req">*</span></label>
+          <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
+        <div class="field"><label>Produto / serviço <span class="req">*</span></label>
           <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}" data-min="${p.ticketMin}" data-max="${p.ticketMax}">${p.nome} · ${OB.brl(p.ticketMin)} a ${OB.brl(p.ticketMax)}</option>`).join('')}</select></div>
-        <div class="field"><label>Valor da venda (R$) <span class="req">*</span></label>
+        <div class="field"><label>Valor (R$) <span class="req">*</span></label>
           <input id="s-val" type="number" min="0" step="100" placeholder="0,00"/>
-          <div class="hint" id="s-hint"></div></div>`,
-      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="s-save">Lançar venda</button>`
+          <div class="hint" id="s-hint"></div></div>
+        <div class="grid-2">
+          <div class="field"><label>Tipo de desconto</label>
+            <select id="s-dtipo"><option value="">Sem desconto</option><option value="reais">Em reais (R$)</option><option value="percent">Em %</option></select></div>
+          <div class="field"><label>Desconto</label><input id="s-dval" type="number" min="0" step="1" value="0"/></div>
+        </div>
+        <div class="field"><label>Status da proposta</label>
+          <select id="s-status">
+            <option value="aprovada" ${!orcamento?'selected':''}>Aprovada (venda fechada)</option>
+            <option value="aguardando" ${orcamento?'selected':''}>Aguardando aceite do cliente</option>
+          </select>
+          <div class="hint">Só propostas <b>aprovadas</b> contam para sua comissão.</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="s-save">${orcamento ? 'Criar orçamento' : 'Lançar'}</button>`
     });
     const hint = () => {
       const opt = document.getElementById('s-prod').selectedOptions[0];
@@ -336,18 +441,201 @@ const Consultor = {
     };
     document.getElementById('s-prod').onchange = hint; hint();
     document.getElementById('s-save').onclick = () => {
-      const valor = parseFloat(document.getElementById('s-val').value);
-      if (!valor || valor <= 0) return UI.toast('Informe o valor', 'O valor da venda é obrigatório', 'err');
+      const bruto = parseFloat(document.getElementById('s-val').value);
+      if (!bruto || bruto <= 0) return UI.toast('Informe o valor', 'O valor é obrigatório', 'err');
+      const tipo = document.getElementById('s-dtipo').value;
+      const d = parseFloat(document.getElementById('s-dval').value) || 0;
+      let valor = bruto;
+      if (tipo === 'reais') valor = Math.max(0, bruto - d);
+      else if (tipo === 'percent') valor = Math.max(0, bruto * (1 - Math.min(d, 100) / 100));
+      valor = Math.round(valor);
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: document.getElementById('s-cli').value,
-        produto: document.getElementById('s-prod').value, valor, data: new Date().toISOString(),
-        statusComissao: 'disponivel'
+        produto: document.getElementById('s-prod').value, valor, valorBruto: bruto,
+        descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
+        data: new Date().toISOString(), statusComissao: 'disponivel',
+        statusProposta: document.getElementById('s-status').value
       });
       UI.closeModal();
-      UI.toast('Venda lançada!', 'Comissão atualizada no topo', 'ok');
+      UI.toast(orcamento ? 'Orçamento criado!' : 'Venda lançada!', '', 'ok');
       App.refreshCommission(true);
-      this.render('comissao');
+      this.render(orcamento ? 'orcamentos' : 'comissao');
     };
+  },
+
+  /* ====================== ORÇAMENTOS ====================== */
+  view_orcamentos() {
+    const u = this.u();
+    const vendas = OB.salesOf(u.id).sort((a, b) => new Date(b.data) - new Date(a.data));
+    const abertos = vendas.filter(s => s.statusProposta === 'aguardando');
+    const aprov = vendas.filter(s => s.statusProposta === 'aprovada');
+    const valorAberto = abertos.reduce((t, s) => t + s.valor, 0);
+    const taxaConv = vendas.length ? Math.round(aprov.length / vendas.length * 100) : 0;
+
+    const v = document.getElementById('main-view');
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:18px">
+        ${this.kpi('quote', abertos.length, 'Propostas em aberto', OB.brl(valorAberto) + ' aguardando aceite')}
+        ${this.kpi('check', aprov.length, 'Propostas aprovadas', 'Viraram venda')}
+        ${this.kpi('trend', taxaConv + '%', 'Taxa de conversão', 'Aprovadas ÷ total')}
+      </div>
+      <div class="row between alc" style="margin-bottom:14px">
+        <h3 style="font-size:16px">Suas propostas</h3>
+        <button class="btn brand" id="novo-orc">${UI.icon('plus',16)} Novo orçamento</button>
+      </div>
+      <div class="card" style="padding:0" id="orc-table"></div>`;
+
+    const el = document.getElementById('orc-table');
+    if (!vendas.length) { el.innerHTML = this.empty('quote', 'Nenhum orçamento', 'Crie uma proposta e gere um documento bonito para enviar ao seu cliente.'); }
+    else {
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
+        ${vendas.map(s => { const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto); const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
+          return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td>
+            <td class="strong">${OB.brl(s.valor)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
+            <td class="row" style="gap:6px;justify-content:flex-end">
+              <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
+              ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
+              ${s.statusProposta!=='aprovada'?`<button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>`:''}
+            </td></tr>`; }).join('')}
+      </tbody></table></div>`;
+      el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => this.baixarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.pdf)));
+      el.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { this.setStatusProposta(b.dataset.ap, 'aprovada'); });
+      el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const s = OB.salesOf(u.id).find(x => x.id === b.dataset.del); UI.confirm('Excluir orçamento', `Remover a proposta de ${OB.clientById(s.clientId)?.nome||'cliente'}?`, () => { OB.removeSale(s.id); UI.toast('Orçamento excluído','','ok'); this.render('orcamentos'); }, 'Excluir'); });
+    }
+    document.getElementById('novo-orc').onclick = () => this.saleModal({ orcamento: true });
+  },
+
+  /* gera o orçamento branded (HTML autossuficiente p/ baixar/imprimir em PDF) */
+  buildOrcamentoHTML(s) {
+    const u = this.u(); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const temDesc = s.descontoTipo && s.descontoValor > 0;
+    const hoje = new Date(); const val = new Date(hoje.getTime() + 7 * 864e5);
+    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Orçamento OutBox · ${cli ? cli.nome : ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#46505c;--mut:#8a96a3;--bg:#F5F7F9;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{max-width:820px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}.cover{background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:40px 48px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.brand b{font-size:24px;font-weight:800}.cover h1{font-size:30px;font-weight:800;letter-spacing:-.02em}.cover p{color:rgba(255,255,255,.9);margin-top:4px}.body{padding:38px 48px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:28px;font-size:14px}.grid .lbl{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.tbl{width:100%;border-collapse:collapse;margin-bottom:18px}.tbl th{text-align:left;padding:12px 14px;background:var(--bg);border-bottom:2px solid var(--line);font-size:12px;text-transform:uppercase;color:var(--mut)}.tbl td{padding:14px;border-bottom:1px solid var(--line)}.tot{display:flex;justify-content:flex-end}.tot .box{min-width:280px}.tot .row{display:flex;justify-content:space-between;padding:8px 0;font-size:15px;color:var(--soft)}.tot .grand{border-top:2px solid var(--line);margin-top:6px;padding-top:14px;font-size:22px;font-weight:800;color:var(--ink)}.tot .grand b{color:var(--brand)}.note{margin-top:26px;padding:16px 18px;background:var(--bg);border-radius:12px;font-size:13px;color:var(--soft);border:1px solid var(--line)}.foot{border-top:1px solid var(--line);padding:24px 48px;color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}.foot b{color:var(--ink)}.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3)}@media print{.print-hint{display:none}.page{box-shadow:none}}</style></head>
+<body><div class="page">
+  <div class="cover"><div class="brand">${mark}<b>OutBox</b></div><h1>Proposta de Orçamento</h1><p>Preparada por ${u.nome || ''} ${u.sobrenome || ''} · Consultor OutBox Group</p></div>
+  <div class="body">
+    <div class="grid">
+      <div><div class="lbl">Cliente</div>${cli ? cli.nome : '-'}</div>
+      <div><div class="lbl">Data</div>${hoje.toLocaleDateString('pt-BR')}</div>
+      <div><div class="lbl">Contato</div>${cli ? (cli.contato || '-') : '-'}${cli && cli.telefone ? ' · ' + cli.telefone : ''}</div>
+      <div><div class="lbl">Validade</div>${val.toLocaleDateString('pt-BR')}</div>
+    </div>
+    <table class="tbl"><thead><tr><th>Serviço</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Group</span></td><td style="text-align:right">${OB.brl(s.valorBruto || s.valor)}</td></tr></tbody></table>
+    <div class="tot"><div class="box">
+      <div class="row"><span>Subtotal</span><span>${OB.brl(s.valorBruto || s.valor)}</span></div>
+      ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.brl((s.valorBruto || s.valor) - s.valor)}</span></div>` : ''}
+      <div class="row grand"><span>Total</span><b>${OB.brl(s.valor)}</b></div>
+    </div></div>
+    <div class="note">Esta proposta tem validade de 7 dias. Os valores podem ser parcelados conforme negociação. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
+  </div>
+  <div class="foot"><div>OutBox Group · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
+</div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
+  },
+  baixarOrcamento(s) {
+    if (!s) return;
+    const blob = new Blob([this.buildOrcamentoHTML(s)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const cli = OB.clientById(s.clientId);
+    const a = document.createElement('a'); a.href = url; a.download = `Orcamento OutBox - ${cli ? cli.nome : 'cliente'}.html`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    UI.toast('Orçamento gerado', 'Abra o arquivo para enviar ou imprimir em PDF', 'ok');
+  },
+
+  /* ====================== FUNIL (Kanban arrastável) ====================== */
+  view_funil() {
+    const u = this.u();
+    const v = document.getElementById('main-view');
+    v.innerHTML = `
+      <div class="row between alc" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <p class="mut" style="font-size:13px;max-width:560px">Arraste os cartões entre as colunas para organizar seus contatos. Tudo é salvo automaticamente.</p>
+        <button class="btn brand" id="novo-lead">${UI.icon('plus',16)} Novo contato</button>
+      </div>
+      <div class="kanban" id="kanban">
+        ${OB.ESTAGIOS.map(e => {
+          const leads = OB.leadsOf(u.id).filter(l => l.estagio === e.id);
+          const total = leads.reduce((t, l) => t + (l.valorEstimado || 0), 0);
+          return `<div class="kan-col" data-estagio="${e.id}">
+            <div class="kan-head"><span class="kan-dot" style="background:${e.cor}"></span><b>${e.emoji} ${e.nome}</b><span class="kan-count">${leads.length}</span></div>
+            <div class="kan-sub">${total ? OB.brl(total) : '&nbsp;'}</div>
+            <div class="kan-list" data-estagio="${e.id}">
+              ${leads.map(l => this.leadCard(l)).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    document.getElementById('novo-lead').onclick = () => this.leadModal();
+    this.bindKanban();
+  },
+
+  leadCard(l) {
+    return `<div class="kan-card" draggable="true" data-id="${l.id}">
+      <div class="row between alc"><b>${l.nome || 'Sem nome'}</b><span class="kan-grip">${UI.icon('edit',13)}</span></div>
+      ${l.valorEstimado ? `<div class="kan-val">${OB.brl(l.valorEstimado)}</div>` : ''}
+      ${l.telefone ? `<div class="kan-meta">${UI.icon('whats',12)} ${l.telefone}</div>` : ''}
+      ${l.obs ? `<div class="kan-meta mut">${l.obs}</div>` : ''}
+    </div>`;
+  },
+
+  bindKanban() {
+    const u = this.u();
+    let dragId = null;
+    document.querySelectorAll('.kan-card').forEach(card => {
+      card.addEventListener('dragstart', () => { dragId = card.dataset.id; card.classList.add('dragging'); });
+      card.addEventListener('dragend', () => { dragId = null; card.classList.remove('dragging'); });
+      card.addEventListener('click', (e) => { if (!card.classList.contains('dragging')) this.leadModal(OB.leadsOf(u.id).find(l => l.id === card.dataset.id)); });
+    });
+    document.querySelectorAll('.kan-list').forEach(list => {
+      list.addEventListener('dragover', (e) => { e.preventDefault(); list.classList.add('over'); });
+      list.addEventListener('dragleave', () => list.classList.remove('over'));
+      list.addEventListener('drop', (e) => {
+        e.preventDefault(); list.classList.remove('over');
+        if (!dragId) return;
+        const lead = OB.leadsOf(u.id).find(l => l.id === dragId);
+        if (lead && lead.estagio !== list.dataset.estagio) {
+          lead.estagio = list.dataset.estagio;
+          OB.upsertLead(lead);
+          this.render('funil');
+        }
+      });
+    });
+  },
+
+  leadModal(l) {
+    const edit = !!l; const u = this.u();
+    UI.modal({
+      title: edit ? 'Editar contato' : 'Novo contato',
+      body: `
+        <div class="field"><label>Nome <span class="req">*</span></label><input id="l-nome" value="${edit ? (l.nome || '') : ''}"/></div>
+        <div class="grid-2">
+          <div class="field"><label>Telefone (WhatsApp)</label><input id="l-tel" value="${edit ? (l.telefone || '') : ''}" placeholder="(00) 00000-0000"/></div>
+          <div class="field"><label>E-mail</label><input id="l-email" value="${edit ? (l.email || '') : ''}"/></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${edit && l.estagio === e.id ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
+          <div class="field"><label>Valor estimado (R$)</label><input id="l-val" type="number" min="0" step="100" value="${edit ? (l.valorEstimado || 0) : 0}"/></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>`,
+      footer: `${edit ? `<button class="btn danger" id="l-del">Excluir</button>` : ''}<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="l-save">${edit ? 'Salvar' : 'Adicionar'}</button>`
+    });
+    if (document.getElementById('l-tel')) document.getElementById('l-tel').oninput = e => e.target.value = UI.maskPhone(e.target.value);
+    document.getElementById('l-save').onclick = () => {
+      const nome = document.getElementById('l-nome').value.trim();
+      if (!nome) return UI.toast('Informe o nome', '', 'err');
+      const obj = l || { id: OB.uid(), consultorId: u.id, ordem: 0, criadoEm: new Date().toISOString() };
+      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), estagio: document.getElementById('l-est').value, valorEstimado: parseFloat(document.getElementById('l-val').value) || 0, obs: document.getElementById('l-obs').value.trim() });
+      OB.upsertLead(obj);
+      UI.closeModal(); UI.toast(edit ? 'Contato atualizado' : 'Contato adicionado', '', 'ok');
+      this.render('funil');
+    };
+    const del = document.getElementById('l-del');
+    if (del) del.onclick = () => UI.confirm('Excluir contato', `Remover "${l.nome}" do funil?`, () => { OB.removeLead(l.id); UI.closeModal(); UI.toast('Contato removido', '', 'ok'); this.render('funil'); }, 'Excluir');
   },
 
   /* pop-up da comissão (acionado pelo valor no topo) */

@@ -39,8 +39,26 @@ const OB = {
 
   LINK_APRESENTACAO: 'https://consultoroutbox.vercel.app',
 
+  /* ---------- estágios do funil (Kanban) ---------- */
+  ESTAGIOS: [
+    { id: 'frio',     nome: 'Frio',              cor: '#64748b', emoji: '🧊' },
+    { id: 'morno',    nome: 'Morno',             cor: '#d97706', emoji: '🌤️' },
+    { id: 'quente',   nome: 'Quente',            cor: '#dc2626', emoji: '🔥' },
+    { id: 'reuniao',  nome: 'Reunião marcada',   cor: '#2563eb', emoji: '📅' },
+    { id: 'aberto',   nome: 'Proposta em aberto',cor: '#7c3aed', emoji: '📤' },
+    { id: 'ganho',    nome: 'Ganho',             cor: '#16a34a', emoji: '✅' },
+    { id: 'perdido',  nome: 'Perdido',           cor: '#94a3b8', emoji: '🚫' }
+  ],
+
+  /* ---------- status da proposta (venda) ---------- */
+  STATUS_PROPOSTA: {
+    aguardando: { nome: 'Aguardando aceite', chip: 'warn' },
+    aprovada:   { nome: 'Aprovada',          chip: 'green' },
+    recusada:   { nome: 'Recusada',          chip: 'gray' }
+  },
+
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -57,8 +75,11 @@ const OB = {
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, obs: c.obs, criado_em: c.criadoEm }; },
 
-  _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao }; },
-  _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao }; },
+  _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0) }; },
+  _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0 }; },
+
+  _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em }; },
+  _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm }; },
 
   _rIn(r)  { return { id: r.id, tipo: r.tipo, modo: r.modo, premioId: r.premio_id, premioNome: r.premio_nome, consultorId: r.consultor_id, consultorNome: r.consultor_nome, valor: Number(r.valor), detalhe: r.detalhe, pix: r.pix, status: r.status, criadoEm: r.criado_em, vendaIds: r.venda_ids, pagoEm: r.pago_em, comprovante: r.comprovante }; },
   _rOut(r) { return { id: r.id, tipo: r.tipo, modo: r.modo, premio_id: r.premioId, premio_nome: r.premioNome, consultor_id: r.consultorId, consultor_nome: r.consultorNome, valor: r.valor, detalhe: r.detalhe, pix: r.pix, status: r.status, criado_em: r.criadoEm, venda_ids: r.vendaIds || null, pago_em: r.pagoEm || null, comprovante: r.comprovante || null }; },
@@ -69,12 +90,13 @@ const OB = {
   async loadAll() {
     const { data: { user } } = await SB.auth.getUser();
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
-    const [prof, profs, cli, sal, req] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select('*'),
       SB.from('clients').select('*'),
       SB.from('sales').select('*'),
-      SB.from('requests').select('*')
+      SB.from('requests').select('*'),
+      SB.from('leads').select('*')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -89,9 +111,10 @@ const OB = {
     this.db.clients = (cli.data || []).map(r => this._cIn(r));
     this.db.sales = (sal.data || []).map(r => this._sIn(r));
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+    this.db.leads = (lds.data || []).map(r => this._lIn(r));
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -129,6 +152,18 @@ const OB = {
   salesOf(consultorId) { return this.db.sales.filter(s => s.consultorId === consultorId); },
   addSale(s) { this.db.sales.push(s); this._save('sales', this._sOut(s)); return s; },
   updateSale(s) { const i = this.db.sales.findIndex(x => x.id === s.id); if (i >= 0) this.db.sales[i] = s; this._save('sales', this._sOut(s)); return s; },
+  removeSale(id) { this.db.sales = this.db.sales.filter(s => s.id !== id); this._delete('sales', id); },
+
+  /* ---------- leads (funil / Kanban) ---------- */
+  leads() { return this.db.leads; },
+  leadsOf(consultorId) { return this.db.leads.filter(l => l.consultorId === consultorId); },
+  upsertLead(l) {
+    const i = this.db.leads.findIndex(x => x.id === l.id);
+    if (i >= 0) this.db.leads[i] = l; else this.db.leads.push(l);
+    this._save('leads', this._lOut(l));
+    return l;
+  },
+  removeLead(id) { this.db.leads = this.db.leads.filter(l => l.id !== id); this._delete('leads', id); },
 
   /* ---------- solicitações ---------- */
   requests() { return this.db.requests; },
@@ -145,11 +180,12 @@ const OB = {
   nivelPorVolume(vol) { for (const n of this.NIVEIS) if (vol >= n.meta) return n; return this.NIVEIS[this.NIVEIS.length - 1]; },
   proximoNivel(vol) { const ord = [...this.NIVEIS].sort((a, b) => a.meta - b.meta); for (const n of ord) if (n.meta > vol) return n; return null; },
 
-  volumeMes(consultorId) { return this.salesOf(consultorId).filter(s => this.isSameMonth(s.data)).reduce((t, s) => t + s.valor, 0); },
-  volumeTrimestre(consultorId) { return this.salesOf(consultorId).filter(s => this.isSameQuarter(s.data)).reduce((t, s) => t + s.valor, 0); },
+  /* comissão e prêmios contam SÓ propostas APROVADAS (sem inflar valor a receber) */
+  volumeMes(consultorId) { return this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data)).reduce((t, s) => t + s.valor, 0); },
+  volumeTrimestre(consultorId) { return this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameQuarter(s.data)).reduce((t, s) => t + s.valor, 0); },
 
   comissaoResumo(consultorId) {
-    const month = this.salesOf(consultorId).filter(s => this.isSameMonth(s.data));
+    const month = this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data));
     const volume = month.reduce((t, s) => t + s.valor, 0);
     const nivel = this.nivelPorVolume(volume);
     const rate = nivel.rate;
