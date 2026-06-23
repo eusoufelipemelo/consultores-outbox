@@ -428,7 +428,7 @@ td .strong { color: var(--text); font-weight: 600; }
    KANBAN (funil)
    ============================================================ */
 .kanban { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
-.kan-col { flex: 0 0 264px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+.kan-col { flex: 1 1 230px; min-width: 230px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
 .kan-head { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .kan-head b { flex: 1; font-size: 13px; }
 .kan-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -445,6 +445,8 @@ td .strong { color: var(--text); font-weight: 600; }
 .kan-val { font-size: 13px; font-weight: 700; color: var(--brand); margin-top: 4px; }
 .kan-meta { font-size: 12px; color: var(--text-soft); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
 .kan-meta.mut { color: var(--text-mut); }
+/* funil ocupa a largura toda (sem o limite de 1200px) */
+.view.view-wide { max-width: none; }
 
 /* ============================================================
    RESPONSIVO — sidebar drawer

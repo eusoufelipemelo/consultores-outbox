@@ -552,6 +552,7 @@ const Consultor = {
   view_funil() {
     const u = this.u();
     const v = document.getElementById('main-view');
+    v.classList.add('view-wide'); // ocupa a largura toda da tela
     v.innerHTML = `
       <div class="row between alc" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
         <p class="mut" style="font-size:13px;max-width:560px">Arraste os cartões entre as colunas para organizar seus contatos. Tudo é salvo automaticamente.</p>

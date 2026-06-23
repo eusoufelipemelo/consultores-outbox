@@ -119,6 +119,7 @@ const App = {
   /* ---------- navegação ---------- */
   go(viewId) {
     this.current = viewId;
+    document.getElementById('main-view').classList.remove('view-wide'); // funil reativa abaixo
     document.querySelectorAll('#nav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
     const t = this.mod().titles[viewId] || ['', ''];
     document.getElementById('page-title').textContent = t[0];
