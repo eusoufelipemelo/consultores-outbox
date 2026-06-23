@@ -5,12 +5,27 @@ const App = {
   theme: 'light',
   current: null,
 
-  init() {
+  async init() {
     // padrão: modo light (a escolha manual do usuário é lembrada em ob_theme)
     this.theme = OB._get(OB.KEYS.theme, 'light');
     document.documentElement.setAttribute('data-theme', this.theme);
-    const u = OB.session();
-    if (u) this.boot(); else Auth.render();
+
+    // link de recuperação de senha vindo do e-mail
+    SB.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        document.getElementById('app').style.display = 'none';
+        Auth.mode = 'login'; Auth.render(); Auth.showSetNewPassword();
+      }
+    });
+    if (/type=recovery/.test(location.hash) || /type=recovery/.test(location.search)) {
+      Auth.mode = 'login'; Auth.render();
+      setTimeout(() => Auth.showSetNewPassword(), 300);
+      return;
+    }
+
+    const { data: { session } } = await SB.auth.getSession();
+    if (session) { await OB.loadAll(); this.boot(); }
+    else Auth.render();
   },
 
   /* ---------- tema ---------- */
@@ -153,9 +168,10 @@ const App = {
   },
 
   logout() {
-    UI.confirm('Sair da conta', 'Deseja realmente sair?', () => {
+    UI.confirm('Sair da conta', 'Deseja realmente sair?', async () => {
       try {
-        OB.logout();
+        await SB.auth.signOut();
+        OB.clearCache();
         Charts.destroyAll();
         // fecha qualquer modal e remove o drawer/scrim para não travar a tela
         UI.closeModal();

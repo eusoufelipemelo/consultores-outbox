@@ -1,21 +1,14 @@
 /* ============================================================
    OutBox Consultores — Camada de dados (data.js)
-   Protótipo front-end: persistência via localStorage.
+   Fase 2: persistência no Supabase (PostgreSQL + RLS).
+   Estratégia: cache em memória (OB.db) hidratado do Supabase em
+   loadAll(); leituras são síncronas a partir do cache; escritas
+   atualizam o cache na hora e persistem no Supabase em segundo plano.
    ============================================================ */
 const OB = {
-  /* ---------- chaves de storage ---------- */
-  KEYS: {
-    users: 'ob_users',
-    session: 'ob_session',
-    clients: 'ob_clients',
-    sales: 'ob_sales',
-    requests: 'ob_requests',
-    theme: 'ob_theme',
-    seeded: 'ob_seeded_v2'
-  },
+  KEYS: { theme: 'ob_theme' },
 
-  /* ---------- catálogo de produtos (mesmos valores da apresentação) ----------
-     comissão é progressiva (10% a 20%) sobre o ticket negociado.            */
+  /* ---------- catálogo de produtos ---------- */
   PRODUTOS: [
     { id: 'identidade',   nome: 'Identidade Visual',     ticketMin: 2500,  ticketMax: 9000 },
     { id: 'lp',           nome: 'Landing Page',          ticketMin: 1500,  ticketMax: 4500 },
@@ -25,7 +18,7 @@ const OB = {
     { id: 'sistemas',     nome: 'Sistemas Sob Medida',   ticketMin: 18000, ticketMax: 120000 }
   ],
 
-  /* ---------- escada de comissão progressiva (volume no mês) ---------- */
+  /* ---------- escada de comissão progressiva ---------- */
   NIVEIS: [
     { id: 'black',  nome: 'Black',  rate: 0.20, meta: 30000, cor: '#111111' },
     { id: 'ouro',   nome: 'Ouro',   rate: 0.16, meta: 15000, cor: '#C9A227' },
@@ -33,7 +26,7 @@ const OB = {
     { id: 'bronze', nome: 'Bronze', rate: 0.10, meta: 0,     cor: '#B07B4F' }
   ],
 
-  /* ---------- escada de prêmios trimestrais (volume no trimestre) ---------- */
+  /* ---------- escada de prêmios trimestrais ---------- */
   PREMIOS: [
     { id: 'airpods', nome: 'AirPods',      meta: 30000,  valor: 1800,  img: 'assets/premios/airpods.png' },
     { id: 'beats',   nome: 'Beats',        meta: 45000,  valor: 2200,  img: 'assets/premios/beats.png' },
@@ -46,231 +39,137 @@ const OB = {
 
   LINK_APRESENTACAO: 'https://consultoroutbox.vercel.app',
 
-  /* ============================================================
-     STORAGE helpers
-     ============================================================ */
-  _get(key, fallback) {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-    catch (e) { return fallback; }
-  },
+  /* ---------- cache em memória ---------- */
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [] },
+
+  /* ---------- theme (único uso de localStorage) ---------- */
+  _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
   _set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
 
-  uid() { return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); },
+  uid() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36); },
 
-  /* ---------- usuários ---------- */
-  users() { return this._get(this.KEYS.users, []); },
-  saveUsers(list) { this._set(this.KEYS.users, list); },
-  userById(id) { return this.users().find(u => u.id === id) || null; },
-  userByEmail(email) {
-    return this.users().find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
+  /* ============================================================
+     MAPPERS  (camelCase no app  <->  snake_case no banco)
+     ============================================================ */
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, foto: r.foto, twoFA: r.two_fa, provider: r.provider }; },
+  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider }; },
+
+  _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, obs: r.obs, criadoEm: r.criado_em }; },
+  _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, obs: c.obs, criado_em: c.criadoEm }; },
+
+  _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao }; },
+  _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao }; },
+
+  _rIn(r)  { return { id: r.id, tipo: r.tipo, modo: r.modo, premioId: r.premio_id, premioNome: r.premio_nome, consultorId: r.consultor_id, consultorNome: r.consultor_nome, valor: Number(r.valor), detalhe: r.detalhe, pix: r.pix, status: r.status, criadoEm: r.criado_em, vendaIds: r.venda_ids, pagoEm: r.pago_em, comprovante: r.comprovante }; },
+  _rOut(r) { return { id: r.id, tipo: r.tipo, modo: r.modo, premio_id: r.premioId, premio_nome: r.premioNome, consultor_id: r.consultorId, consultor_nome: r.consultorNome, valor: r.valor, detalhe: r.detalhe, pix: r.pix, status: r.status, criado_em: r.criadoEm, venda_ids: r.vendaIds || null, pago_em: r.pagoEm || null, comprovante: r.comprovante || null }; },
+
+  /* ============================================================
+     CARGA  (hidrata o cache do Supabase) — RLS já filtra o escopo
+     ============================================================ */
+  async loadAll() {
+    const { data: { user } } = await SB.auth.getUser();
+    if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
+    const [prof, profs, cli, sal, req] = await Promise.all([
+      SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+      SB.from('profiles').select('*'),
+      SB.from('clients').select('*'),
+      SB.from('sales').select('*'),
+      SB.from('requests').select('*')
+    ]);
+    let profile = prof.data ? this._pIn(prof.data) : null;
+    // fallback: se o trigger ainda não criou o perfil, cria agora
+    if (!profile) {
+      const role = ADMIN_EMAILS.includes((user.email || '').toLowerCase()) ? 'admin' : 'consultor';
+      profile = { id: user.id, role, email: user.email, nome: (user.user_metadata && user.user_metadata.nome) || '', sobrenome: (user.user_metadata && user.user_metadata.sobrenome) || '', provider: 'email', twoFA: false };
+      await SB.from('profiles').upsert(this._pOut(profile));
+    }
+    this.db.profile = profile;
+    this.db.profiles = (profs.data || []).map(r => this._pIn(r));
+    if (!this.db.profiles.find(p => p.id === profile.id)) this.db.profiles.push(profile);
+    this.db.clients = (cli.data || []).map(r => this._cIn(r));
+    this.db.sales = (sal.data || []).map(r => this._sIn(r));
+    this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
   },
+
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; },
+
+  _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
+  async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
+  async _delete(table, id) { const { error } = await SB.from(table).delete().eq('id', id); if (error) this._err(error); },
+
+  /* ============================================================
+     SESSÃO / USUÁRIOS (a partir do cache)
+     ============================================================ */
+  session() { return this.db.profile; },
+  users() { return this.db.profiles; },
+  userById(id) { return this.db.profiles.find(u => u.id === id) || null; },
+  userByEmail(email) { return this.db.profiles.find(u => (u.email || '').toLowerCase() === String(email).toLowerCase()) || null; },
   upsertUser(user) {
-    const list = this.users();
-    const i = list.findIndex(u => u.id === user.id);
-    if (i >= 0) list[i] = user; else list.push(user);
-    this.saveUsers(list);
+    const i = this.db.profiles.findIndex(u => u.id === user.id);
+    if (i >= 0) this.db.profiles[i] = user; else this.db.profiles.push(user);
+    if (this.db.profile && this.db.profile.id === user.id) this.db.profile = user;
+    this._save('profiles', this._pOut(user));
     return user;
   },
 
-  /* ---------- sessão ---------- */
-  session() {
-    const id = this._get(this.KEYS.session, null);
-    return id ? this.userById(id) : null;
-  },
-  setSession(id) { this._set(this.KEYS.session, id); },
-  logout() { localStorage.removeItem(this.KEYS.session); },
-
   /* ---------- clientes ---------- */
-  clients() { return this._get(this.KEYS.clients, []); },
-  saveClients(l) { this._set(this.KEYS.clients, l); },
-  clientsOf(consultorId) { return this.clients().filter(c => c.consultorId === consultorId); },
-  clientById(id) { return this.clients().find(c => c.id === id) || null; },
+  clients() { return this.db.clients; },
+  clientsOf(consultorId) { return this.db.clients.filter(c => c.consultorId === consultorId); },
+  clientById(id) { return this.db.clients.find(c => c.id === id) || null; },
   upsertClient(c) {
-    const l = this.clients();
-    const i = l.findIndex(x => x.id === c.id);
-    if (i >= 0) l[i] = c; else l.push(c);
-    this.saveClients(l);
+    const i = this.db.clients.findIndex(x => x.id === c.id);
+    if (i >= 0) this.db.clients[i] = c; else this.db.clients.push(c);
+    this._save('clients', this._cOut(c));
     return c;
   },
-  removeClient(id) { this.saveClients(this.clients().filter(c => c.id !== id)); },
+  removeClient(id) { this.db.clients = this.db.clients.filter(c => c.id !== id); this._delete('clients', id); },
 
   /* ---------- vendas ---------- */
-  sales() { return this._get(this.KEYS.sales, []); },
-  saveSales(l) { this._set(this.KEYS.sales, l); },
-  salesOf(consultorId) { return this.sales().filter(s => s.consultorId === consultorId); },
-  addSale(s) { const l = this.sales(); l.push(s); this.saveSales(l); return s; },
-  updateSale(s) {
-    const l = this.sales(); const i = l.findIndex(x => x.id === s.id);
-    if (i >= 0) { l[i] = s; this.saveSales(l); } return s;
-  },
+  sales() { return this.db.sales; },
+  salesOf(consultorId) { return this.db.sales.filter(s => s.consultorId === consultorId); },
+  addSale(s) { this.db.sales.push(s); this._save('sales', this._sOut(s)); return s; },
+  updateSale(s) { const i = this.db.sales.findIndex(x => x.id === s.id); if (i >= 0) this.db.sales[i] = s; this._save('sales', this._sOut(s)); return s; },
 
-  /* ---------- solicitações (comissão / prêmio) ---------- */
-  requests() { return this._get(this.KEYS.requests, []); },
-  saveRequests(l) { this._set(this.KEYS.requests, l); },
-  requestsOf(consultorId) { return this.requests().filter(r => r.consultorId === consultorId); },
-  addRequest(r) { const l = this.requests(); l.unshift(r); this.saveRequests(l); return r; },
-  updateRequest(r) {
-    const l = this.requests(); const i = l.findIndex(x => x.id === r.id);
-    if (i >= 0) { l[i] = r; this.saveRequests(l); } return r;
-  },
+  /* ---------- solicitações ---------- */
+  requests() { return this.db.requests; },
+  requestsOf(consultorId) { return this.db.requests.filter(r => r.consultorId === consultorId); },
+  addRequest(r) { this.db.requests.unshift(r); this._save('requests', this._rOut(r)); return r; },
+  updateRequest(r) { const i = this.db.requests.findIndex(x => x.id === r.id); if (i >= 0) this.db.requests[i] = r; this._save('requests', this._rOut(r)); return r; },
 
   /* ============================================================
-     REGRAS DE NEGÓCIO
+     REGRAS DE NEGÓCIO (idênticas — só leem do cache agora)
      ============================================================ */
+  isSameMonth(dateStr) { const d = new Date(dateStr), n = new Date(); return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth(); },
+  isSameQuarter(dateStr) { const d = new Date(dateStr), n = new Date(); return d.getFullYear() === n.getFullYear() && Math.floor(d.getMonth() / 3) === Math.floor(n.getMonth() / 3); },
 
-  /* período atual (mês) */
-  isSameMonth(dateStr) {
-    const d = new Date(dateStr), n = new Date();
-    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth();
-  },
-  isSameQuarter(dateStr) {
-    const d = new Date(dateStr), n = new Date();
-    return d.getFullYear() === n.getFullYear() &&
-      Math.floor(d.getMonth() / 3) === Math.floor(n.getMonth() / 3);
-  },
+  nivelPorVolume(vol) { for (const n of this.NIVEIS) if (vol >= n.meta) return n; return this.NIVEIS[this.NIVEIS.length - 1]; },
+  proximoNivel(vol) { const ord = [...this.NIVEIS].sort((a, b) => a.meta - b.meta); for (const n of ord) if (n.meta > vol) return n; return null; },
 
-  /* nível de comissão pelo volume */
-  nivelPorVolume(vol) {
-    for (const n of this.NIVEIS) if (vol >= n.meta) return n;
-    return this.NIVEIS[this.NIVEIS.length - 1];
-  },
-  proximoNivel(vol) {
-    // retorna o próximo nível acima do atual, ou null se já é Black
-    const ordenado = [...this.NIVEIS].sort((a, b) => a.meta - b.meta);
-    for (const n of ordenado) if (n.meta > vol) return n;
-    return null;
-  },
+  volumeMes(consultorId) { return this.salesOf(consultorId).filter(s => this.isSameMonth(s.data)).reduce((t, s) => t + s.valor, 0); },
+  volumeTrimestre(consultorId) { return this.salesOf(consultorId).filter(s => this.isSameQuarter(s.data)).reduce((t, s) => t + s.valor, 0); },
 
-  /* volume vendido no mês corrente */
-  volumeMes(consultorId) {
-    return this.salesOf(consultorId)
-      .filter(s => this.isSameMonth(s.data))
-      .reduce((t, s) => t + s.valor, 0);
-  },
-  /* volume vendido no trimestre corrente */
-  volumeTrimestre(consultorId) {
-    return this.salesOf(consultorId)
-      .filter(s => this.isSameQuarter(s.data))
-      .reduce((t, s) => t + s.valor, 0);
-  },
-
-  /* ============================================================
-     REGRA DE COMISSÃO PROGRESSIVA (10% -> 20%) — à prova de falhas
-     ------------------------------------------------------------
-     A taxa do mês depende do VOLUME vendido no mês:
-       Bronze 10% (>= R$0) · Prata 13% (>= R$5k) · Ouro 16% (>= R$15k) · Black 20% (>= R$30k)
-     Comissão TOTAL devida no mês = volume do mês x taxa do nível.
-     O que já foi solicitado/pago é descontado, então NUNCA se paga
-     além de (volume x taxa atingida). O valor é sempre >= 0 (monotônico,
-     pois o volume só cresce ao longo do mês). Sem dupla contagem.
-     ============================================================ */
   comissaoResumo(consultorId) {
     const month = this.salesOf(consultorId).filter(s => this.isSameMonth(s.data));
     const volume = month.reduce((t, s) => t + s.valor, 0);
     const nivel = this.nivelPorVolume(volume);
     const rate = nivel.rate;
     const totalDevido = Math.round(volume * rate);
-
-    // solicitações de comissão do mês que não foram recusadas
-    const reqs = this.requestsOf(consultorId)
-      .filter(r => r.tipo === 'comissao' && r.status !== 'recusado' && this.isSameMonth(r.criadoEm));
+    const reqs = this.requestsOf(consultorId).filter(r => r.tipo === 'comissao' && r.status !== 'recusado' && this.isSameMonth(r.criadoEm));
     const jaPago = reqs.filter(r => r.status === 'pago').reduce((t, r) => t + r.valor, 0);
     const emAnalise = reqs.filter(r => r.status !== 'pago').reduce((t, r) => t + r.valor, 0);
-
-    // disponível para solicitar agora = devido - (em análise + já pago), nunca negativo
     const disponivel = Math.max(0, totalDevido - jaPago - emAnalise);
-
-    // níveis acima do atual = comissão extra "bloqueada" até bater a meta
-    const bloqueados = this.NIVEIS
-      .filter(n => n.meta > volume)
-      .sort((a, b) => a.meta - b.meta)
-      .map(n => ({
-        nivel: n,
-        faltaVolume: n.meta - volume,
-        extraPct: Math.round((n.rate - rate) * 100),
-        // ganho adicional imediato sobre o volume atual se já estivesse nesse nível
-        ganhoSobreAtual: Math.max(0, Math.round(volume * n.rate) - totalDevido)
-      }));
-
+    const bloqueados = this.NIVEIS.filter(n => n.meta > volume).sort((a, b) => a.meta - b.meta).map(n => ({
+      nivel: n, faltaVolume: n.meta - volume, extraPct: Math.round((n.rate - rate) * 100),
+      ganhoSobreAtual: Math.max(0, Math.round(volume * n.rate) - totalDevido)
+    }));
     const vendasDisp = month.filter(s => s.statusComissao === 'disponivel');
     return { volume, nivel, rate, totalDevido, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
+  comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
 
-  /* compatível com o restante do app: { valor, base, rate, vendas } + resumo completo */
-  comissaoDisponivel(consultorId) {
-    const r = this.comissaoResumo(consultorId);
-    return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r };
-  },
+  premioAlcancado(consultorId) { const vol = this.volumeTrimestre(consultorId); let alc = null; for (const p of this.PREMIOS) if (vol >= p.meta) alc = p; return alc; },
+  proximoPremio(consultorId) { const vol = this.volumeTrimestre(consultorId); for (const p of this.PREMIOS) if (vol < p.meta) return p; return null; },
 
-  /* prêmio do degrau mais alto alcançado no trimestre */
-  premioAlcancado(consultorId) {
-    const vol = this.volumeTrimestre(consultorId);
-    let alc = null;
-    for (const p of this.PREMIOS) if (vol >= p.meta) alc = p;
-    return alc;
-  },
-  proximoPremio(consultorId) {
-    const vol = this.volumeTrimestre(consultorId);
-    for (const p of this.PREMIOS) if (vol < p.meta) return p;
-    return null;
-  },
-
-  /* formatações */
   brl(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); },
-  dataBR(d) { return new Date(d).toLocaleDateString('pt-BR'); },
-
-  /* ============================================================
-     SEED — dados de demonstração
-     ============================================================ */
-  seed() {
-    if (this._get(this.KEYS.seeded, false)) return;
-
-    const admin = {
-      id: this.uid(), role: 'admin', provider: 'email',
-      email: 'admin@outboxgroup.com.br', senha: 'admin123',
-      nome: 'Felipe', sobrenome: 'Melo', nascimento: '1990-01-01',
-      doc: '00.000.000/0001-00', celular: '(47) 9.9659-7775',
-      instagram: '@outboxgroup', cep: '18900-000', logradouro: 'Centro',
-      numero: '100', complemento: '', bairro: 'Centro',
-      cidade: 'Santa Cruz do Rio Pardo', uf: 'SP',
-      foto: '', twoFA: false, createdAt: new Date().toISOString()
-    };
-
-    const consultor = {
-      id: this.uid(), role: 'consultor', provider: 'email',
-      email: 'consultor@outboxgroup.com.br', senha: 'consultor123',
-      nome: 'Renata', sobrenome: 'Rocha', nascimento: '1995-05-12',
-      doc: '123.456.789-00', celular: '(47) 9.8888-0000',
-      instagram: '@renata.outbox', cep: '01310-100',
-      logradouro: 'Av. Paulista', numero: '1000', complemento: 'Sala 5',
-      bairro: 'Bela Vista', cidade: 'São Paulo', uf: 'SP',
-      foto: '', twoFA: false, createdAt: new Date().toISOString()
-    };
-
-    this.saveUsers([admin, consultor]);
-
-    /* clientes de exemplo (cadastro completo) */
-    const c1 = { id: this.uid(), consultorId: consultor.id, nome: 'Padaria Pão Quente', contato: 'João Silva', doc: '12.345.678/0001-90', email: 'joao@paoquente.com', telefone: '(11) 90000-0001', instagram: '@paoquente', cep: '01001-000', logradouro: 'Praça da Sé', numero: '50', complemento: '', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP', tipo: 'recorrente', servico: 'institucional', obs: 'Plano anual de manutenção', criadoEm: new Date().toISOString() };
-    const c2 = { id: this.uid(), consultorId: consultor.id, nome: 'Studio Bella', contato: 'Isabella Nunes', doc: '987.654.321-00', email: 'contato@studiobella.com', telefone: '(11) 90000-0002', instagram: '@studiobella', cep: '04538-132', logradouro: 'Av. Brigadeiro Faria Lima', numero: '3477', complemento: 'Conj. 12', bairro: 'Itaim Bibi', cidade: 'São Paulo', uf: 'SP', tipo: 'pontual', servico: 'lp', obs: '', criadoEm: new Date().toISOString() };
-    const c3 = { id: this.uid(), consultorId: consultor.id, nome: 'TechNova', contato: 'Marcos Dias', doc: '45.678.901/0001-23', email: 'marcos@technova.io', telefone: '(11) 90000-0003', instagram: '@technova', cep: '04711-130', logradouro: 'Av. Santo Amaro', numero: '1200', complemento: '', bairro: 'Brooklin', cidade: 'São Paulo', uf: 'SP', tipo: 'recorrente', servico: 'ecommerce', obs: 'E-commerce + sistema', criadoEm: new Date().toISOString() };
-    this.saveClients([c1, c2, c3]);
-
-    /* vendas de exemplo (no mês/trimestre atual) */
-    const hoje = new Date().toISOString();
-    const mk = (cli, prod, valor, status) => ({
-      id: this.uid(), consultorId: consultor.id, clientId: cli,
-      produto: prod, valor, data: hoje, statusComissao: status
-    });
-    this.saveSales([
-      mk(c1.id, 'institucional', 8000, 'disponivel'),
-      mk(c2.id, 'lp', 3500, 'disponivel'),
-      mk(c3.id, 'ecommerce', 14000, 'disponivel'),
-      mk(c1.id, 'identidade', 4500, 'disponivel')
-    ]);
-
-    this.saveRequests([]);
-    this._set(this.KEYS.seeded, true);
-  }
+  dataBR(d) { return new Date(d).toLocaleDateString('pt-BR'); }
 };
-
-OB.seed();

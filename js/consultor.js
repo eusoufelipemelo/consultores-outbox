@@ -818,7 +818,7 @@ const Consultor = {
 
           <div class="nav-label" style="padding-left:0">Conta e segurança</div>
           <div class="field"><label>E-mail <span class="req">*</span></label>
-            <div class="row" style="gap:8px"><input id="p-email" value="${u.email||''}" class="grow"/><button type="button" class="btn ghost" id="p-email-btn">Trocar</button></div>
+            <div class="row" style="gap:8px"><input id="p-email" value="${u.email||''}" class="grow" readonly/><button type="button" class="btn ghost" id="p-email-btn">Trocar</button></div>
             <div class="hint">Para alterar o e-mail clique em "Trocar" e confirme com a senha.</div>
           </div>
           <div class="field"><label>Senha</label>
@@ -918,38 +918,35 @@ const Consultor = {
   trocarEmail(u) {
     UI.modal({
       title: 'Trocar e-mail',
-      body: `<div class="field"><label>Novo e-mail</label><input id="te-email" placeholder="novo@email.com"/></div>
-        <div class="field"><label>Confirme sua senha atual</label><input type="password" id="te-pwd"/></div>`,
+      body: `<div class="field"><label>Novo e-mail</label><input id="te-email" placeholder="novo@email.com"/></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="te-go">Confirmar</button>`
     });
-    document.getElementById('te-go').onclick = () => {
+    document.getElementById('te-go').onclick = async () => {
       const email = document.getElementById('te-email').value.trim();
-      const pwd = document.getElementById('te-pwd').value;
       if (!UI.validEmail(email)) return UI.toast('E-mail inválido', '', 'err');
-      if (OB.userByEmail(email) && OB.userByEmail(email).id !== u.id) return UI.toast('E-mail em uso', '', 'err');
-      if (u.provider === 'email' && u.senha !== pwd) return UI.toast('Senha incorreta', '', 'err');
+      const { error } = await SB.auth.updateUser({ email });
+      if (error) return UI.toast('Erro', error.message, 'err');
       u.email = email; OB.upsertUser(u);
       document.getElementById('p-email').value = email;
-      UI.closeModal(); UI.toast('E-mail atualizado', '', 'ok');
+      UI.closeModal();
+      UI.toast('E-mail atualizado', 'Pode ser necessário confirmar pelo novo e-mail', 'ok');
       App.refreshSidebarUser();
     };
   },
 
   alterarSenha(u) {
-    const isGoogle = u.provider === 'google' && !u.senha;
     UI.modal({
       title: 'Alterar senha',
-      body: `${isGoogle ? `<div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Sua conta foi criada com Google. Defina uma senha para também poder entrar por e-mail.</div></div>` : `<div class="field"><label>Senha atual</label><input type="password" id="ap-atual"/></div>`}
-        <div class="field"><label>Nova senha</label><input type="password" id="ap-nova" placeholder="Mínimo 6 caracteres"/></div>
+      body: `<div class="field"><label>Nova senha</label><input type="password" id="ap-nova" placeholder="Mínimo 6 caracteres"/></div>
         <div class="field"><label>Confirmar nova senha</label><input type="password" id="ap-conf"/></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ap-go">Salvar senha</button>`
     });
-    document.getElementById('ap-go').onclick = () => {
-      if (!isGoogle && document.getElementById('ap-atual').value !== u.senha) return UI.toast('Senha atual incorreta', '', 'err');
+    document.getElementById('ap-go').onclick = async () => {
       const nova = document.getElementById('ap-nova').value, conf = document.getElementById('ap-conf').value;
       if (nova.length < 6) return UI.toast('Senha curta', 'Use ao menos 6 caracteres', 'err');
       if (nova !== conf) return UI.toast('Senhas diferentes', '', 'err');
-      u.senha = nova; u.provider = 'email'; OB.upsertUser(u);
+      const { error } = await SB.auth.updateUser({ password: nova });
+      if (error) return UI.toast('Erro', error.message, 'err');
       UI.closeModal(); UI.toast('Senha alterada', '', 'ok');
     };
   },

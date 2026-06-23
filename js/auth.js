@@ -61,7 +61,7 @@ const Auth = {
       <button class="google-btn" id="g-login">${this.googleIcon()} Entrar com Google</button>
 
       <p class="auth-foot">Não tem conta? <a id="go-signup">Criar conta</a></p>
-      <div class="notice" style="margin-top:18px;text-align:left">${UI.icon('info',16)}<div>Demonstração — admin: <b>admin@outboxgroup.com.br</b> / admin123 · consultor: <b>consultor@outboxgroup.com.br</b> / consultor123</div></div>
+      <div class="notice" style="margin-top:18px;text-align:left">${UI.icon('info',16)}<div>Primeiro acesso? Clique em <b>Criar conta</b>. Seus dados ficam salvos com segurança e o administrador acompanha tudo em tempo real.</div></div>
     `;
     this.bindPwdToggles();
     document.getElementById('go-signup').onclick = () => this.viewSignup();
@@ -131,18 +131,23 @@ const Auth = {
   },
 
   /* ---------- LOGIN ---------- */
-  doLogin() {
+  async doLogin() {
     const email = document.getElementById('li-email').value.trim();
     const senha = document.getElementById('li-senha').value;
     if (!UI.validEmail(email)) return UI.toast('E-mail inválido', 'Confira o endereço digitado', 'err');
-    const user = OB.userByEmail(email);
-    if (!user || user.senha !== senha) return UI.toast('Falha no login', 'E-mail ou senha incorretos', 'err');
-    if (user.twoFA) return this.twoFA(user);
-    this.finish(user);
+    if (!senha) return UI.toast('Informe a senha', '', 'err');
+    const btn = document.querySelector('#form-login button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
+    const { error } = await SB.auth.signInWithPassword({ email, password: senha });
+    if (error) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+      return UI.toast('Falha no login', 'E-mail ou senha incorretos', 'err');
+    }
+    await this.finish();
   },
 
   /* ---------- CADASTRO ---------- */
-  doSignup() {
+  async doSignup() {
     const nome = document.getElementById('su-nome').value.trim();
     const sobrenome = document.getElementById('su-sobrenome').value.trim();
     const email = document.getElementById('su-email').value.trim();
@@ -150,55 +155,31 @@ const Auth = {
     const senha2 = document.getElementById('su-senha2').value;
     if (!nome || !sobrenome) return UI.toast('Preencha o nome', 'Nome e sobrenome são obrigatórios', 'err');
     if (!UI.validEmail(email)) return UI.toast('E-mail inválido', '', 'err');
-    if (OB.userByEmail(email)) return UI.toast('E-mail já cadastrado', 'Tente fazer login', 'err');
     if (senha.length < 6) return UI.toast('Senha curta', 'Use ao menos 6 caracteres', 'err');
     if (senha !== senha2) return UI.toast('Senhas diferentes', 'A confirmação não confere', 'err');
 
-    const user = {
-      id: OB.uid(), role: 'consultor', provider: 'email',
-      email, senha, nome, sobrenome, nascimento: '', doc: '', celular: '',
-      instagram: '', cep: '', logradouro: '', numero: '', complemento: '',
-      bairro: '', cidade: '', uf: '', foto: '', twoFA: false,
-      createdAt: new Date().toISOString()
-    };
-    OB.upsertUser(user);
+    const btn = document.querySelector('#form-signup button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
+    const { data, error } = await SB.auth.signUp({ email, password: senha, options: { data: { nome, sobrenome } } });
+    if (error) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Criar conta'; }
+      const msg = /registered|already/i.test(error.message) ? 'E-mail já cadastrado, tente entrar' : error.message;
+      return UI.toast('Não foi possível criar', msg, 'err');
+    }
+    if (!data.session) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Criar conta'; }
+      return UI.toast('Verifique seu e-mail', 'Confirme o cadastro pelo link enviado', 'ok');
+    }
     UI.toast('Conta criada!', 'Complete seu perfil para começar', 'ok');
-    this.finish(user, true);
+    await this.finish(true);
   },
 
-  /* ---------- GOOGLE (simulado) ---------- */
+  /* ---------- GOOGLE (em breve — Fase 2.1) ---------- */
   googleFlow(kind) {
-    UI.modal({
-      title: 'Entrar com Google',
-      sub: 'Simulação do fluxo OAuth (protótipo)',
-      body: `<div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>No sistema real isto abriria a janela de login do Google. Aqui, informe o e-mail da conta Google para simular.</div></div>
-        <div class="field"><label>E-mail Google</label><input id="g-email" placeholder="voce@gmail.com"/></div>`,
-      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="g-go">${this.googleIcon()} Continuar</button>`
-    });
-    document.getElementById('g-go').onclick = () => {
-      const email = document.getElementById('g-email').value.trim();
-      if (!UI.validEmail(email)) return UI.toast('E-mail inválido', '', 'err');
-      UI.closeModal();
-      let user = OB.userByEmail(email);
-      if (!user) {
-        const nome = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        user = {
-          id: OB.uid(), role: 'consultor', provider: 'google', email,
-          senha: '', nome: nome.split(' ')[0] || 'Consultor', sobrenome: nome.split(' ').slice(1).join(' '),
-          nascimento: '', doc: '', celular: '', instagram: '', cep: '', logradouro: '', numero: '',
-          complemento: '', bairro: '', cidade: '', uf: '', foto: '', twoFA: false,
-          createdAt: new Date().toISOString()
-        };
-        OB.upsertUser(user);
-        UI.toast('Conta Google criada', 'Complete seu perfil', 'ok');
-        return this.finish(user, true);
-      }
-      UI.toast('Bem-vindo de volta', '', 'ok');
-      this.finish(user);
-    };
+    UI.toast('Em breve', 'O login com Google será ativado em breve. Use e-mail e senha por enquanto.', 'info');
   },
 
-  /* ---------- ESQUECI A SENHA ---------- */
+  /* ---------- ESQUECI A SENHA (e-mail real via Supabase) ---------- */
   forgot() {
     UI.modal({
       title: 'Redefinir senha',
@@ -206,58 +187,44 @@ const Auth = {
       body: `<div class="field"><label>E-mail cadastrado</label><input id="fg-email" placeholder="voce@outboxgroup.com.br"/></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="fg-send">${UI.icon('mail',16)} Enviar link</button>`
     });
-    document.getElementById('fg-send').onclick = () => {
+    document.getElementById('fg-send').onclick = async () => {
       const email = document.getElementById('fg-email').value.trim();
       if (!UI.validEmail(email)) return UI.toast('E-mail inválido', '', 'err');
-      const user = OB.userByEmail(email);
-      // por segurança a mensagem é a mesma exista ou não a conta
-      const code = UI.gerarCodigo();
-      this._reset = { email, code };
-      UI.modal({
-        title: 'Verifique seu e-mail',
-        sub: `Enviamos um código de redefinição para ${email}`,
-        body: `<div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Simulação: em produção este código chegaria por e-mail. Seu código é:</div></div>
-          <div class="code-box">${user ? code : UI.gerarCodigo()}</div>
-          <div class="field" style="margin-top:14px"><label>Código de 6 dígitos</label><input id="rs-code" placeholder="••••••" maxlength="6"/></div>
-          <div class="field"><label>Nova senha</label>${this.pwdInput('rs-pwd','Mínimo 6 caracteres')}</div>`,
-        footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="rs-go">Redefinir senha</button>`
-      });
-      this.bindPwdToggles();
-      document.getElementById('rs-go').onclick = () => {
-        const c = document.getElementById('rs-code').value.trim();
-        const np = document.getElementById('rs-pwd').value;
-        if (!user) { UI.closeModal(); return UI.toast('Verifique seu e-mail', 'Se a conta existir, o código foi enviado', 'ok'); }
-        if (c !== code) return UI.toast('Código incorreto', '', 'err');
-        if (np.length < 6) return UI.toast('Senha curta', 'Use ao menos 6 caracteres', 'err');
-        user.senha = np; user.provider = 'email'; OB.upsertUser(user);
-        UI.closeModal();
-        UI.toast('Senha redefinida!', 'Já pode entrar com a nova senha', 'ok');
-      };
-    };
-  },
-
-  /* ---------- 2FA ---------- */
-  twoFA(user) {
-    const code = UI.gerarCodigo();
-    UI.modal({
-      title: 'Autenticação de 2 fatores',
-      sub: 'Digite o código de verificação',
-      body: `<div class="notice" style="margin-bottom:14px">${UI.icon('shield',16)}<div>Simulação: código enviado para ${user.email}. Seu código é:</div></div>
-        <div class="code-box">${code}</div>
-        <div class="field" style="margin-top:14px"><label>Código de 6 dígitos</label><input id="fa-code" placeholder="••••••" maxlength="6"/></div>`,
-      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="fa-go">Verificar</button>`
-    });
-    document.getElementById('fa-go').onclick = () => {
-      if (document.getElementById('fa-code').value.trim() !== code) return UI.toast('Código incorreto', '', 'err');
+      const btn = document.getElementById('fg-send');
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      await SB.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
       UI.closeModal();
-      this.finish(user);
+      // mensagem neutra por segurança (não revela se a conta existe)
+      UI.toast('Verifique seu e-mail', 'Se a conta existir, enviamos o link de redefinição', 'ok');
     };
   },
 
-  /* ---------- finaliza ---------- */
-  finish(user, goProfile) {
-    OB.setSession(user.id);
+  /* ---------- DEFINIR NOVA SENHA (após clicar no link do e-mail) ---------- */
+  showSetNewPassword() {
+    UI.modal({
+      title: 'Definir nova senha',
+      sub: 'Crie uma nova senha para sua conta',
+      body: `<div class="field"><label>Nova senha</label>${this.pwdInput('np-pwd','Mínimo 6 caracteres')}</div>
+        <div class="field"><label>Confirmar senha</label>${this.pwdInput('np-pwd2','Repita a senha')}</div>`,
+      footer: `<button class="btn brand" id="np-go">Salvar nova senha</button>`
+    });
+    this.bindPwdToggles();
+    document.getElementById('np-go').onclick = async () => {
+      const p1 = document.getElementById('np-pwd').value, p2 = document.getElementById('np-pwd2').value;
+      if (p1.length < 6) return UI.toast('Senha curta', 'Use ao menos 6 caracteres', 'err');
+      if (p1 !== p2) return UI.toast('Senhas diferentes', '', 'err');
+      const { error } = await SB.auth.updateUser({ password: p1 });
+      if (error) return UI.toast('Erro', error.message, 'err');
+      UI.closeModal();
+      UI.toast('Senha redefinida!', 'Entrando...', 'ok');
+      await this.finish();
+    };
+  },
+
+  /* ---------- finaliza: carrega dados e entra no app ---------- */
+  async finish(goProfile) {
     UI.closeModal();
+    await OB.loadAll();
     document.getElementById('auth').style.display = 'none';
     App.boot(goProfile);
   }
