@@ -578,8 +578,10 @@ const Consultor = {
   },
 
   leadCard(l) {
+    const sv = OB.PRODUTOS.find(p => p.id === l.servico);
     return `<div class="kan-card" draggable="true" data-id="${l.id}">
       <div class="row between alc"><b>${l.nome || 'Sem nome'}</b><span class="kan-grip">${UI.icon('edit',13)}</span></div>
+      ${sv ? `<div style="margin-top:5px"><span class="chip brand" style="font-size:11px">${sv.nome}</span></div>` : ''}
       ${l.valorEstimado ? `<div class="kan-val">${OB.brl(l.valorEstimado)}</div>` : ''}
       ${l.telefone ? `<div class="kan-meta">${UI.icon('whats',12)} ${l.telefone}</div>` : ''}
       ${l.obs ? `<div class="kan-meta mut">${l.obs}</div>` : ''}
@@ -620,25 +622,57 @@ const Consultor = {
           <div class="field"><label>Telefone (WhatsApp)</label><input id="l-tel" value="${edit ? (l.telefone || '') : ''}" placeholder="(00) 00000-0000"/></div>
           <div class="field"><label>E-mail</label><input id="l-email" value="${edit ? (l.email || '') : ''}"/></div>
         </div>
+        <div class="field"><label>Serviço de interesse</label>
+          <select id="l-serv"><option value="">Selecione (opcional)</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${edit && l.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
+          <div class="hint">Ajuda a lembrar o que o contato precisa.</div></div>
         <div class="grid-2">
           <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
           <div class="field"><label>Valor estimado (R$)</label><input id="l-val" type="number" min="0" step="100" value="${edit ? (l.valorEstimado || 0) : 0}"/></div>
         </div>
-        <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>`,
+        <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>
+        <button type="button" class="btn ghost block" id="l-brief" style="border-style:dashed">${UI.icon('docs',16)} Compartilhar briefing com o cliente</button>
+        <div class="hint" style="text-align:center">Use quando o cliente fechar, para coletar as informações do projeto.</div>`,
       footer: `${edit ? `<button class="btn danger" id="l-del">Excluir</button>` : ''}<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="l-save">${edit ? 'Salvar' : 'Adicionar'}</button>`
     });
     if (document.getElementById('l-tel')) document.getElementById('l-tel').oninput = e => e.target.value = UI.maskPhone(e.target.value);
+    document.getElementById('l-brief').onclick = () => this.compartilharBriefing({
+      nome: document.getElementById('l-nome').value.trim() || (edit ? l.nome : ''),
+      telefone: document.getElementById('l-tel').value.trim()
+    });
     document.getElementById('l-save').onclick = () => {
       const nome = document.getElementById('l-nome').value.trim();
       if (!nome) return UI.toast('Informe o nome', '', 'err');
       const obj = l || { id: OB.uid(), consultorId: u.id, ordem: 0, criadoEm: new Date().toISOString() };
-      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), estagio: document.getElementById('l-est').value, valorEstimado: parseFloat(document.getElementById('l-val').value) || 0, obs: document.getElementById('l-obs').value.trim() });
+      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), servico: document.getElementById('l-serv').value, estagio: document.getElementById('l-est').value, valorEstimado: parseFloat(document.getElementById('l-val').value) || 0, obs: document.getElementById('l-obs').value.trim() });
       OB.upsertLead(obj);
       UI.closeModal(); UI.toast(edit ? 'Contato atualizado' : 'Contato adicionado', '', 'ok');
       this.render('funil');
     };
     const del = document.getElementById('l-del');
     if (del) del.onclick = () => UI.confirm('Excluir contato', `Remover "${l.nome}" do funil?`, () => { OB.removeLead(l.id); UI.closeModal(); UI.toast('Contato removido', '', 'ok'); this.render('funil'); }, 'Excluir');
+  },
+
+  /* compartilhar briefing — PREPARADO. Quando o usuário criar o modelo de
+     briefing, basta definir OB.LINK_BRIEFING com o link do formulário. */
+  compartilharBriefing(lead) {
+    const temLink = !!OB.LINK_BRIEFING;
+    const nome = (lead && lead.nome) ? lead.nome.split(' ')[0] : 'tudo bem';
+    const linkTxt = temLink ? OB.LINK_BRIEFING : '[link do briefing]';
+    const msg = `Olá ${nome}! Que ótimo fecharmos o projeto 🎉 Para começarmos, preencha o briefing com as informações do seu projeto: ${linkTxt}`;
+    const tel = lead && lead.telefone ? lead.telefone.replace(/\D/g, '') : '';
+    const waTel = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+    UI.modal({
+      title: 'Compartilhar briefing',
+      sub: 'Envie o formulário de briefing para o cliente',
+      body: `${temLink ? '' : `<div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>O <b>modelo de briefing ainda não foi configurado</b>. Quando você criar o seu formulário (ex.: Google Forms), me envie o link que eu coloco aqui e o botão passa a enviar automaticamente. Por enquanto você pode editar a mensagem abaixo.</div></div>`}
+        <div class="field"><label>Mensagem</label><textarea id="bf-msg" style="min-height:120px">${msg}</textarea></div>`,
+      footer: `<button class="btn ghost" id="bf-copy">${UI.icon('docs',15)} Copiar</button><button class="btn green" id="bf-wa">${UI.icon('whats',16)} Enviar no WhatsApp</button>`
+    });
+    document.getElementById('bf-copy').onclick = () => { navigator.clipboard.writeText(document.getElementById('bf-msg').value).then(() => UI.toast('Mensagem copiada', '', 'ok')); };
+    document.getElementById('bf-wa').onclick = () => {
+      const txt = encodeURIComponent(document.getElementById('bf-msg').value);
+      window.open(waTel ? `https://wa.me/${waTel}?text=${txt}` : `https://wa.me/?text=${txt}`, '_blank');
+    };
   },
 
   /* pop-up da comissão (acionado pelo valor no topo) */
