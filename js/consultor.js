@@ -568,10 +568,12 @@ const Consultor = {
             <div class="kan-list" data-estagio="${e.id}">
               ${leads.map(l => this.leadCard(l)).join('')}
             </div>
+            <button class="kan-add" data-add="${e.id}" title="Adicionar contato em ${e.nome}">${UI.icon('plus',16)} Adicionar</button>
           </div>`;
         }).join('')}
       </div>`;
     document.getElementById('novo-lead').onclick = () => this.leadModal();
+    v.querySelectorAll('[data-add]').forEach(b => b.onclick = () => this.leadModal(null, b.dataset.add));
     this.bindKanban();
   },
 
@@ -608,8 +610,8 @@ const Consultor = {
     });
   },
 
-  leadModal(l) {
-    const edit = !!l; const u = this.u();
+  leadModal(l, estagioPreset) {
+    const edit = !!l; const u = this.u(); const preEst = estagioPreset || 'frio';
     UI.modal({
       title: edit ? 'Editar contato' : 'Novo contato',
       body: `
@@ -619,7 +621,7 @@ const Consultor = {
           <div class="field"><label>E-mail</label><input id="l-email" value="${edit ? (l.email || '') : ''}"/></div>
         </div>
         <div class="grid-2">
-          <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${edit && l.estagio === e.id ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
+          <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
           <div class="field"><label>Valor estimado (R$)</label><input id="l-val" type="number" min="0" step="100" value="${edit ? (l.valorEstimado || 0) : 0}"/></div>
         </div>
         <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>`,
