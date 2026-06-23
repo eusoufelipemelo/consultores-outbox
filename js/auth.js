@@ -174,9 +174,14 @@ const Auth = {
     await this.finish(true);
   },
 
-  /* ---------- GOOGLE (em breve — Fase 2.1) ---------- */
-  googleFlow(kind) {
-    UI.toast('Em breve', 'O login com Google será ativado em breve. Use e-mail e senha por enquanto.', 'info');
+  /* ---------- GOOGLE (OAuth via Supabase) ---------- */
+  async googleFlow(kind) {
+    UI.toast('Redirecionando...', 'Abrindo login do Google', 'info');
+    const { error } = await SB.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin + location.pathname }
+    });
+    if (error) UI.toast('Erro no Google', error.message, 'err');
   },
 
   /* ---------- ESQUECI A SENHA (e-mail real via Supabase) ---------- */
