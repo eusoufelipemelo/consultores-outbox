@@ -602,12 +602,14 @@ const Consultor = {
             <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td class="row" style="gap:6px;justify-content:flex-end">
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
+              <button class="iconbtn" data-share="${s.id}" title="Compartilhar">${UI.icon('share',16)}</button>
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
               <button class="iconbtn" data-edit="${s.id}" title="Editar">${UI.icon('edit',16)}</button>
               <button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>
             </td></tr>`; }).join('')}
       </tbody></table></div>`;
       el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => this.baixarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.pdf)));
+      el.querySelectorAll('[data-share]').forEach(b => b.onclick = () => this.compartilharOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.share)));
       el.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { this.setStatusProposta(b.dataset.ap, 'aprovada'); });
       el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => this.editarVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.edit)));
       el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const s = OB.salesOf(u.id).find(x => x.id === b.dataset.del); UI.confirm('Excluir orçamento', `Remover a proposta de ${OB.clientById(s.clientId)?.nome||'cliente'}?`, () => { OB.removeSale(s.id); UI.toast('Orçamento excluído','','ok'); this.render('orcamentos'); }, 'Excluir'); });
@@ -656,6 +658,36 @@ const Consultor = {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     UI.toast('Orçamento gerado', 'Abra o arquivo para enviar ou imprimir em PDF', 'ok');
+  },
+
+  /* compartilha o orçamento: Web Share API nativa (mobile) com fallback p/ WhatsApp */
+  async compartilharOrcamento(s) {
+    if (!s) return;
+    const u = this.u(); const cli = OB.clientById(s.clientId);
+    const p = OB.PRODUTOS.find(x => x.id === s.produto);
+    const nome = cli ? cli.nome : 'cliente';
+    const titulo = `Orçamento OutBox — ${nome}`;
+    const texto = `Olá${cli ? ', ' + cli.nome.split(' ')[0] : ''}! Segue o orçamento ${p ? 'de ' + p.nome + ' ' : ''}no valor de ${OB.money(s.valor, s.moeda)}. Qualquer dúvida estou à disposição. — ${u.nome || 'OutBox'}`;
+    const arquivo = new File([this.buildOrcamentoHTML(s)], `Orcamento OutBox - ${nome}.html`, { type: 'text/html' });
+
+    // 1) Web Share API com arquivo (ideal no celular)
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        await navigator.share({ title: titulo, text: texto, files: [arquivo] });
+        return;
+      }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    // 2) Web Share API só com texto
+    try {
+      if (navigator.share) { await navigator.share({ title: titulo, text: texto }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    // 3) Fallback desktop: baixa o orçamento e abre o WhatsApp com a mensagem
+    this.baixarOrcamento(s);
+    const tel = (cli && cli.telefone ? cli.telefone.replace(/\D/g, '') : '');
+    const waNum = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+    const waUrl = (waNum ? `https://wa.me/${waNum}` : 'https://wa.me/') + `?text=${encodeURIComponent(texto)}`;
+    window.open(waUrl, '_blank', 'noopener');
+    UI.toast('Pronto para compartilhar', 'Anexe o arquivo do orçamento que acabou de baixar na conversa.', 'ok');
   },
 
   /* ====================== FUNIL (Kanban arrastável) ====================== */
