@@ -601,6 +601,7 @@ const Consultor = {
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td>
             <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td class="row" style="gap:6px;justify-content:flex-end">
+              <button class="iconbtn" data-view="${s.id}" title="Visualizar em nova aba">${UI.icon('external',16)}</button>
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
               <button class="iconbtn" data-share="${s.id}" title="Compartilhar">${UI.icon('share',16)}</button>
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
@@ -608,6 +609,7 @@ const Consultor = {
               <button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>
             </td></tr>`; }).join('')}
       </tbody></table></div>`;
+      el.querySelectorAll('[data-view]').forEach(b => b.onclick = () => this.visualizarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.view)));
       el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => this.baixarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.pdf)));
       el.querySelectorAll('[data-share]').forEach(b => b.onclick = () => this.compartilharOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.share)));
       el.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { this.setStatusProposta(b.dataset.ap, 'aprovada'); });
@@ -649,6 +651,16 @@ const Consultor = {
   <div class="foot"><div>OutBox Group · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
 </div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
+  /* abre o orçamento renderizado em uma nova aba (apenas visualização) */
+  visualizarOrcamento(s) {
+    if (!s) return;
+    const blob = new Blob([this.buildOrcamentoHTML(s)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) { URL.revokeObjectURL(url); UI.toast('Não foi possível abrir', 'Permita pop-ups para visualizar em nova aba.', 'err'); return; }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+
   baixarOrcamento(s) {
     if (!s) return;
     const blob = new Blob([this.buildOrcamentoHTML(s)], { type: 'text/html;charset=utf-8' });
