@@ -4,10 +4,10 @@
 const Consultor = {
   NAV: [
     { id: 'overview',   label: 'Visão Geral',      icon: 'overview' },
-    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
+    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
     { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
