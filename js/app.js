@@ -200,7 +200,7 @@ const App = {
     const confPill = document.getElementById('conf-pill');
     if (confPill) {
       document.getElementById('conf-val').textContent = OB.fmt(r.emConferencia);
-      confPill.classList.toggle('hidden', r.emConferencia <= 0);
+      confPill.classList.remove('hidden'); // sempre visível, mesmo zerado
     }
     if (bump) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
   },
