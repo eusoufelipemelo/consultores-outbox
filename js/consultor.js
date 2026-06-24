@@ -301,9 +301,10 @@ const Consultor = {
         </div>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <button class="btn brand" id="add-sale">${UI.icon('plus',16)} Lançar venda</button>
-          <button class="btn green" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
+          <button class="btn green" id="req-com" ${com.valor < OB.saqueMinimo() ? 'disabled' : ''} title="${com.valor < OB.saqueMinimo() ? 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()) : ''}">${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
         </div>
       </div>
+      ${com.valor < OB.saqueMinimo() && com.valor > 0 ? `<div class="hint" style="margin:-8px 0 14px;text-align:right">Valor mínimo para saque é de <b>${OB.fmt(OB.saqueMinimo())}</b></div>` : ''}
 
       <div class="card" style="padding:0;margin-bottom:18px" id="sale-table"></div>
 
@@ -809,6 +810,7 @@ const Consultor = {
 
   solicitarComissao(com) {
     if (com.valor <= 0) return UI.toast('Nada disponível', 'Você não tem comissão liberada para solicitar', 'err');
+    if (com.valor < OB.saqueMinimo()) return UI.toast('Abaixo do mínimo', 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()), 'err');
     UI.modal({
       title: 'Solicitar pagamento de comissão',
       sub: 'O administrador será notificado imediatamente',
@@ -898,7 +900,8 @@ const Consultor = {
                   : `Você pode resgatar qualquer prêmio da loja`)}
             </div>
           </div>
-          <button class="btn green block" id="bonus-cash" style="margin-top:14px" ${disp <= 0 ? 'disabled' : ''}>${UI.icon('money',16)} Receber ${OB.fmt(disp)} em dinheiro</button>
+          <button class="btn green block" id="bonus-cash" style="margin-top:14px" ${disp < OB.saqueMinimo() ? 'disabled' : ''} title="${disp < OB.saqueMinimo() ? 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()) : ''}">${UI.icon('money',16)} Receber ${OB.fmt(disp)} em dinheiro</button>
+          ${disp > 0 && disp < OB.saqueMinimo() ? `<div class="hint" style="text-align:center;margin-top:8px">Valor mínimo para saque é de <b>${OB.fmt(OB.saqueMinimo())}</b></div>` : ''}
         </div>
         <div class="card">
           <div class="card-head"><h3>Como funciona</h3></div>
@@ -944,6 +947,7 @@ const Consultor = {
   /* resgatar o bônus em dinheiro */
   resgatarBonus(disp) {
     if (disp <= 0) return;
+    if (disp < OB.saqueMinimo()) return UI.toast('Abaixo do mínimo', 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()), 'err');
     UI.modal({
       title: 'Receber bônus em dinheiro',
       sub: 'O administrador será notificado para análise e repasse',

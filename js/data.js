@@ -31,6 +31,15 @@ const OB = {
     if (!p || !p.precos) return 0;
     return p.precos[porteId] || p.precos.pequena || 0;
   },
+  /* saque mínimo = menor preço de tabela (qualquer produto, qualquer porte) */
+  saqueMinimo() {
+    let min = Infinity;
+    for (const p of this.PRODUTOS) {
+      if (!p.precos) continue;
+      for (const k in p.precos) if (p.precos[k] < min) min = p.precos[k];
+    }
+    return min === Infinity ? 0 : min;
+  },
 
   /* ---------- comissão progressiva MARGINAL (cada faixa, sua taxa) ---------- */
   NIVEIS: [
