@@ -37,7 +37,7 @@ const OB = {
     { id: 'macbook', nome: 'MacBook',      meta: 200000, valor: 14000, img: 'assets/premios/macbook.png' }
   ],
 
-  LINK_APRESENTACAO: 'https://consultoroutbox.vercel.app',
+  LINK_APRESENTACAO: 'https://vendaoutbox.vercel.app/',
   /* link do formulário de briefing (a definir — o usuário vai criar o modelo) */
   LINK_BRIEFING: '',
 
