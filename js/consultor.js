@@ -469,11 +469,16 @@ const Consultor = {
       body: `
         <div class="field"><label>Cliente <span class="req">*</span></label>
           <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
-        <div class="field"><label>Produto / serviço <span class="req">*</span></label>
-          <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}</select></div>
+        <div class="grid-2">
+          <div class="field"><label>Produto / serviço <span class="req">*</span></label>
+            <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}</select></div>
+          <div class="field"><label>Porte da empresa</label>
+            <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
+            <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
+        </div>
         <div class="field"><label>Preço</label>
           <select id="s-precomodo">
-            <option value="tabela">Tabela (pelo porte do cliente)</option>
+            <option value="tabela">Tabela (pelo porte)</option>
             <option value="personalizado">Personalizado (projeto mais complexo / maior valor)</option>
           </select></div>
         <div class="grid-2">
@@ -501,12 +506,18 @@ const Consultor = {
     const sProd = document.getElementById('s-prod');
     const sVal = document.getElementById('s-val');
     const sModo = document.getElementById('s-precomodo');
+    const sPorte = document.getElementById('s-porte');
     UI.money.bind(sVal, () => sMoeda.value);
-    // preço automático pela tabela (porte do cliente) OU personalizado (digita livre)
+    // sincroniza o porte com o cliente selecionado
+    const sincPorteComCliente = () => {
+      const cliente = OB.clientById(sCli.value);
+      sPorte.value = cliente ? (cliente.porte || 'pequena') : 'pequena';
+    };
+    sincPorteComCliente();
+    // preço automático pela tabela (porte selecionado) OU personalizado (digita livre)
     const aplicarPreco = () => {
       const modo = sModo.value;
-      const cliente = OB.clientById(sCli.value);
-      const porte = cliente ? (cliente.porte || 'pequena') : 'pequena';
+      const porte = sPorte.value;
       const porteNome = (OB.PORTES.find(p => p.id === porte) || {}).nome || '';
       if (modo === 'tabela') {
         const preco = OB.precoTabela(sProd.value, porte);
@@ -519,7 +530,8 @@ const Consultor = {
       }
     };
     sProd.onchange = aplicarPreco;
-    sCli.onchange = aplicarPreco;
+    sCli.onchange = () => { sincPorteComCliente(); aplicarPreco(); };
+    sPorte.onchange = aplicarPreco;
     sModo.onchange = () => {
       // ao mudar para personalizado, mantém o valor atual; ao voltar p/ tabela, reaplica
       if (sModo.value === 'personalizado') { sVal.focus(); sVal.select && sVal.select(); }
