@@ -10,6 +10,10 @@ const App = {
     this.theme = OB._get(OB.KEYS.theme, 'light');
     document.documentElement.setAttribute('data-theme', this.theme);
 
+    // página pública de ACEITE da proposta (cliente clica no link do orçamento)
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('aceite')) { return this.renderAceite(qs.get('aceite'), qs.get('t')); }
+
     // link de recuperação de senha vindo do e-mail
     SB.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -26,6 +30,46 @@ const App = {
     const { data: { session } } = await SB.auth.getSession();
     if (session) { await OB.loadAll(); this.boot(); }
     else Auth.render();
+  },
+
+  /* ---------- página pública de aceite da proposta ---------- */
+  async renderAceite(saleId, token) {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    const host = document.createElement('div');
+    host.id = 'aceite-page';
+    host.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#F15532,#e0431f);font-family:Inter,system-ui,sans-serif';
+    const card = (icon, cor, titulo, msg, extra) => `
+      <div style="max-width:440px;width:100%;background:#fff;border-radius:20px;padding:40px 32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="width:72px;height:72px;border-radius:50%;background:${cor}1a;color:${cor};display:grid;place-items:center;margin:0 auto 20px">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></div>
+        <h1 style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:8px">${titulo}</h1>
+        <p style="color:#46505c;font-size:15px;line-height:1.6">${msg}</p>${extra || ''}
+      </div>`;
+    const spinner = '<circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9"/>';
+    const check = '<path d="M20 6 9 17l-5-5"/>';
+    const alert = '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';
+    host.innerHTML = card(spinner, '#F15532', 'Confirmando...', 'Estamos registrando o seu aceite, um instante.');
+    document.body.appendChild(host);
+
+    if (!saleId || !token) { host.innerHTML = card(alert, '#dc2626', 'Link inválido', 'Este link de aceite está incompleto. Peça ao seu consultor para reenviar a proposta.'); return; }
+    try {
+      const { data, error } = await SB.rpc('aceitar_proposta', { p_sale: saleId, p_token: token });
+      if (error) throw error;
+      if (data && data.ok) {
+        host.innerHTML = card(check, '#16a34a',
+          data.ja ? 'Proposta já aceita' : 'Proposta aceita! 🎉',
+          data.ja
+            ? 'Esta proposta já estava confirmada. Seu consultor foi avisado e dará seguimento ao projeto.'
+            : 'Obrigado! Seu aceite foi registrado e o consultor já foi notificado. Em breve iniciamos o briefing do seu projeto.',
+          '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Group · obrigado pela confiança</p>');
+      } else {
+        host.innerHTML = card(alert, '#dc2626', 'Não foi possível confirmar',
+          (data && data.erro === 'token') ? 'Este link de aceite não confere. Peça ao seu consultor para reenviar a proposta.' : 'Proposta não encontrada. Fale com o seu consultor.');
+      }
+    } catch (e) {
+      host.innerHTML = card(alert, '#dc2626', 'Erro ao confirmar', 'Tente novamente em instantes ou avise o seu consultor. (' + ((e && e.message) || 'falha de conexão') + ')');
+    }
   },
 
   /* ---------- tema ---------- */
