@@ -58,13 +58,13 @@ const OB = {
 
   /* ---------- estágios do funil (Kanban) ---------- */
   ESTAGIOS: [
-    { id: 'frio',     nome: 'Frio',              cor: '#64748b', emoji: '🧊' },
-    { id: 'morno',    nome: 'Morno',             cor: '#d97706', emoji: '🌤️' },
-    { id: 'quente',   nome: 'Quente',            cor: '#dc2626', emoji: '🔥' },
-    { id: 'reuniao',  nome: 'Reunião marcada',   cor: '#2563eb', emoji: '📅' },
-    { id: 'aberto',   nome: 'Proposta em aberto',cor: '#7c3aed', emoji: '📤' },
-    { id: 'ganho',    nome: 'Ganho',             cor: '#16a34a', emoji: '✅' },
-    { id: 'perdido',  nome: 'Perdido',           cor: '#94a3b8', emoji: '🚫' }
+    { id: 'frio',     nome: 'Frio',              cor: '#64748b' },
+    { id: 'morno',    nome: 'Morno',             cor: '#d97706' },
+    { id: 'quente',   nome: 'Quente',            cor: '#dc2626' },
+    { id: 'reuniao',  nome: 'Reunião marcada',   cor: '#2563eb' },
+    { id: 'aberto',   nome: 'Proposta em aberto',cor: '#7c3aed' },
+    { id: 'ganho',    nome: 'Ganho',             cor: '#16a34a' },
+    { id: 'perdido',  nome: 'Perdido',           cor: '#94a3b8' }
   ],
 
   /* ---------- status da proposta (venda) ---------- */

@@ -103,7 +103,7 @@ const Consultor = {
     return `
       <div class="row between" style="margin-bottom:8px;font-size:13px">
         <span class="soft">${OB.fmt(vol)}</span>
-        <span class="mut">${prox ? 'Meta ' + prox.nome + ': ' + OB.fmt(prox.meta) : 'Nível máximo atingido 🎉'}</span>
+        <span class="mut">${prox ? 'Meta ' + prox.nome + ': ' + OB.fmt(prox.meta) : 'Nível máximo atingido'}</span>
       </div>
       <div class="bar"><i data-w="${pct}"></i></div>
       <div style="margin-top:12px;font-size:13px" class="soft">
@@ -585,7 +585,7 @@ const Consultor = {
           const leads = OB.leadsOf(u.id).filter(l => l.estagio === e.id);
           const total = leads.reduce((t, l) => t + (l.valorEstimado || 0), 0);
           return `<div class="kan-col" data-estagio="${e.id}">
-            <div class="kan-head"><span class="kan-dot" style="background:${e.cor}"></span><b>${e.emoji} ${e.nome}</b><span class="kan-count">${leads.length}</span></div>
+            <div class="kan-head"><span class="kan-dot" style="background:${e.cor}"></span><b>${e.nome}</b><span class="kan-count">${leads.length}</span></div>
             <div class="kan-sub">${total ? OB.fmt(total) : '&nbsp;'}</div>
             <div class="kan-list" data-estagio="${e.id}">
               ${leads.map(l => this.leadCard(l)).join('')}
@@ -647,7 +647,7 @@ const Consultor = {
         <div class="field"><label>Serviço de interesse</label>
           <select id="l-serv"><option value="">Selecione (opcional)</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${edit && l.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
           <div class="hint">Ajuda a lembrar o que o contato precisa.</div></div>
-        <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
+        <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.nome}</option>`).join('')}</select></div>
         <div class="grid-2">
           <div class="field"><label>Valor estimado</label><input id="l-val" type="text" inputmode="decimal" placeholder="0,00"/></div>
           <div class="field"><label>Moeda</label><select id="l-moeda">${this.moedaOptions(edit ? (l.moeda || 'BRL') : OB.moedaAtual())}</select></div>
@@ -719,7 +719,7 @@ const Consultor = {
           <div><b style="font-size:14px">Nível ${b.nivel.nome} · ${(b.nivel.rate*100)|0}%</b>
           <div class="mut" style="font-size:12px">Faltam ${OB.fmt(b.faltaVolume)} em vendas no mês para desbloquear <b style="color:var(--brand)">+${b.extraPct}%</b></div></div>
         </div>
-      </div>`).join('') : `<div class="chip green" style="margin-top:4px">🏆 Você já está no nível máximo (Black · 20%)</div>`;
+      </div>`).join('') : `<div class="chip green" style="margin-top:4px">Você já está no nível máximo (Black · 20%)</div>`;
 
     UI.modal({
       title: 'Sua comissão do mês',
@@ -806,7 +806,7 @@ const Consultor = {
           <div style="position:relative;height:170px;margin-top:8px"><canvas id="ch-gauge"></canvas>
             <div style="position:absolute;left:0;right:0;bottom:18px;text-align:center">
               <div style="font-size:30px;font-weight:800">${prox ? Math.min(100,Math.round(vol/prox.meta*100)) : 100}%</div>
-              <div class="mut" style="font-size:13px">${prox ? 'até ' + prox.nome : 'todos atingidos 🎉'}</div>
+              <div class="mut" style="font-size:13px">${prox ? 'até ' + prox.nome : 'todos atingidos'}</div>
             </div>
           </div>
           <div class="center soft" style="font-size:13px;margin-top:6px">
@@ -822,8 +822,8 @@ const Consultor = {
               <b style="font-size:20px">${alc.nome}</b>
               <div class="meta">Meta de ${OB.fmt(alc.meta)} atingida</div>
               <div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap">
-                <button class="btn brand sm" id="prize-produto">🎁 Receber o produto</button>
-                <button class="btn green sm" id="prize-dinheiro">💵 Receber o dinheiro</button>
+                <button class="btn brand sm" id="prize-produto">${UI.icon('prize',15)} Receber o produto</button>
+                <button class="btn green sm" id="prize-dinheiro">${UI.icon('money',15)} Receber o dinheiro</button>
               </div>
               <div class="hint" style="margin-top:12px">Escolha receber o produto físico ou o valor equivalente em dinheiro. A solicitação vai para o administrador.</div>
             </div>` : this.empty('prize', 'Nenhum prêmio ainda', 'Continue vendendo! Ao atingir ' + (prox ? OB.fmt(prox.meta) + ' você ganha o ' + prox.nome : 'as metas você ganha prêmios') + '.')}
