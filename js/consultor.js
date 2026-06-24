@@ -603,11 +603,13 @@ const Consultor = {
             <td class="row" style="gap:6px;justify-content:flex-end">
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
-              ${s.statusProposta!=='aprovada'?`<button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>`:''}
+              <button class="iconbtn" data-edit="${s.id}" title="Editar">${UI.icon('edit',16)}</button>
+              <button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>
             </td></tr>`; }).join('')}
       </tbody></table></div>`;
       el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => this.baixarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.pdf)));
       el.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { this.setStatusProposta(b.dataset.ap, 'aprovada'); });
+      el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => this.editarVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.edit)));
       el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const s = OB.salesOf(u.id).find(x => x.id === b.dataset.del); UI.confirm('Excluir orçamento', `Remover a proposta de ${OB.clientById(s.clientId)?.nome||'cliente'}?`, () => { OB.removeSale(s.id); UI.toast('Orçamento excluído','','ok'); this.render('orcamentos'); }, 'Excluir'); });
     }
     document.getElementById('novo-orc').onclick = () => this.saleModal({ orcamento: true });
