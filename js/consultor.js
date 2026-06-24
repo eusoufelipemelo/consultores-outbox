@@ -329,7 +329,7 @@ const Consultor = {
             <td>${p?p.nome:s.produto}</td>
             <td><span class="strong">${OB.money(s.valor, s.moeda)}</span>${temDesc?`<br><span class="mut" style="font-size:11px">de ${OB.money(s.valorBruto, s.moeda)} · -${s.descontoTipo==='percent'?s.descontoValor+'%':OB.money(s.descontoValor, s.moeda)}</span>`:''}</td>
             <td><span class="chip ${pr.chip}">${pr.nome}</span></td>
-            <td>${s.statusProposta==='aprovada'?`<span class="chip ${st[0]}">${st[1]}</span>`:'<span class="mut" style="font-size:12px">—</span>'}</td>
+            <td>${s.statusProposta==='aprovada' ? (s.statusPagamento==='recebido' ? `<span class="chip ${st[0]}">${st[1]}</span>` : `<span class="chip warn" title="Aguardando o admin confirmar o pagamento do cliente">Em conferência</span>`) : '<span class="mut" style="font-size:12px">—</span>'}</td>
             <td class="row" style="gap:6px;justify-content:flex-end">
               ${s.statusProposta!=='aprovada'?`<button class="iconbtn" data-aprovar="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-recusar="${s.id}" title="Marcar recusada">${UI.icon('x',16)}</button>`:''}
@@ -878,13 +878,14 @@ const Consultor = {
         <div class="card" style="background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:16px">
           <div style="font-size:12px;opacity:.85;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Disponível para solicitar agora</div>
           <div style="font-size:32px;font-weight:800;letter-spacing:-.02em;margin:2px 0 4px">${OB.fmt(r.disponivel)}</div>
-          <div style="font-size:12px;opacity:.9">Comissão progressiva por faixa · taxa efetiva ${(r.efetiva*100).toFixed(1)}% sobre ${OB.fmt(r.volume)}</div>
+          <div style="font-size:12px;opacity:.9">Liberada só de vendas com <b>pagamento confirmado</b> · taxa efetiva ${(r.efetiva*100).toFixed(1)}%</div>
         </div>
-        ${linha('Em análise pelo admin', r.emAnalise, 'color:var(--text)', 'Aguardando repasse (até 3 dias úteis)')}
+        ${linha('Em conferência', r.emConferencia, 'color:#d97706', 'Vendas aprovadas aguardando o admin confirmar o pagamento do cliente')}
+        ${linha('Em análise pelo admin', r.emAnalise, 'color:var(--text)', 'Comissão já solicitada · repasse em até 3 dias úteis')}
         ${linha('Já pago no mês', r.jaPago, 'color:#1fa855')}
         <div class="nav-label" style="padding-left:0;margin-top:8px">${UI.icon('lock',12)} Bloqueado pelo sistema — desbloqueie batendo metas</div>
         ${bloqueadoHTML}
-        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva por faixa (8% a 20%)</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
+        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão só fica <b>disponível para saque</b> depois que o cliente paga e o <b>administrador confirma o recebimento</b> no sistema. Até lá ela aparece em <b style="color:#d97706">Em conferência</b>. O cálculo é progressivo por faixa (8% a 20%) conforme o volume do mês.</div></div>`,
       footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.fmt(r.disponivel)}</button>`
     });
     const sol = document.getElementById('cp-sol');

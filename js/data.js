@@ -163,8 +163,8 @@ const OB = {
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
 
-  _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '' }; },
-  _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null }; },
+  _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente' }; },
+  _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente' }; },
 
   _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, servico: r.servico, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), moeda: r.moeda || 'BRL', obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em }; },
   _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, servico: l.servico || null, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, moeda: l.moeda || 'BRL', obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm }; },
@@ -241,6 +241,8 @@ const OB = {
   addSale(s) { this.db.sales.push(s); this._save('sales', this._sOut(s)); return s; },
   updateSale(s) { const i = this.db.sales.findIndex(x => x.id === s.id); if (i >= 0) this.db.sales[i] = s; this._save('sales', this._sOut(s)); return s; },
   removeSale(id) { this.db.sales = this.db.sales.filter(s => s.id !== id); this._delete('sales', id); },
+  /* admin confirma/desfaz o recebimento do pagamento do cliente (libera comissão) */
+  setPagamento(saleId, status) { const s = this.db.sales.find(x => x.id === saleId); if (!s) return null; s.statusPagamento = status; this.updateSale(s); return s; },
 
   /* ---------- leads (funil / Kanban) ---------- */
   leads() { return this.db.leads; },
@@ -275,21 +277,25 @@ const OB = {
 
   comissaoResumo(consultorId) {
     const month = this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data));
-    const volume = month.reduce((t, s) => t + s.valor, 0);
+    const pagas = month.filter(s => s.statusPagamento === 'recebido'); // pagamento confirmado pelo admin
+    const volume = month.reduce((t, s) => t + s.valor, 0);            // volume vendido (define o nível)
+    const volumeRecebido = pagas.reduce((t, s) => t + s.valor, 0);    // volume com pagamento confirmado
     const nivel = this.nivelPorVolume(volume);
     const rate = this.taxaMarginal(volume); // taxa marginal da faixa atual
-    const totalDevido = Math.round(this.comissaoMarginal(volume)); // soma marginal por faixa
+    const totalDevido = Math.round(this.comissaoMarginal(volume));          // comissão se tudo for pago
+    const comissaoRecebivel = Math.round(this.comissaoMarginal(volumeRecebido)); // comissão lastreada em pagamento
+    const emConferencia = Math.max(0, totalDevido - comissaoRecebivel);    // aguardando o cliente pagar / admin confirmar
     const reqs = this.requestsOf(consultorId).filter(r => r.tipo === 'comissao' && r.status !== 'recusado' && this.isSameMonth(r.criadoEm));
     const jaPago = reqs.filter(r => r.status === 'pago').reduce((t, r) => t + r.valor, 0);
     const emAnalise = reqs.filter(r => r.status !== 'pago').reduce((t, r) => t + r.valor, 0);
-    const disponivel = Math.max(0, totalDevido - jaPago - emAnalise);
+    const disponivel = Math.max(0, comissaoRecebivel - jaPago - emAnalise); // só libera o que já foi pago
     const efetiva = volume > 0 ? totalDevido / volume : rate; // taxa efetiva (média) sobre o volume
     const bloqueados = this.NIVEIS.filter(n => n.meta > volume).sort((a, b) => a.meta - b.meta).map(n => ({
       nivel: n, faltaVolume: n.meta - volume, extraPct: Math.round((n.rate - rate) * 100),
       ganhoSobreAtual: 0
     }));
-    const vendasDisp = month.filter(s => s.statusComissao === 'disponivel');
-    return { volume, nivel, rate, efetiva, totalDevido, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
+    const vendasDisp = pagas.filter(s => s.statusComissao === 'disponivel'); // só vendas pagas podem ser sacadas
+    return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
 

@@ -274,6 +274,10 @@ img { max-width: 100%; display: block; }
 }
 .commission-pill:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(241,85,50,.42); }
 .commission-pill svg { opacity: .9; }
+/* variante âmbar: comissão em conferência (aguardando confirmação de pagamento) */
+.commission-pill.pending { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 10px 24px rgba(217,119,6,.30); }
+.commission-pill.pending:hover { box-shadow: 0 14px 30px rgba(217,119,6,.42); }
+.com-pills { display: flex; align-items: center; gap: 10px; }
 .notif-dot { position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%;
   background: var(--brand); border: 2px solid var(--surface); z-index: 1; }
 .notif-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%;

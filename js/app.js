@@ -130,7 +130,10 @@ const App = {
             <div class="spacer"></div>
             ${isAdmin
               ? `<button class="iconbtn" id="notif-btn" style="position:relative" title="Notificações"><span class="notif-dot hidden" id="notif-dot"></span>${UI.icon('bell',18)}</button>`
-              : `<button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>`}
+              : `<div class="com-pills">
+                  <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
+                  <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
+                </div>`}
             ${this.themeBtnHTML()}
           </header>
           <div id="main-view" class="view"></div>
@@ -149,6 +152,8 @@ const App = {
     document.getElementById('scrim').onclick = () => this.drawer(false);
     const pill = document.getElementById('com-pill');
     if (pill) pill.onclick = () => Consultor.comissaoPopup();
+    const confPill = document.getElementById('conf-pill');
+    if (confPill) confPill.onclick = () => Consultor.comissaoPopup();
     const notif = document.getElementById('notif-btn');
     if (notif) notif.onclick = () => Admin.notificacoesPopup();
 
@@ -187,8 +192,13 @@ const App = {
     if (!u || u.role === 'admin') return;
     const pill = document.getElementById('com-pill');
     if (!pill) return;
-    const com = OB.comissaoDisponivel(u.id);
-    document.getElementById('com-val').textContent = OB.fmt(com.valor);
+    const r = OB.comissaoResumo(u.id);
+    document.getElementById('com-val').textContent = OB.fmt(r.disponivel);
+    const confPill = document.getElementById('conf-pill');
+    if (confPill) {
+      document.getElementById('conf-val').textContent = OB.fmt(r.emConferencia);
+      confPill.classList.toggle('hidden', r.emConferencia <= 0);
+    }
     if (bump) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
   },
 

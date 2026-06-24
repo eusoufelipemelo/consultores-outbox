@@ -297,15 +297,46 @@ const Admin = {
     const sales = OB.sales().slice().sort((a, b) => new Date(b.data) - new Date(a.data));
     const v = document.getElementById('main-view');
     if (!sales.length) { v.innerHTML = Consultor.empty('cart', 'Nenhuma venda', 'As vendas lançadas pelos consultores aparecem aqui.'); return; }
-    v.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr>
-      <th>Data</th><th>Consultor</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Comissão</th></tr></thead><tbody>
+    const pend = sales.filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido').length;
+    v.innerHTML = `
+      ${pend ? `<div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div><b>${pend} venda(s) aguardando confirmação de pagamento.</b> Confirme o recebimento para liberar a comissão do consultor.</div></div>` : ''}
+      <div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr>
+      <th>Data</th><th>Consultor</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Pagamento</th><th>Comissão</th><th></th></tr></thead><tbody>
       ${sales.map(s => {
         const cons = OB.userById(s.consultorId); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
+        const aprovada = s.statusProposta === 'aprovada';
+        const recebido = s.statusPagamento === 'recebido';
+        const pag = !aprovada ? '<span class="mut" style="font-size:12px">—</span>'
+          : (recebido ? '<span class="chip green">Pago confirmado</span>' : '<span class="chip warn">Aguardando pagamento</span>');
+        const acao = aprovada
+          ? (recebido
+              ? `<button class="iconbtn" data-desfazer="${s.id}" title="Desfazer confirmação de pagamento">${UI.icon('x',15)}</button>`
+              : `<button class="btn green" data-confirmar="${s.id}" style="padding:7px 12px;font-size:13px">${UI.icon('check',15)} Confirmar recebimento</button>`)
+          : '';
         return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cons?cons.nome+' '+cons.sobrenome:'-'}</td>
           <td>${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td><td class="strong">${OB.brl(s.valor)}</td>
-          <td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td></tr>`;
+          <td>${pag}</td>
+          <td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td>
+          <td class="row" style="justify-content:flex-end">${acao}</td></tr>`;
       }).join('')}
     </tbody></table></div></div>`;
+    v.querySelectorAll('[data-confirmar]').forEach(b => b.onclick = () => {
+      const s = OB.sales().find(x => x.id === b.dataset.confirmar); if (!s) return;
+      const cli = OB.clientById(s.clientId);
+      UI.confirm('Confirmar recebimento', `Confirma que o pagamento de <b>${OB.brl(s.valor)}</b> do cliente <b>${cli?cli.nome:'-'}</b> foi recebido pela OutBox? Isso libera a comissão do consultor.`, () => {
+        OB.setPagamento(s.id, 'recebido');
+        UI.toast('Pagamento confirmado', 'A comissão do consultor foi liberada.', 'ok');
+        App.refreshBadge(); this.render('vendas');
+      }, 'Confirmar recebimento');
+    });
+    v.querySelectorAll('[data-desfazer]').forEach(b => b.onclick = () => {
+      const s = OB.sales().find(x => x.id === b.dataset.desfazer); if (!s) return;
+      UI.confirm('Desfazer confirmação', 'Marcar este pagamento como <b>não recebido</b> novamente? A comissão volta para "em conferência".', () => {
+        OB.setPagamento(s.id, 'pendente');
+        UI.toast('Confirmação desfeita', '', 'ok');
+        this.render('vendas');
+      }, 'Desfazer');
+    });
   },
 
   /* ====================== PERFIL ADMIN ====================== */
