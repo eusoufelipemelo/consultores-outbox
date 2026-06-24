@@ -430,6 +430,7 @@ td .strong { color: var(--text); font-weight: 600; }
 .notice { padding: 14px 16px; border-radius: 12px; background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
   font-size: 13px; color: var(--text-soft); display: flex; gap: 10px; align-items: flex-start; }
 .notice svg { color: var(--brand); flex: none; margin-top: 1px; }
+.nowrap { white-space: nowrap; }
 
 /* ============================================================
    KANBAN (funil)

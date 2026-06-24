@@ -293,50 +293,109 @@ const Admin = {
   },
 
   /* ====================== VENDAS ====================== */
+  /* vendas aprovadas aguardando o admin confirmar o recebimento do pagamento */
+  pagamentosPendentes() { return OB.sales().filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido'); },
+
+  /* chip de status da comissão (admin) — claro e em PT */
+  comLabel(s) {
+    if (s.statusProposta !== 'aprovada') return '<span class="mut" style="font-size:12px">—</span>';
+    if (s.statusPagamento !== 'recebido') return '<span class="chip warn nowrap">Em conferência</span>';
+    const map = { disponivel: ['green', 'Disponível'], solicitada: ['gray', 'Solicitada'], paga: ['green', 'Paga'] };
+    const m = map[s.statusComissao] || ['gray', s.statusComissao];
+    return `<span class="chip ${m[0]} nowrap">${m[1]}</span>`;
+  },
+
+  confirmarRecebimentoVenda(saleId, after) {
+    const s = OB.sales().find(x => x.id === saleId); if (!s) return;
+    const cli = OB.clientById(s.clientId);
+    UI.confirm('Confirmar recebimento', `Confirma que o pagamento de <b>${OB.brl(s.valor)}</b> do cliente <b>${cli ? cli.nome : '-'}</b> caiu na conta da OutBox? Isso <b>libera a comissão</b> do consultor.`, () => {
+      OB.setPagamento(s.id, 'recebido');
+      UI.toast('Pagamento confirmado', 'Comissão liberada para o consultor.', 'ok');
+      App.refreshBadge(); if (after) after();
+    }, 'Confirmar recebimento');
+  },
+
+  /* popup de conferência rápida (atalho do alerta no topo) */
+  pagamentosPopup() {
+    const pend = this.pagamentosPendentes().sort((a, b) => new Date(b.data) - new Date(a.data));
+    const body = pend.length ? pend.map(s => {
+      const cons = OB.userById(s.consultorId); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
+      return `<div class="row between alc" style="padding:12px 0;border-bottom:1px solid var(--border);gap:12px">
+        <div style="min-width:0">
+          <b style="font-size:14px">${cli ? cli.nome : '-'} · ${OB.brl(s.valor)}</b>
+          <div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p ? p.nome : s.produto} · ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'} · ${OB.dataBR(s.data)}</div>
+        </div>
+        <button class="btn green" data-conf="${s.id}" style="white-space:nowrap;padding:8px 14px;font-size:13px">${UI.icon('check',15)} Recebido</button>
+      </div>`;
+    }).join('') : `<div class="notice">${UI.icon('check',16)}<div>Tudo em dia — nenhuma venda aguardando confirmação de pagamento.</div></div>`;
+    UI.modal({
+      title: 'Pagamentos a confirmar',
+      sub: pend.length ? `${pend.length} venda(s) aguardando o recebimento ser confirmado` : 'Nenhuma pendência',
+      body,
+      footer: `<button class="btn ghost" data-close>Fechar</button>${pend.length > 1 ? `<button class="btn brand" id="pp-all">${UI.icon('check',16)} Confirmar todas</button>` : ''}`
+    });
+    const refresh = () => { App.refreshBadge(); if (App.current === 'vendas') this.render('vendas'); this.pagamentosPopup(); };
+    document.querySelectorAll('[data-conf]').forEach(b => b.onclick = () => {
+      OB.setPagamento(b.dataset.conf, 'recebido');
+      UI.toast('Pagamento confirmado', 'Comissão liberada.', 'ok');
+      refresh();
+    });
+    const all = document.getElementById('pp-all');
+    if (all) all.onclick = () => UI.confirm('Confirmar todas', `Confirmar o recebimento de <b>${pend.length}</b> vendas de uma vez? Isso libera todas as comissões correspondentes.`, () => {
+      pend.forEach(s => OB.setPagamento(s.id, 'recebido'));
+      UI.toast('Tudo confirmado', `${pend.length} pagamentos confirmados.`, 'ok');
+      refresh();
+    }, 'Confirmar todas');
+  },
+
   view_vendas() {
-    const sales = OB.sales().slice().sort((a, b) => new Date(b.data) - new Date(a.data));
+    const all = OB.sales().slice().sort((a, b) => new Date(b.data) - new Date(a.data));
     const v = document.getElementById('main-view');
-    if (!sales.length) { v.innerHTML = Consultor.empty('cart', 'Nenhuma venda', 'As vendas lançadas pelos consultores aparecem aqui.'); return; }
-    const pend = sales.filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido').length;
+    if (!all.length) { v.innerHTML = Consultor.empty('cart', 'Nenhuma venda', 'As vendas lançadas pelos consultores aparecem aqui.'); return; }
+    const pend = this.pagamentosPendentes().length;
     v.innerHTML = `
-      ${pend ? `<div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div><b>${pend} venda(s) aguardando confirmação de pagamento.</b> Confirme o recebimento para liberar a comissão do consultor.</div></div>` : ''}
-      <div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr>
-      <th>Data</th><th>Consultor</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Pagamento</th><th>Comissão</th><th></th></tr></thead><tbody>
-      ${sales.map(s => {
-        const cons = OB.userById(s.consultorId); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
-        const aprovada = s.statusProposta === 'aprovada';
-        const recebido = s.statusPagamento === 'recebido';
-        const pag = !aprovada ? '<span class="mut" style="font-size:12px">—</span>'
-          : (recebido ? '<span class="chip green">Pago confirmado</span>' : '<span class="chip warn">Aguardando pagamento</span>');
-        const acao = aprovada
-          ? (recebido
-              ? `<button class="iconbtn" data-desfazer="${s.id}" title="Desfazer confirmação de pagamento">${UI.icon('x',15)}</button>`
-              : `<button class="btn green" data-confirmar="${s.id}" style="padding:7px 12px;font-size:13px">${UI.icon('check',15)} Confirmar recebimento</button>`)
-          : '';
-        return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cons?cons.nome+' '+cons.sobrenome:'-'}</td>
-          <td>${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td><td class="strong">${OB.brl(s.valor)}</td>
-          <td>${pag}</td>
-          <td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td>
-          <td class="row" style="justify-content:flex-end">${acao}</td></tr>`;
-      }).join('')}
-    </tbody></table></div></div>`;
-    v.querySelectorAll('[data-confirmar]').forEach(b => b.onclick = () => {
-      const s = OB.sales().find(x => x.id === b.dataset.confirmar); if (!s) return;
-      const cli = OB.clientById(s.clientId);
-      UI.confirm('Confirmar recebimento', `Confirma que o pagamento de <b>${OB.brl(s.valor)}</b> do cliente <b>${cli?cli.nome:'-'}</b> foi recebido pela OutBox? Isso libera a comissão do consultor.`, () => {
-        OB.setPagamento(s.id, 'recebido');
-        UI.toast('Pagamento confirmado', 'A comissão do consultor foi liberada.', 'ok');
-        App.refreshBadge(); this.render('vendas');
-      }, 'Confirmar recebimento');
+      ${pend ? `<div class="notice" style="margin-bottom:14px;align-items:center">${UI.icon('info',16)}<div style="flex:1"><b>${pend} venda(s) aguardando confirmação de pagamento.</b> Confirme o recebimento para liberar a comissão do consultor.</div><button class="btn green" id="vd-conf-all" style="white-space:nowrap">${UI.icon('check',16)} Conferir agora</button></div>` : ''}
+      <div class="seg" id="vd-filter" style="margin-bottom:14px">
+        <button data-f="all" class="on">Todas (${all.length})</button>
+        <button data-f="pend">A confirmar (${pend})</button>
+      </div>
+      <div class="card" style="padding:0" id="vd-table"></div>`;
+    const draw = (f) => {
+      const rows = f === 'pend' ? all.filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido') : all;
+      const el = document.getElementById('vd-table');
+      if (!rows.length) { el.innerHTML = Consultor.empty('check', 'Nada por aqui', 'Nenhuma venda neste filtro.'); return; }
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Data</th><th>Consultor</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Pagamento</th><th>Comissão</th><th></th></tr></thead><tbody>
+        ${rows.map(s => {
+          const cons = OB.userById(s.consultorId); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
+          const aprovada = s.statusProposta === 'aprovada';
+          const recebido = s.statusPagamento === 'recebido';
+          const pag = !aprovada ? '<span class="mut" style="font-size:12px">—</span>'
+            : (recebido ? '<span class="chip green nowrap">Pago confirmado</span>' : '<span class="chip warn nowrap">Aguardando pagamento</span>');
+          const acao = aprovada
+            ? (recebido
+                ? `<button class="iconbtn" data-desfazer="${s.id}" title="Desfazer confirmação de pagamento">${UI.icon('x',15)}</button>`
+                : `<button class="btn green" data-confirmar="${s.id}" style="padding:7px 14px;font-size:13px;white-space:nowrap">${UI.icon('check',15)} Confirmar</button>`)
+            : '';
+          return `<tr><td class="nowrap">${OB.dataBR(s.data)}</td><td class="strong">${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</td>
+            <td>${cli ? cli.nome : '-'}</td><td>${p ? p.nome : s.produto}</td><td class="strong nowrap">${OB.brl(s.valor)}</td>
+            <td>${pag}</td><td>${this.comLabel(s)}</td>
+            <td class="row" style="justify-content:flex-end">${acao}</td></tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+      el.querySelectorAll('[data-confirmar]').forEach(b => b.onclick = () => this.confirmarRecebimentoVenda(b.dataset.confirmar, () => this.render('vendas')));
+      el.querySelectorAll('[data-desfazer]').forEach(b => b.onclick = () => {
+        const s = OB.sales().find(x => x.id === b.dataset.desfazer); if (!s) return;
+        UI.confirm('Desfazer confirmação', 'Marcar este pagamento como <b>não recebido</b> novamente? A comissão volta para "em conferência".', () => {
+          OB.setPagamento(s.id, 'pendente'); UI.toast('Confirmação desfeita', '', 'ok'); App.refreshBadge(); this.render('vendas');
+        }, 'Desfazer');
+      });
+    };
+    draw('all');
+    document.querySelectorAll('#vd-filter button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#vd-filter button').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(b.dataset.f);
     });
-    v.querySelectorAll('[data-desfazer]').forEach(b => b.onclick = () => {
-      const s = OB.sales().find(x => x.id === b.dataset.desfazer); if (!s) return;
-      UI.confirm('Desfazer confirmação', 'Marcar este pagamento como <b>não recebido</b> novamente? A comissão volta para "em conferência".', () => {
-        OB.setPagamento(s.id, 'pendente');
-        UI.toast('Confirmação desfeita', '', 'ok');
-        this.render('vendas');
-      }, 'Desfazer');
-    });
+    const ca = document.getElementById('vd-conf-all'); if (ca) ca.onclick = () => this.pagamentosPopup();
   },
 
   /* ====================== PERFIL ADMIN ====================== */

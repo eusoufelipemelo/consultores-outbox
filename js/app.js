@@ -129,7 +129,8 @@ const App = {
             <div><h1 id="page-title"></h1><div class="sub" id="page-sub"></div></div>
             <div class="spacer"></div>
             ${isAdmin
-              ? `<button class="iconbtn" id="notif-btn" style="position:relative" title="Notificações"><span class="notif-dot hidden" id="notif-dot"></span>${UI.icon('bell',18)}</button>`
+              ? `<button class="commission-pill pending hidden" id="pay-alert" title="Vendas aguardando confirmação de pagamento — clique para conferir"><div style="text-align:left"><div class="lbl">Pagamentos a conferir</div><div class="val" id="pay-alert-n">0</div></div>${UI.icon('clock',18)}</button>
+                 <button class="iconbtn" id="notif-btn" style="position:relative" title="Notificações"><span class="notif-dot hidden" id="notif-dot"></span>${UI.icon('bell',18)}</button>`
               : `<div class="com-pills">
                   <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
                   <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
@@ -156,6 +157,8 @@ const App = {
     if (confPill) confPill.onclick = () => Consultor.comissaoPopup();
     const notif = document.getElementById('notif-btn');
     if (notif) notif.onclick = () => Admin.notificacoesPopup();
+    const payAlert = document.getElementById('pay-alert');
+    if (payAlert) payAlert.onclick = () => Admin.pagamentosPopup();
 
     this.go(goProfile ? 'perfil' : nav[0].id);
   },
@@ -211,6 +214,13 @@ const App = {
     if (badge) { badge.textContent = n; badge.classList.toggle('hidden', n === 0); }
     const dot = document.getElementById('notif-dot');
     if (dot) dot.classList.toggle('hidden', n === 0);
+    // alerta de pagamentos a confirmar (vendas aprovadas ainda não recebidas)
+    const pendPag = OB.sales().filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido').length;
+    const pa = document.getElementById('pay-alert');
+    if (pa) {
+      document.getElementById('pay-alert-n').textContent = pendPag;
+      pa.classList.toggle('hidden', pendPag === 0);
+    }
   },
 
   /* ---------- card de usuário na sidebar ---------- */
