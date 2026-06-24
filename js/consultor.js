@@ -440,6 +440,11 @@ const Consultor = {
           <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
         <div class="field"><label>Produto / serviço <span class="req">*</span></label>
           <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}</select></div>
+        <div class="field"><label>Preço</label>
+          <select id="s-precomodo">
+            <option value="tabela">Tabela (pelo porte do cliente)</option>
+            <option value="personalizado">Personalizado (projeto mais complexo / maior valor)</option>
+          </select></div>
         <div class="grid-2">
           <div class="field"><label>Valor <span class="req">*</span></label>
             <input id="s-val" type="text" inputmode="decimal" placeholder="0,00"/>
@@ -464,18 +469,31 @@ const Consultor = {
     const sCli = document.getElementById('s-cli');
     const sProd = document.getElementById('s-prod');
     const sVal = document.getElementById('s-val');
+    const sModo = document.getElementById('s-precomodo');
     UI.money.bind(sVal, () => sMoeda.value);
-    // preço automático pela tabela conforme o porte do cliente
+    // preço automático pela tabela (porte do cliente) OU personalizado (digita livre)
     const aplicarPreco = () => {
+      const modo = sModo.value;
       const cliente = OB.clientById(sCli.value);
       const porte = cliente ? (cliente.porte || 'pequena') : 'pequena';
-      const preco = OB.precoTabela(sProd.value, porte);
       const porteNome = (OB.PORTES.find(p => p.id === porte) || {}).nome || '';
-      UI.money.set(sVal, preco, sMoeda.value);
-      document.getElementById('s-hint').textContent = preco ? `Preço de tabela · ${porteNome}: ${OB.money(preco, sMoeda.value)} (ajuste se precisar)` : '';
+      if (modo === 'tabela') {
+        const preco = OB.precoTabela(sProd.value, porte);
+        UI.money.set(sVal, preco, sMoeda.value);
+        document.getElementById('s-hint').textContent = preco ? `Preço de tabela · ${porteNome}: ${OB.money(preco, sMoeda.value)} (ajuste se precisar)` : '';
+      } else {
+        // personalizado: mantém o que está digitado e mostra a referência
+        const ref = OB.precoTabela(sProd.value, porte);
+        document.getElementById('s-hint').textContent = ref ? `Referência da tabela (${porteNome}): ${OB.money(ref, sMoeda.value)}. Digite o valor do projeto.` : 'Digite o valor do projeto.';
+      }
     };
     sProd.onchange = aplicarPreco;
     sCli.onchange = aplicarPreco;
+    sModo.onchange = () => {
+      // ao mudar para personalizado, mantém o valor atual; ao voltar p/ tabela, reaplica
+      if (sModo.value === 'personalizado') { sVal.focus(); sVal.select && sVal.select(); }
+      aplicarPreco();
+    };
     aplicarPreco();
     sMoeda.onchange = () => { UI.money.set(sVal, UI.money.parse(sVal.value), sMoeda.value); };
     document.getElementById('s-save').onclick = () => {
@@ -492,6 +510,7 @@ const Consultor = {
         id: OB.uid(), consultorId: u.id, clientId: document.getElementById('s-cli').value,
         produto: document.getElementById('s-prod').value, valor, valorBruto: bruto, moeda,
         descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
+        precoModo: sModo.value, // 'tabela' ou 'personalizado'
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
       });
