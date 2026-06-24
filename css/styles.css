@@ -133,11 +133,14 @@ img { max-width: 100%; display: block; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-soft); }
 .field .req { color: var(--brand); }
 .input, .field input, .field select, .field textarea {
-  width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+  width: 100%; padding: 0 14px; border-radius: var(--radius-sm);
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
-  font-size: 14px; font-family: inherit; transition: border-color .2s, box-shadow .2s;
+  font-size: 14px; font-family: inherit; line-height: 1.4;
+  height: 46px; box-sizing: border-box; transition: border-color .2s, box-shadow .2s;
 }
-.field textarea { resize: vertical; min-height: 84px; }
+/* mantém o spinner do number ocupando toda a altura, sem distorcer o box */
+.field input[type="number"]::-webkit-inner-spin-button { height: 100%; margin: 0; }
+.field textarea { height: auto; padding: 12px 14px; resize: vertical; min-height: 84px; }
 .input:focus, .field input:focus, .field select:focus, .field textarea:focus {
   outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft);
 }
