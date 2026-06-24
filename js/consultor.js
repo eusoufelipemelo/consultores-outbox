@@ -382,7 +382,10 @@ const Consultor = {
             <select id="ed-tipo"><option value="">Sem desconto</option><option value="reais" ${s.descontoTipo==='reais'?'selected':''}>Em dinheiro</option><option value="percent" ${s.descontoTipo==='percent'?'selected':''}>Em porcentagem (%)</option></select></div>
           <div class="field"><label>Valor do desconto</label><input id="ed-desc" type="number" min="0" step="1" value="${s.descontoValor||0}"/></div>
         </div>
-        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.money(s.valor, s.moeda)}</b></div></div>`,
+        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.money(s.valor, s.moeda)}</b></div></div>
+        <div class="field" style="margin-top:14px"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <input id="ed-link" type="url" value="${s.linkPagamento || ''}" placeholder="https://... cole o link da cobrança"/>
+          <div class="hint">Gera o botão verde "Ir para o pagamento" no orçamento deste cliente.</div></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ed-save">Salvar</button>`
     });
     const edMoeda = document.getElementById('ed-moeda');
@@ -406,11 +409,11 @@ const Consultor = {
     document.getElementById('ed-save').onclick = () => {
       const c = calc();
       if (!c.bruto || c.bruto <= 0) return UI.toast('Informe o valor', '', 'err');
-      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final, moeda: c.moeda });
+      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final, moeda: c.moeda, linkPagamento: (document.getElementById('ed-link').value || '').trim() });
       OB.updateSale(s);
       UI.closeModal(); UI.toast('Venda atualizada', '', 'ok');
       App.refreshCommission(true);
-      this.render('comissao');
+      this.render(App.current === 'orcamentos' ? 'orcamentos' : 'comissao');
     };
   },
 
@@ -496,6 +499,9 @@ const Consultor = {
         <div class="field"><label>Forma de pagamento</label>
           <select id="s-pgto">${OB.FORMAS_PAGAMENTO.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select>
           <div class="hint" id="s-pgto-hint">${OB.FORMAS_PAGAMENTO[0].detalhe}</div></div>
+        <div class="field"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <input id="s-link" type="url" placeholder="https://... cole o link da cobrança"/>
+          <div class="hint">Vira o botão verde "Ir para o pagamento" no orçamento. Pode colar depois, editando a proposta.</div></div>
         <div class="field"><label>Status da proposta</label>
           <select id="s-status">
             <option value="aprovada" ${!orcamento?'selected':''}>Aprovada (venda fechada)</option>
@@ -560,6 +566,7 @@ const Consultor = {
         descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
         precoModo: sModo.value, // 'tabela' ou 'personalizado'
         formaPagamento: sPgto.value,
+        linkPagamento: (document.getElementById('s-link').value || '').trim(),
         acceptToken: OB.uid().replace(/-/g, ''), // token p/ o link de aceite do cliente
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
@@ -650,7 +657,7 @@ const Consultor = {
     ${(() => {
       const aceito = s.statusProposta === 'aprovada';
       const aceiteUrl = s.acceptToken ? `${OB.APP_URL}/?aceite=${encodeURIComponent(s.id)}&t=${encodeURIComponent(s.acceptToken)}` : '';
-      const payUrl = OB.linkPagamento(s.formaPagamento);
+      const payUrl = s.linkPagamento || OB.linkPagamento(s.formaPagamento);
       const accept = aceito
         ? `<span class="accept done">&#10003; Proposta aprovada</span>`
         : (aceiteUrl ? `<a class="accept" href="${aceiteUrl}" target="_blank" rel="noopener">&#10003; Aceitar proposta</a>` : '');
