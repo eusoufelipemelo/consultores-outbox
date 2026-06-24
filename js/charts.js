@@ -26,8 +26,8 @@ const Charts = {
     const c = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Recorrentes', 'Pontuais'],
-        datasets: [{ data: [recorrente, pontual], backgroundColor: [this.brand, this.css('--border-strong')], borderWidth: 0, hoverOffset: 8 }]
+        labels: ['Recorrentes (' + recorrente + ')', 'Pontuais (' + pontual + ')'],
+        datasets: [{ data: [recorrente, pontual], backgroundColor: [this.brand, '#64748b'], borderWidth: 0, hoverOffset: 8 }]
       },
       options: { ...o, cutout: '68%', plugins: { ...o.plugins, legend: { ...o.plugins.legend, position: 'bottom' } } }
     });

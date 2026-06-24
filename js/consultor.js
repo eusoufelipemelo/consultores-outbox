@@ -493,6 +493,9 @@ const Consultor = {
             <select id="s-dtipo"><option value="">Sem desconto</option><option value="reais">Em dinheiro</option><option value="percent">Em %</option></select></div>
           <div class="field"><label>Desconto</label><input id="s-dval" type="number" min="0" step="1" value="0"/></div>
         </div>
+        <div class="field"><label>Forma de pagamento</label>
+          <select id="s-pgto">${OB.FORMAS_PAGAMENTO.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select>
+          <div class="hint" id="s-pgto-hint">${OB.FORMAS_PAGAMENTO[0].detalhe}</div></div>
         <div class="field"><label>Status da proposta</label>
           <select id="s-status">
             <option value="aprovada" ${!orcamento?'selected':''}>Aprovada (venda fechada)</option>
@@ -539,6 +542,8 @@ const Consultor = {
     };
     aplicarPreco();
     sMoeda.onchange = () => { UI.money.set(sVal, UI.money.parse(sVal.value), sMoeda.value); };
+    const sPgto = document.getElementById('s-pgto');
+    sPgto.onchange = () => { document.getElementById('s-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === sPgto.value) || {}).detalhe || ''; };
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
       const bruto = UI.money.parse(document.getElementById('s-val').value);
@@ -554,6 +559,7 @@ const Consultor = {
         produto: document.getElementById('s-prod').value, valor, valorBruto: bruto, moeda,
         descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
         precoModo: sModo.value, // 'tabela' ou 'personalizado'
+        formaPagamento: sPgto.value,
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
       });
@@ -633,7 +639,8 @@ const Consultor = {
       ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.money((s.valorBruto || s.valor) - s.valor, s.moeda)}</span></div>` : ''}
       <div class="row grand"><span>Total</span><b>${OB.money(s.valor, s.moeda)}</b></div>
     </div></div>
-    <div class="note">Esta proposta tem validade de 7 dias. Os valores podem ser parcelados conforme negociação. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
+    ${(() => { const fp = OB.FORMAS_PAGAMENTO.find(f => f.id === (s.formaPagamento || 'pix')) || OB.FORMAS_PAGAMENTO[0]; return `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink)">Forma de pagamento:</b> ${fp.nome}<br><span style="font-size:12px">${fp.detalhe}</span></div>`; })()}
+    <div class="note">Esta proposta tem validade de 7 dias. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
   </div>
   <div class="foot"><div>OutBox Group · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
 </div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
