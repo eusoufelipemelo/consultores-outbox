@@ -241,6 +241,7 @@ const OB = {
   requestsOf(consultorId) { return this.db.requests.filter(r => r.consultorId === consultorId); },
   addRequest(r) { this.db.requests.unshift(r); this._save('requests', this._rOut(r)); return r; },
   updateRequest(r) { const i = this.db.requests.findIndex(x => x.id === r.id); if (i >= 0) this.db.requests[i] = r; this._save('requests', this._rOut(r)); return r; },
+  removeRequest(id) { this.db.requests = this.db.requests.filter(r => r.id !== id); this._delete('requests', id); },
 
   /* ============================================================
      REGRAS DE NEGÓCIO (idênticas — só leem do cache agora)

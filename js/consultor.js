@@ -860,14 +860,32 @@ const Consultor = {
     if (!reqs.length) return this.emptyMini('Nenhuma solicitação ainda');
     const stMap = { solicitado: ['warn', 'Solicitado'], em_analise: ['gray', 'Em análise'], aprovado: ['green', 'Aprovado'], pago: ['green', 'Pago'], recusado: ['gray', 'Recusado'] };
     const tipoLabel = (r) => r.tipo === 'comissao' ? 'Comissão' : (r.modo === 'produto' ? 'Prêmio (produto)' : 'Prêmio (dinheiro)');
-    return `<div class="table-wrap" style="border:none"><table><thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Valor</th><th>Status</th></tr></thead><tbody>
+    // só permite excluir solicitações já finalizadas (recusadas / pagas)
+    const podeExcluir = (r) => r.status === 'recusado' || r.status === 'pago';
+    const html = `<div class="table-wrap" style="border:none"><table><thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
       ${reqs.map(r => { const st = stMap[r.status] || ['gray', r.status];
-        // valor de prêmio não é exibido ao consultor
         const valorCel = r.tipo === 'comissao' ? `<span class="strong">${OB.fmt(r.valor)}</span>` : '<span class="mut">—</span>';
         return `<tr><td>${OB.dataBR(r.criadoEm)}</td><td>${tipoLabel(r)}</td>
         <td class="mut">${r.detalhe||'-'}</td><td>${valorCel}</td>
-        <td><span class="chip ${st[0]}">${st[1]}</span></td></tr>`; }).join('')}
+        <td><span class="chip ${st[0]}">${st[1]}</span></td>
+        <td style="text-align:right">${podeExcluir(r) ? `<button class="iconbtn" data-del-req="${r.id}" title="Excluir do histórico">${UI.icon('trash',15)}</button>` : '<span class="mut" style="font-size:12px">em andamento</span>'}</td></tr>`; }).join('')}
     </tbody></table></div>`;
+    // delega os clicks após render
+    setTimeout(() => {
+      document.querySelectorAll('[data-del-req]').forEach(b => b.onclick = () => this.excluirSolicitacao(b.dataset.delReq));
+    }, 0);
+    return html;
+  },
+
+  /* excluir solicitação do histórico (só se já finalizada — recusada ou paga) */
+  excluirSolicitacao(id) {
+    const r = OB.requests().find(x => x.id === id); if (!r) return;
+    if (r.status !== 'recusado' && r.status !== 'pago') return UI.toast('Não é possível excluir', 'Solicitação ainda em andamento', 'err');
+    UI.confirm('Excluir do histórico', `Remover esta ${r.tipo === 'comissao' ? 'solicitação de comissão' : 'solicitação de prêmio'} do histórico? Esta ação não pode ser desfeita.`, () => {
+      OB.removeRequest(id);
+      UI.toast('Removido do histórico', '', 'ok');
+      this.render(App.current || 'comissao');
+    }, 'Excluir');
   },
 
   /* ====================== PREMIAÇÕES (bônus de campanha capado) ====================== */
