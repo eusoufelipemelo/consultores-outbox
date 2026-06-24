@@ -333,14 +333,14 @@ const Consultor = {
               ${s.statusProposta!=='aprovada'?`<button class="iconbtn" data-aprovar="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-recusar="${s.id}" title="Marcar recusada">${UI.icon('x',16)}</button>`:''}
               <button class="iconbtn" data-edit="${s.id}" title="Editar / desconto" ${s.statusComissao!=='disponivel'?'disabled':''}>${UI.icon('edit',16)}</button>
-              <button class="iconbtn" data-del="${s.id}" title="Excluir" ${s.statusComissao!=='disponivel'?'disabled':''}>${UI.icon('trash',16)}</button>
+              <button class="iconbtn" data-del="${s.id}" title="Excluir venda">${UI.icon('trash',16)}</button>
             </td></tr>`;
         }).join('')}
       </tbody></table></div>`;
       el.querySelectorAll('[data-aprovar]').forEach(b => b.onclick = () => this.setStatusProposta(b.dataset.aprovar, 'aprovada'));
       el.querySelectorAll('[data-recusar]').forEach(b => b.onclick = () => this.setStatusProposta(b.dataset.recusar, 'recusada'));
       el.querySelectorAll('[data-edit]').forEach(b => { if (!b.disabled) b.onclick = () => this.editarVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.edit)); });
-      el.querySelectorAll('[data-del]').forEach(b => { if (!b.disabled) b.onclick = () => this.excluirVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.del)); });
+      el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => this.excluirVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.del)));
     };
     draw('all');
     document.querySelectorAll('#sale-filter button').forEach(b => b.onclick = () => {
@@ -413,17 +413,47 @@ const Consultor = {
     };
   },
 
-  /* excluir venda (só se a comissão ainda estiver disponível) */
+  /* excluir venda (sempre permitido; se já está em solicitação, remove da request) */
   excluirVenda(s) {
     if (!s) return;
-    if (s.statusComissao !== 'disponivel') return UI.toast('Não é possível excluir', 'Esta venda já entrou em uma solicitação de comissão', 'err');
+    if (s.statusComissao === 'paga') {
+      return UI.toast('Não é possível excluir', 'A comissão desta venda já foi paga. Solicite ao administrador.', 'err');
+    }
     const cli = OB.clientById(s.clientId);
-    UI.confirm('Excluir venda', `Remover a venda de ${cli ? cli.nome : 'cliente'} (${OB.money(s.valor, s.moeda)})? Esta ação não pode ser desfeita.`, () => {
+    const u = this.u();
+    const emReq = OB.requestsOf(u.id).find(r => r.tipo === 'comissao' && r.status !== 'recusado' && Array.isArray(r.vendaIds) && r.vendaIds.includes(s.id));
+    const aviso = emReq
+      ? `<div class="notice" style="margin-bottom:12px">${UI.icon('info',16)}<div>Esta venda está em uma <b>solicitação de comissão em aberto</b>. Ao excluir, ela é <b>removida da solicitação</b> e o valor recalculado. Se for a única venda da solicitação, ela é <b>cancelada</b>.</div></div>`
+      : '';
+    UI.modal({
+      title: 'Excluir venda',
+      sub: cli ? cli.nome : 'cliente',
+      body: `${aviso}<p class="soft">Remover esta venda de <b>${OB.money(s.valor, s.moeda)}</b>? Esta ação não pode ser desfeita.</p>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn danger" id="del-go">Excluir venda</button>`
+    });
+    document.getElementById('del-go').onclick = () => {
+      // remove a venda da request, se houver
+      if (emReq) {
+        emReq.vendaIds = (emReq.vendaIds || []).filter(id => id !== s.id);
+        if (emReq.vendaIds.length === 0) {
+          // sem vendas — cancela a solicitação
+          emReq.status = 'recusado';
+          emReq.detalhe = (emReq.detalhe || '') + ' · cancelada (venda excluída pelo consultor)';
+        } else {
+          // recalcula o valor da solicitação
+          const restantes = OB.sales().filter(x => emReq.vendaIds.includes(x.id));
+          const baseRestante = restantes.reduce((t, x) => t + x.valor, 0);
+          emReq.valor = Math.round(baseRestante * (emReq.valor / (s.valor + baseRestante)));
+          emReq.detalhe = `${restantes.length} venda(s) restante(s) · recalculado após exclusão`;
+        }
+        OB.updateRequest(emReq);
+      }
       OB.removeSale(s.id);
-      UI.toast('Venda excluída', '', 'ok');
+      UI.closeModal();
+      UI.toast('Venda excluída', emReq ? 'Solicitação ajustada automaticamente' : '', 'ok');
       App.refreshCommission(true);
       this.render('comissao');
-    }, 'Excluir');
+    };
   },
 
   saleModal(opts) {
