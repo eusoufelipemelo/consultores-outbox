@@ -867,18 +867,36 @@ const Consultor = {
     const disp = Math.max(0, bonus - claimed);
     const faltaPiso = Math.max(0, OB.BONUS_PISO - vol);
 
+    // próximo marco (alvo do gauge): se ainda não atingiu o piso, mostra até R$30k;
+    // se já passou, mostra até o próximo prêmio que ainda não dá pra resgatar.
+    const proxPremio = OB.PREMIOS.find(p => p.valor > disp);
+    const usaPiso = faltaPiso > 0;
+    const marcoNome = usaPiso ? 'destravar o bônus' : (proxPremio ? proxPremio.nome : 'todos os prêmios');
+    const marcoValor = usaPiso ? OB.BONUS_PISO : (proxPremio ? proxPremio.valor : disp);
+    const marcoAtual = usaPiso ? vol : disp;
+    const pct = marcoValor > 0 ? Math.min(100, Math.round(marcoAtual / marcoValor * 100)) : 100;
+
     const v = document.getElementById('main-view');
     v.innerHTML = `
       <div class="cards cols-2" style="margin-bottom:18px">
         <div class="card">
           <div class="card-head"><h3>Bônus de campanha</h3><span class="chip brand">${UI.icon('target',13)} Trimestre</span></div>
-          <div style="font-size:13px;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:4px">Disponível para resgatar</div>
-          <div style="font-size:34px;font-weight:800;letter-spacing:-.02em;color:var(--brand)">${OB.fmt(disp)}</div>
-          <div class="bar" style="margin-top:12px"><i data-w="${faltaPiso > 0 ? Math.round(vol / OB.BONUS_PISO * 100) : 100}"></i></div>
-          <div class="soft" style="font-size:13px;margin-top:10px">
-            ${faltaPiso > 0
-              ? `Faltam <b style="color:var(--brand)">${OB.fmt(faltaPiso)}</b> em vendas no trimestre para começar a acumular bônus.`
-              : `Você acumulou <b>${OB.fmt(bonus)}</b> no trimestre${claimed > 0 ? ` · já resgatado ${OB.fmt(claimed)}` : ''}.`}
+          <div style="position:relative;height:170px;margin-top:4px"><canvas id="ch-gauge"></canvas>
+            <div style="position:absolute;left:0;right:0;bottom:18px;text-align:center">
+              <div style="font-size:30px;font-weight:800;color:var(--brand)">${pct}%</div>
+              <div class="mut" style="font-size:13px">${usaPiso ? 'até destravar' : (proxPremio ? 'até ' + proxPremio.nome : 'completo')}</div>
+            </div>
+          </div>
+          <div class="center" style="font-size:13px;margin-top:4px">
+            <div class="soft">Disponível para resgatar</div>
+            <div style="font-size:24px;font-weight:800;color:var(--brand);letter-spacing:-.01em">${OB.fmt(disp)}</div>
+            <div class="mut" style="font-size:12px;margin-top:4px">
+              ${usaPiso
+                ? `Faltam <b style="color:var(--brand)">${OB.fmt(faltaPiso)}</b> em vendas para destravar`
+                : (proxPremio
+                  ? `Faltam <b style="color:var(--brand)">${OB.fmt(proxPremio.valor - disp)}</b> de bônus para o ${proxPremio.nome}`
+                  : `Você pode resgatar qualquer prêmio da loja`)}
+            </div>
           </div>
           <button class="btn green block" id="bonus-cash" style="margin-top:14px" ${disp <= 0 ? 'disabled' : ''}>${UI.icon('money',16)} Receber ${OB.fmt(disp)} em dinheiro</button>
         </div>
@@ -912,6 +930,9 @@ const Consultor = {
         <div class="card-head"><h3>Meus resgates</h3></div>
         ${this.reqList(reqs)}
       </div>`;
+
+    // gauge meia-rosca animado (cresce até o marco atual)
+    setTimeout(() => Charts.gauge('ch-gauge', marcoAtual, marcoValor || marcoAtual || 1), 50);
 
     document.getElementById('bonus-cash').onclick = () => this.resgatarBonus(disp);
     v.querySelectorAll('[data-resgatar]').forEach(b => b.onclick = () => {
