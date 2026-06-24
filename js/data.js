@@ -8,23 +8,68 @@
 const OB = {
   KEYS: { theme: 'ob_theme' },
 
-  /* ---------- catálogo de produtos ---------- */
-  PRODUTOS: [
-    { id: 'identidade',   nome: 'Identidade Visual',     ticketMin: 2500,  ticketMax: 9000 },
-    { id: 'lp',           nome: 'Landing Page',          ticketMin: 1500,  ticketMax: 4500 },
-    { id: 'onepage',      nome: 'Site OnePage',          ticketMin: 2500,  ticketMax: 6000 },
-    { id: 'institucional',nome: 'Site Institucional',    ticketMin: 5000,  ticketMax: 15000 },
-    { id: 'ecommerce',    nome: 'E-commerce',            ticketMin: 9000,  ticketMax: 30000 },
-    { id: 'sistemas',     nome: 'Sistemas Sob Medida',   ticketMin: 18000, ticketMax: 120000 }
+  /* ---------- portes de empresa (classificação p/ a tabela de preços) ---------- */
+  PORTES: [
+    { id: 'pequena',   nome: 'Pequena empresa', faixa: 'Faturamento até R$4,8 mi/ano (MEI, ME, EPP)' },
+    { id: 'media',     nome: 'Média empresa',   faixa: 'Faturamento de R$4,8 mi a R$50 mi/ano' },
+    { id: 'grande',    nome: 'Grande empresa',  faixa: 'Faturamento de R$50 mi a R$300 mi/ano' },
+    { id: 'industria', nome: 'Indústria',       faixa: 'Faturamento acima de R$300 mi/ano ou setor industrial' }
   ],
 
-  /* ---------- escada de comissão progressiva ---------- */
-  NIVEIS: [
-    { id: 'black',  nome: 'Black',  rate: 0.20, meta: 30000, cor: '#111111' },
-    { id: 'ouro',   nome: 'Ouro',   rate: 0.16, meta: 15000, cor: '#C9A227' },
-    { id: 'prata',  nome: 'Prata',  rate: 0.13, meta: 5000,  cor: '#9AA3AD' },
-    { id: 'bronze', nome: 'Bronze', rate: 0.10, meta: 0,     cor: '#B07B4F' }
+  /* ---------- catálogo de produtos + tabela de preços fixos por porte (R$) ---------- */
+  PRODUTOS: [
+    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4500,  grande: 6500,  industria: 9000 } },
+    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1500,  media: 2500,  grande: 3500,  industria: 4500 } },
+    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2500,  media: 3800,  grande: 4900,  industria: 6000 } },
+    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5000,  media: 8500,  grande: 11500, industria: 15000 } },
+    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9000,  media: 16000, grande: 23000, industria: 30000 } },
+    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 18000, media: 45000, grande: 80000, industria: 120000 } }
   ],
+  /* preço de tabela conforme produto + porte do cliente */
+  precoTabela(produtoId, porteId) {
+    const p = this.PRODUTOS.find(x => x.id === produtoId);
+    if (!p || !p.precos) return 0;
+    return p.precos[porteId] || p.precos.pequena || 0;
+  },
+
+  /* ---------- comissão progressiva MARGINAL (cada faixa, sua taxa) ---------- */
+  NIVEIS: [
+    { id: 'black',  nome: 'Black',  rate: 0.14, meta: 30000, cor: '#111111' },
+    { id: 'ouro',   nome: 'Ouro',   rate: 0.12, meta: 15000, cor: '#C9A227' },
+    { id: 'prata',  nome: 'Prata',  rate: 0.10, meta: 5000,  cor: '#9AA3AD' },
+    { id: 'bronze', nome: 'Bronze', rate: 0.08, meta: 0,     cor: '#B07B4F' }
+  ],
+  /* faixas marginais (ordem crescente) p/ o cálculo da comissão */
+  FAIXAS: [
+    { ate: 5000,     rate: 0.08 },
+    { ate: 15000,    rate: 0.10 },
+    { ate: 30000,    rate: 0.12 },
+    { ate: Infinity, rate: 0.14 }
+  ],
+  /* comissão marginal sobre um volume: soma cada faixa com sua taxa */
+  comissaoMarginal(volume) {
+    let prev = 0, total = 0;
+    for (const f of this.FAIXAS) {
+      const naFaixa = Math.max(0, Math.min(volume, f.ate) - prev);
+      total += naFaixa * f.rate;
+      prev = f.ate;
+      if (volume <= f.ate) break;
+    }
+    return total;
+  },
+  /* taxa marginal da faixa em que o volume está (p/ exibição) */
+  taxaMarginal(volume) {
+    for (const f of this.FAIXAS) if (volume <= f.ate) return f.rate;
+    return this.FAIXAS[this.FAIXAS.length - 1].rate;
+  },
+
+  /* bônus de campanha trimestral = 3% sobre o volume acima de R$30 mil */
+  BONUS_PCT: 0.03,
+  BONUS_PISO: 30000,
+  bonusCampanha(consultorId) {
+    const excedente = Math.max(0, this.volumeTrimestre(consultorId) - this.BONUS_PISO);
+    return Math.round(excedente * this.BONUS_PCT);
+  },
 
   /* ---------- escada de prêmios trimestrais ---------- */
   PREMIOS: [
@@ -89,8 +134,8 @@ const OB = {
   _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL' }; },
   _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL' }; },
 
-  _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, obs: r.obs, criadoEm: r.criado_em }; },
-  _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, obs: c.obs, criado_em: c.criadoEm }; },
+  _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
+  _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
 
   _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL' }; },
   _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL' }; },
@@ -205,18 +250,19 @@ const OB = {
     const month = this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data));
     const volume = month.reduce((t, s) => t + s.valor, 0);
     const nivel = this.nivelPorVolume(volume);
-    const rate = nivel.rate;
-    const totalDevido = Math.round(volume * rate);
+    const rate = this.taxaMarginal(volume); // taxa marginal da faixa atual
+    const totalDevido = Math.round(this.comissaoMarginal(volume)); // soma marginal por faixa
     const reqs = this.requestsOf(consultorId).filter(r => r.tipo === 'comissao' && r.status !== 'recusado' && this.isSameMonth(r.criadoEm));
     const jaPago = reqs.filter(r => r.status === 'pago').reduce((t, r) => t + r.valor, 0);
     const emAnalise = reqs.filter(r => r.status !== 'pago').reduce((t, r) => t + r.valor, 0);
     const disponivel = Math.max(0, totalDevido - jaPago - emAnalise);
+    const efetiva = volume > 0 ? totalDevido / volume : rate; // taxa efetiva (média) sobre o volume
     const bloqueados = this.NIVEIS.filter(n => n.meta > volume).sort((a, b) => a.meta - b.meta).map(n => ({
       nivel: n, faltaVolume: n.meta - volume, extraPct: Math.round((n.rate - rate) * 100),
-      ganhoSobreAtual: Math.max(0, Math.round(volume * n.rate) - totalDevido)
+      ganhoSobreAtual: 0
     }));
     const vendasDisp = month.filter(s => s.statusComissao === 'disponivel');
-    return { volume, nivel, rate, totalDevido, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
+    return { volume, nivel, rate, efetiva, totalDevido, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
 

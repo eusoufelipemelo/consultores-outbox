@@ -107,7 +107,7 @@ const Consultor = {
       </div>
       <div class="bar"><i data-w="${pct}"></i></div>
       <div style="margin-top:12px;font-size:13px" class="soft">
-        ${prox ? `Faltam <b style="color:var(--brand)">${OB.fmt(falta)}</b> para subir de <b>${nivel.nome}</b> (${(nivel.rate*100)|0}%) para <b>${prox.nome}</b> (${(prox.rate*100)|0}%)` : `Você está no nível <b>Black</b> com <b>20%</b> de comissão. Excelente!`}
+        ${prox ? `Faltam <b style="color:var(--brand)">${OB.fmt(falta)}</b> para subir de <b>${nivel.nome}</b> (${(nivel.rate*100)|0}%) para <b>${prox.nome}</b> (${(prox.rate*100)|0}%)` : `Você está no nível <b>${nivel.nome}</b> com <b>${(nivel.rate*100)|0}%</b> na faixa mais alta. Excelente!`}
       </div>
       <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
         ${[...OB.NIVEIS].reverse().map(n => `<span class="chip ${vol>=n.meta?'brand':'gray'}">${n.nome} · ${(n.rate*100)|0}%</span>`).join('')}
@@ -213,6 +213,11 @@ const Consultor = {
             <div class="err">Selecione o serviço</div>
           </div>
         </div>
+        <div class="field"><label>Porte da empresa <span class="req">*</span></label>
+          <select id="c-porte">${OB.PORTES.map(p => `<option value="${p.id}" ${edit ? (c.porte === p.id ? 'selected' : '') : (p.id === 'pequena' ? 'selected' : '')}>${p.nome}</option>`).join('')}</select>
+          <div class="hint" id="c-porte-hint">${(OB.PORTES.find(p => p.id === (edit ? c.porte : 'pequena')) || OB.PORTES[0]).faixa}</div>
+          <div class="hint">Define o preço de tabela aplicado nos orçamentos deste cliente.</div>
+        </div>
         <div class="field"><label>Observações</label><textarea id="c-obs">${g('obs')}</textarea></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="c-save">${edit ? 'Salvar' : 'Cadastrar'}</button>`
     });
@@ -222,6 +227,8 @@ const Consultor = {
     const cep = document.getElementById('c-cep');
     cep.oninput = e => e.target.value = UI.maskCEP(e.target.value);
     cep.onblur = () => this.buscarCEPCliente(cep.value);
+    const cPorte = document.getElementById('c-porte');
+    cPorte.onchange = () => { document.getElementById('c-porte-hint').textContent = (OB.PORTES.find(p => p.id === cPorte.value) || OB.PORTES[0]).faixa; };
 
     document.getElementById('c-save').onclick = () => {
       const val = id => document.getElementById(id).value.trim();
@@ -245,7 +252,7 @@ const Consultor = {
         instagram: val('c-insta'), email: val('c-email'), cep: val('c-cep'), numero: val('c-num'),
         complemento: val('c-comp'), logradouro: val('c-log'), bairro: val('c-bairro'),
         cidade: val('c-cidade'), uf: val('c-uf').toUpperCase(), tipo: document.getElementById('c-tipo').value,
-        servico: document.getElementById('c-servico').value, obs: val('c-obs')
+        servico: document.getElementById('c-servico').value, porte: document.getElementById('c-porte').value, obs: val('c-obs')
       });
       OB.upsertClient(obj);
       UI.closeModal(); UI.toast(edit ? 'Cliente atualizado' : 'Cliente cadastrado', '', 'ok');
@@ -432,7 +439,7 @@ const Consultor = {
         <div class="field"><label>Cliente <span class="req">*</span></label>
           <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
         <div class="field"><label>Produto / serviço <span class="req">*</span></label>
-          <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}" data-min="${p.ticketMin}" data-max="${p.ticketMax}">${p.nome} · ${OB.brl(p.ticketMin)} a ${OB.brl(p.ticketMax)}</option>`).join('')}</select></div>
+          <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}</select></div>
         <div class="grid-2">
           <div class="field"><label>Valor <span class="req">*</span></label>
             <input id="s-val" type="text" inputmode="decimal" placeholder="0,00"/>
@@ -453,14 +460,24 @@ const Consultor = {
           <div class="hint">Só propostas <b>aprovadas</b> contam para sua comissão.</div></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="s-save">${orcamento ? 'Criar orçamento' : 'Lançar'}</button>`
     });
-    const hint = () => {
-      const opt = document.getElementById('s-prod').selectedOptions[0];
-      document.getElementById('s-hint').textContent = `Ticket de mercado: ${OB.brl(+opt.dataset.min)} a ${OB.brl(+opt.dataset.max)}`;
-    };
-    document.getElementById('s-prod').onchange = hint; hint();
     const sMoeda = document.getElementById('s-moeda');
-    UI.money.bind(document.getElementById('s-val'), () => sMoeda.value);
-    sMoeda.onchange = () => { const sv = document.getElementById('s-val'); UI.money.set(sv, UI.money.parse(sv.value), sMoeda.value); };
+    const sCli = document.getElementById('s-cli');
+    const sProd = document.getElementById('s-prod');
+    const sVal = document.getElementById('s-val');
+    UI.money.bind(sVal, () => sMoeda.value);
+    // preço automático pela tabela conforme o porte do cliente
+    const aplicarPreco = () => {
+      const cliente = OB.clientById(sCli.value);
+      const porte = cliente ? (cliente.porte || 'pequena') : 'pequena';
+      const preco = OB.precoTabela(sProd.value, porte);
+      const porteNome = (OB.PORTES.find(p => p.id === porte) || {}).nome || '';
+      UI.money.set(sVal, preco, sMoeda.value);
+      document.getElementById('s-hint').textContent = preco ? `Preço de tabela · ${porteNome}: ${OB.money(preco, sMoeda.value)} (ajuste se precisar)` : '';
+    };
+    sProd.onchange = aplicarPreco;
+    sCli.onchange = aplicarPreco;
+    aplicarPreco();
+    sMoeda.onchange = () => { UI.money.set(sVal, UI.money.parse(sVal.value), sMoeda.value); };
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
       const bruto = UI.money.parse(document.getElementById('s-val').value);
@@ -723,18 +740,18 @@ const Consultor = {
 
     UI.modal({
       title: 'Sua comissão do mês',
-      sub: `Nível ${r.nivel.nome} · taxa atual ${(r.rate*100)|0}% · volume ${OB.fmt(r.volume)}`,
+      sub: `Nível ${r.nivel.nome} · taxa marginal ${(r.rate*100)|0}% · volume ${OB.fmt(r.volume)}`,
       body: `
         <div class="card" style="background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:16px">
           <div style="font-size:12px;opacity:.85;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Disponível para solicitar agora</div>
           <div style="font-size:32px;font-weight:800;letter-spacing:-.02em;margin:2px 0 4px">${OB.fmt(r.disponivel)}</div>
-          <div style="font-size:12px;opacity:.9">${(r.rate*100)|0}% sobre ${OB.fmt(r.volume)} vendidos no mês</div>
+          <div style="font-size:12px;opacity:.9">Comissão progressiva por faixa · taxa efetiva ${(r.efetiva*100).toFixed(1)}% sobre ${OB.fmt(r.volume)}</div>
         </div>
         ${linha('Em análise pelo admin', r.emAnalise, 'color:var(--text)', 'Aguardando repasse (até 3 dias úteis)')}
         ${linha('Já pago no mês', r.jaPago, 'color:#1fa855')}
         <div class="nav-label" style="padding-left:0;margin-top:8px">${UI.icon('lock',12)} Bloqueado pelo sistema — desbloqueie batendo metas</div>
         ${bloqueadoHTML}
-        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva de 10% a 20%</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
+        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva por faixa (8% a 14%)</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
       footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.fmt(r.disponivel)}</button>`
     });
     const sol = document.getElementById('cp-sol');
@@ -749,8 +766,8 @@ const Consultor = {
       body: `
         <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>O pagamento é feito <b>em até 3 dias úteis</b>, mediante a comprovação do serviço e dos valores que entraram na conta da OutBox.</div></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Vendas incluídas</span><b>${com.vendas.length}</b></div>
-        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Base de cálculo</span><b>${OB.fmt(com.base)}</b></div>
-        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Taxa do nível</span><b>${(com.rate*100)|0}%</b></div>
+        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Volume do mês</span><b>${OB.fmt(com.base)}</b></div>
+        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Cálculo</span><b>Progressivo por faixa</b></div>
         <hr style="border:none;border-top:1px solid var(--border);margin:14px 0"/>
         <div class="row between" style="font-size:20px"><b>Total a receber</b><b style="color:var(--brand)">${OB.fmt(com.valor)}</b></div>
         <div class="field" style="margin-top:16px"><label>Dados / chave PIX para recebimento <span class="req">*</span></label><input id="rq-pix" placeholder="CPF, e-mail, telefone ou chave aleatória"/></div>`,
@@ -763,7 +780,7 @@ const Consultor = {
       OB.addRequest({
         id: OB.uid(), tipo: 'comissao', consultorId: u.id,
         consultorNome: u.nome + ' ' + u.sobrenome, valor: com.valor,
-        detalhe: `${com.vendas.length} venda(s) · base ${OB.fmt(com.base)} · ${(com.rate*100)|0}%`,
+        detalhe: `${com.vendas.length} venda(s) · volume ${OB.fmt(com.base)} · progressivo`,
         pix, status: 'solicitado', criadoEm: new Date().toISOString(),
         vendaIds: com.vendas.map(s => s.id)
       });
@@ -790,107 +807,113 @@ const Consultor = {
     </tbody></table></div>`;
   },
 
-  /* ====================== PREMIAÇÕES ====================== */
+  /* ====================== PREMIAÇÕES (bônus de campanha capado) ====================== */
   view_premiacoes() {
     const u = this.u();
     const vol = OB.volumeTrimestre(u.id);
-    const alc = OB.premioAlcancado(u.id);
-    const prox = OB.proximoPremio(u.id);
+    const bonus = OB.bonusCampanha(u.id);
     const reqs = OB.requestsOf(u.id).filter(r => r.tipo === 'premio');
+    // bônus já solicitado/resgatado neste trimestre (consome o saldo)
+    const claimed = reqs.filter(r => r.status !== 'recusado' && OB.isSameQuarter(r.criadoEm)).reduce((t, r) => t + (r.valor || 0), 0);
+    const disp = Math.max(0, bonus - claimed);
+    const faltaPiso = Math.max(0, OB.BONUS_PISO - vol);
 
     const v = document.getElementById('main-view');
     v.innerHTML = `
       <div class="cards cols-2" style="margin-bottom:18px">
         <div class="card">
-          <div class="card-head"><h3>Progresso até o próximo prêmio</h3><span class="chip brand">${UI.icon('target',13)} Trimestre</span></div>
-          <div style="position:relative;height:170px;margin-top:8px"><canvas id="ch-gauge"></canvas>
-            <div style="position:absolute;left:0;right:0;bottom:18px;text-align:center">
-              <div style="font-size:30px;font-weight:800">${prox ? Math.min(100,Math.round(vol/prox.meta*100)) : 100}%</div>
-              <div class="mut" style="font-size:13px">${prox ? 'até ' + prox.nome : 'todos atingidos'}</div>
-            </div>
+          <div class="card-head"><h3>Bônus de campanha</h3><span class="chip brand">${UI.icon('target',13)} Trimestre</span></div>
+          <div style="font-size:13px;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:4px">Disponível para resgatar</div>
+          <div style="font-size:34px;font-weight:800;letter-spacing:-.02em;color:var(--brand)">${OB.fmt(disp)}</div>
+          <div class="bar" style="margin-top:12px"><i data-w="${faltaPiso > 0 ? Math.round(vol / OB.BONUS_PISO * 100) : 100}"></i></div>
+          <div class="soft" style="font-size:13px;margin-top:10px">
+            ${faltaPiso > 0
+              ? `Faltam <b style="color:var(--brand)">${OB.fmt(faltaPiso)}</b> em vendas no trimestre para começar a acumular bônus.`
+              : `Você acumulou <b>${OB.fmt(bonus)}</b> no trimestre${claimed > 0 ? ` · já resgatado ${OB.fmt(claimed)}` : ''}.`}
           </div>
-          <div class="center soft" style="font-size:13px;margin-top:6px">
-            Volume no trimestre: <b style="color:var(--brand)">${OB.fmt(vol)}</b>
-            ${prox ? ` · faltam <b>${OB.fmt(prox.meta - vol)}</b>` : ''}
-          </div>
+          <button class="btn green block" id="bonus-cash" style="margin-top:14px" ${disp <= 0 ? 'disabled' : ''}>${UI.icon('money',16)} Receber ${OB.fmt(disp)} em dinheiro</button>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Prêmio conquistado</h3></div>
-          ${alc ? `
-            <div class="prize reached" style="border:none;box-shadow:none;padding:0">
-              <img src="${alc.img}" alt="${alc.nome}"/>
-              <b style="font-size:20px">${alc.nome}</b>
-              <div class="meta">Meta de ${OB.fmt(alc.meta)} atingida</div>
-              <div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap">
-                <button class="btn brand sm" id="prize-produto">${UI.icon('prize',15)} Receber o produto</button>
-                <button class="btn green sm" id="prize-dinheiro">${UI.icon('money',15)} Receber o dinheiro</button>
-              </div>
-              <div class="hint" style="margin-top:12px">Escolha receber o produto físico ou o valor equivalente em dinheiro. A solicitação vai para o administrador.</div>
-            </div>` : this.empty('prize', 'Nenhum prêmio ainda', 'Continue vendendo! Ao atingir ' + (prox ? OB.fmt(prox.meta) + ' você ganha o ' + prox.nome : 'as metas você ganha prêmios') + '.')}
+          <div class="card-head"><h3>Como funciona</h3></div>
+          <div class="steps">
+            <div class="step-row"><span class="n">1</span><div><b>Venda no trimestre</b><p>A cada venda aprovada, seu volume do trimestre cresce.</p></div></div>
+            <div class="step-row"><span class="n">2</span><div><b>Acumule bônus</b><p>Tudo que passar de ${OB.fmt(OB.BONUS_PISO)} vira <b>${(OB.BONUS_PCT * 100)}% de bônus</b> de campanha.</p></div></div>
+            <div class="step-row"><span class="n">3</span><div><b>Resgate</b><p>Troque o bônus por dinheiro ou por um prêmio da loja abaixo.</p></div></div>
+          </div>
         </div>
       </div>
 
       <div class="card" style="margin-bottom:18px">
-        <div class="card-head"><h3>Escada de prêmios trimestrais</h3><span class="mut">Resgate o degrau mais alto que alcançar</span></div>
+        <div class="card-head"><h3>Loja de prêmios</h3><span class="mut">Troque seu bônus por um destes itens</span></div>
         <div class="cards cols-4">
           ${OB.PREMIOS.map(p => {
-            const reached = vol >= p.meta;
-            return `<div class="prize card ${reached?'reached':'locked'}" style="padding:18px">
+            const ok = p.valor <= disp;
+            return `<div class="prize card ${ok ? 'reached' : 'locked'}" style="padding:18px">
               <img src="${p.img}" alt="${p.nome}"/>
               <b>${p.nome}</b>
-              <div class="meta">${OB.fmt(p.meta)}</div>
-              <span class="chip ${reached?'green':'gray'}">${reached?'✓ Conquistado':'Bloqueado'}</span>
+              <div style="margin:8px 0">${ok
+                ? `<button class="btn brand sm" data-resgatar="${p.id}">${UI.icon('prize',14)} Resgatar</button>`
+                : `<span class="chip gray">Continue vendendo</span>`}</div>
             </div>`;
           }).join('')}
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Solicitações de prêmio</h3></div>
+        <div class="card-head"><h3>Meus resgates</h3></div>
         ${this.reqList(reqs)}
       </div>`;
 
-    setTimeout(() => Charts.gauge('ch-gauge', vol, prox ? prox.meta : vol), 50);
-
-    const bp = document.getElementById('prize-produto');
-    const bd = document.getElementById('prize-dinheiro');
-    if (bp) bp.onclick = () => this.resgatarPremio(alc, 'produto');
-    if (bd) bd.onclick = () => this.resgatarPremio(alc, 'dinheiro');
+    document.getElementById('bonus-cash').onclick = () => this.resgatarBonus(disp);
+    v.querySelectorAll('[data-resgatar]').forEach(b => b.onclick = () => {
+      const premio = OB.PREMIOS.find(p => p.id === b.dataset.resgatar);
+      if (premio && premio.valor <= disp) this.resgatarPremio(premio, disp);
+    });
   },
 
-  /* modo: 'produto' (entrega do item) ou 'dinheiro' (valor equivalente, sem exibir o valor) */
-  resgatarPremio(premio, modo) {
-    const dinheiro = modo === 'dinheiro';
+  /* resgatar o bônus em dinheiro */
+  resgatarBonus(disp) {
+    if (disp <= 0) return;
     UI.modal({
-      title: dinheiro ? 'Receber o dinheiro' : 'Receber o produto',
+      title: 'Receber bônus em dinheiro',
       sub: 'O administrador será notificado para análise e repasse',
-      body: `<div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>${dinheiro
-          ? `Você optou por receber o <b>valor equivalente</b> ao prêmio <b>${premio.nome}</b> em dinheiro. O administrador confirma o valor e faz o repasse em até 3 dias úteis após a comprovação.`
-          : `Você optou por receber o <b>${premio.nome}</b> (produto físico). O administrador combinará a entrega com você.`}</div></div>
-        ${dinheiro
-          ? `<div class="field"><label>Chave PIX para recebimento <span class="req">*</span></label><input id="tp-pix" placeholder="CPF, e-mail, telefone ou chave aleatória"/></div>`
-          : `<div class="field"><label>Endereço/observação para entrega</label><input id="tp-end" placeholder="Confirme seu endereço ou ponto de retirada"/></div>`}`,
-      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="tp-go">Confirmar solicitação</button>`
+      body: `<div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Você vai resgatar <b>${OB.fmt(disp)}</b> de bônus de campanha. Pagamento em até 3 dias úteis após a comprovação.</div></div>
+        <div class="field"><label>Chave PIX para recebimento <span class="req">*</span></label><input id="tp-pix" placeholder="CPF, e-mail, telefone ou chave aleatória"/></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="tp-go">Confirmar resgate</button>`
+    });
+    document.getElementById('tp-go').onclick = () => {
+      const pix = document.getElementById('tp-pix').value.trim();
+      if (!pix) return UI.toast('Informe a chave PIX', '', 'err');
+      const u = this.u();
+      OB.addRequest({
+        id: OB.uid(), tipo: 'premio', modo: 'dinheiro', consultorId: u.id, consultorNome: u.nome + ' ' + u.sobrenome,
+        valor: disp, detalhe: 'Bônus de campanha em dinheiro', pix, status: 'solicitado', criadoEm: new Date().toISOString()
+      });
+      UI.closeModal(); UI.toast('Resgate enviado', 'O administrador foi notificado', 'ok');
+      this.render('premiacoes');
+    };
+  },
+
+  /* resgatar um prêmio da loja (custa o valor do prêmio, descontado do bônus) */
+  resgatarPremio(premio, disp) {
+    UI.modal({
+      title: 'Resgatar ' + premio.nome,
+      sub: 'O administrador será notificado para análise e entrega',
+      body: `<div class="prize reached" style="border:none;box-shadow:none;padding:0;margin-bottom:14px"><img src="${premio.img}" style="height:90px"/><b style="display:block;text-align:center;margin-top:8px">${premio.nome}</b></div>
+        <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Você vai trocar parte do seu bônus de campanha pelo <b>${premio.nome}</b>. O administrador combinará a entrega com você.</div></div>
+        <div class="field"><label>Endereço / observação para entrega</label><input id="tp-end" placeholder="Confirme seu endereço ou ponto de retirada"/></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="tp-go">Confirmar resgate</button>`
     });
     document.getElementById('tp-go').onclick = () => {
       const u = this.u();
-      let pix = '', detalhe = '';
-      if (dinheiro) {
-        pix = document.getElementById('tp-pix').value.trim();
-        if (!pix) return UI.toast('Informe a chave PIX', '', 'err');
-        detalhe = `Prêmio ${premio.nome} — receber valor em dinheiro`;
-      } else {
-        pix = document.getElementById('tp-end').value.trim();
-        detalhe = `Prêmio ${premio.nome} — entrega do produto`;
-      }
       OB.addRequest({
-        id: OB.uid(), tipo: 'premio', modo, premioId: premio.id, premioNome: premio.nome,
+        id: OB.uid(), tipo: 'premio', modo: 'produto', premioId: premio.id, premioNome: premio.nome,
         consultorId: u.id, consultorNome: u.nome + ' ' + u.sobrenome,
-        valor: dinheiro ? premio.valor : 0, // valor interno p/ o admin; não é exibido ao consultor
-        detalhe, pix, status: 'solicitado', criadoEm: new Date().toISOString()
+        valor: premio.valor, // custo p/ o admin (consome o bônus); não é exibido ao consultor
+        detalhe: `Resgate do prêmio ${premio.nome}`, pix: document.getElementById('tp-end').value.trim(),
+        status: 'solicitado', criadoEm: new Date().toISOString()
       });
-      UI.closeModal();
-      UI.toast('Solicitação enviada', 'O administrador foi notificado', 'ok');
+      UI.closeModal(); UI.toast('Resgate enviado', 'O administrador foi notificado', 'ok');
       this.render('premiacoes');
     };
   },
@@ -933,7 +956,7 @@ const Consultor = {
 
   /* ---------- conteúdo dos materiais ---------- */
   DOCS() {
-    const cat = OB.PRODUTOS.map(p => `<tr><td><b>${p.nome}</b></td><td>${OB.brl(p.ticketMin)} a ${OB.brl(p.ticketMax)}</td><td>${OB.brl(Math.round(p.ticketMin*0.10))} a ${OB.brl(Math.round(p.ticketMax*0.20))}</td></tr>`).join('');
+    const cat = OB.PRODUTOS.map(p => `<tr><td><b>${p.nome}</b></td>${OB.PORTES.map(pt => `<td>${OB.brl(p.precos[pt.id])}</td>`).join('')}</tr>`).join('');
     return [
       {
         id: 'spin', nome: 'Guia SPIN Selling — Fundamentos', tag: 'SPIN Selling', icon: 'docs',
@@ -979,12 +1002,13 @@ const Consultor = {
         ]
       },
       {
-        id: 'catalogo', nome: 'Catálogo de Produtos e Tickets', tag: 'Catálogo', icon: 'cart',
-        desc: 'Serviços da OutBox, faixas de preço de mercado e a comissão correspondente.',
-        intro: 'Use este catálogo para precificar e apresentar os serviços. A comissão é progressiva de 10% a 20% conforme o seu volume no mês.',
+        id: 'catalogo', nome: 'Tabela de Preços por Porte', tag: 'Preços', icon: 'cart',
+        desc: 'Preços fixos de cada serviço conforme o porte da empresa do cliente.',
+        intro: 'Cada empresa paga conforme seu porte (classificação por faturamento). Cadastre o porte do cliente e o sistema já aplica o preço certo no orçamento.',
         secoes: [
-          { icon: 'cart', titulo: 'Serviços e faixas de preço', html: `<table class="doc-table"><thead><tr><th>Serviço</th><th>Ticket de mercado</th><th>Sua comissão (10% a 20%)</th></tr></thead><tbody>${cat}</tbody></table>` },
-          { icon: 'money', titulo: 'Regra de comissão progressiva', html: '<ul><li><b>Bronze</b> — 10% (ponto de partida)</li><li><b>Prata</b> — 13% ao atingir R$ 5.000 no mês</li><li><b>Ouro</b> — 16% ao atingir R$ 15.000 no mês</li><li><b>Black</b> — 20% ao atingir R$ 30.000 no mês</li></ul><p>A taxa vale para todo o volume do mês e também na recorrência.</p>' }
+          { icon: 'cart', titulo: 'Preços por porte', html: `<table class="doc-table"><thead><tr><th>Serviço</th>${OB.PORTES.map(p => `<th>${p.nome}</th>`).join('')}</tr></thead><tbody>${cat}</tbody></table>` },
+          { icon: 'clients', titulo: 'Como classificar o porte', html: `<ul>${OB.PORTES.map(p => `<li><b>${p.nome}:</b> ${p.faixa}</li>`).join('')}</ul><p>Use o CNPJ/faturamento informado pela empresa. Na dúvida, comece pelo porte menor.</p>` },
+          { icon: 'money', titulo: 'Sua comissão (progressiva por faixa, no mês)', html: '<ul><li><b>Bronze</b> — 8% até R$5.000</li><li><b>Prata</b> — 10% na faixa de R$5.000 a 15.000</li><li><b>Ouro</b> — 12% na faixa de R$15.000 a 30.000</li><li><b>Black</b> — 14% acima de R$30.000</li></ul><p>Cada faixa rende sua própria taxa (estilo imposto de renda). Além disso, tudo que passar de R$30.000 no trimestre vira 3% de bônus de campanha, resgatável em dinheiro ou prêmio.</p>' }
         ]
       },
       {
@@ -1096,9 +1120,9 @@ const Consultor = {
       ['Solicite sua comissão', 'Quando tiver comissão disponível, clique em "Solicitar comissão". O admin recebe na hora e paga em até 3 dias úteis.']
     ];
     const faqs = [
-      ['Como minha comissão é calculada?', 'A taxa é progressiva conforme o quanto você vende no mês: Bronze 10%, Prata 13% (R$5 mil), Ouro 16% (R$15 mil) e Black 20% (R$30 mil). Ela incide sobre o valor das vendas lançadas.'],
+      ['Como minha comissão é calculada?', 'É progressiva por faixa (estilo imposto de renda): cada parte do volume do mês rende sua própria taxa — 8% até R$5 mil, 10% de R$5 a 15 mil, 12% de R$15 a 30 mil e 14% acima de R$30 mil. Só vendas aprovadas contam.'],
       ['Quando recebo o pagamento?', 'Em até 3 dias úteis após a solicitação, mediante a comprovação do serviço e dos valores que efetivamente entraram na conta da OutBox.'],
-      ['Posso receber o prêmio em dinheiro?', 'Sim. Na aba Premiações, no prêmio conquistado, você tem dois botões: "Receber o produto" ou "Receber o dinheiro". Ao escolher, a solicitação vai para o administrador analisar e fazer o repasse.'],
+      ['Como funcionam os prêmios?', 'Tudo que você vender acima de R$30 mil no trimestre vira 3% de bônus de campanha. Na aba Premiações você resgata esse bônus em dinheiro ou troca por um prêmio da loja, até o valor do seu bônus.'],
       ['O que é cliente recorrente?', 'É o cliente que gera receita repetida (planos, manutenção). A comissão recorrente acompanha sua taxa de nível.'],
       ['Esqueci minha senha, e agora?', 'Na tela de login clique em "Esqueceu a senha?" e siga o passo a passo para redefinir pelo e-mail cadastrado.']
     ];
