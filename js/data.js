@@ -241,7 +241,8 @@ const OB = {
   addSale(s) { this.db.sales.push(s); this._save('sales', this._sOut(s)); return s; },
   updateSale(s) { const i = this.db.sales.findIndex(x => x.id === s.id); if (i >= 0) this.db.sales[i] = s; this._save('sales', this._sOut(s)); return s; },
   removeSale(id) { this.db.sales = this.db.sales.filter(s => s.id !== id); this._delete('sales', id); },
-  /* admin confirma/desfaz o recebimento do pagamento do cliente (libera comissão) */
+  /* admin confirma/desfaz o recebimento do pagamento do cliente (libera comissão).
+     A RLS permite o admin gravar (policies sales_insert_admin/is_admin). */
   setPagamento(saleId, status) { const s = this.db.sales.find(x => x.id === saleId); if (!s) return null; s.statusPagamento = status; this.updateSale(s); return s; },
 
   /* ---------- leads (funil / Kanban) ---------- */
