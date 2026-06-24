@@ -770,7 +770,7 @@ const Consultor = {
         ${linha('Já pago no mês', r.jaPago, 'color:#1fa855')}
         <div class="nav-label" style="padding-left:0;margin-top:8px">${UI.icon('lock',12)} Bloqueado pelo sistema — desbloqueie batendo metas</div>
         ${bloqueadoHTML}
-        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva por faixa (8% a 14%)</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
+        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva por faixa (8% a 20%)</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
       footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.fmt(r.disponivel)}</button>`
     });
     const sol = document.getElementById('cp-sol');
@@ -1027,7 +1027,7 @@ const Consultor = {
         secoes: [
           { icon: 'cart', titulo: 'Preços por porte', html: `<table class="doc-table"><thead><tr><th>Serviço</th>${OB.PORTES.map(p => `<th>${p.nome}</th>`).join('')}</tr></thead><tbody>${cat}</tbody></table>` },
           { icon: 'clients', titulo: 'Como classificar o porte', html: `<ul>${OB.PORTES.map(p => `<li><b>${p.nome}:</b> ${p.faixa}</li>`).join('')}</ul><p>Use o CNPJ/faturamento informado pela empresa. Na dúvida, comece pelo porte menor.</p>` },
-          { icon: 'money', titulo: 'Sua comissão (progressiva por faixa, no mês)', html: '<ul><li><b>Bronze</b> — 8% até R$5.000</li><li><b>Prata</b> — 10% na faixa de R$5.000 a 15.000</li><li><b>Ouro</b> — 12% na faixa de R$15.000 a 30.000</li><li><b>Black</b> — 14% acima de R$30.000</li></ul><p>Cada faixa rende sua própria taxa (estilo imposto de renda). Além disso, tudo que passar de R$30.000 no trimestre vira 3% de bônus de campanha, resgatável em dinheiro ou prêmio.</p>' }
+          { icon: 'money', titulo: 'Sua comissão (progressiva por faixa, no mês)', html: '<ul><li><b>Bronze</b> — 8% até R$5.000</li><li><b>Prata</b> — 10% na faixa de R$5.000 a 15.000</li><li><b>Ouro</b> — 12% na faixa de R$15.000 a 30.000</li><li><b>Black</b> — 20% acima de R$30.000</li></ul><p>Cada faixa rende sua própria taxa (estilo imposto de renda). Além disso, tudo que passar de R$30.000 no trimestre vira 3% de bônus de campanha, resgatável em dinheiro ou prêmio.</p>' }
         ]
       },
       {
@@ -1139,7 +1139,7 @@ const Consultor = {
       ['Solicite sua comissão', 'Quando tiver comissão disponível, clique em "Solicitar comissão". O admin recebe na hora e paga em até 3 dias úteis.']
     ];
     const faqs = [
-      ['Como minha comissão é calculada?', 'É progressiva por faixa (estilo imposto de renda): cada parte do volume do mês rende sua própria taxa — 8% até R$5 mil, 10% de R$5 a 15 mil, 12% de R$15 a 30 mil e 14% acima de R$30 mil. Só vendas aprovadas contam.'],
+      ['Como minha comissão é calculada?', 'É progressiva por faixa (estilo imposto de renda): cada parte do volume do mês rende sua própria taxa — 8% até R$5 mil, 10% de R$5 a 15 mil, 12% de R$15 a 30 mil e 20% acima de R$30 mil. Só vendas aprovadas contam.'],
       ['Quando recebo o pagamento?', 'Em até 3 dias úteis após a solicitação, mediante a comprovação do serviço e dos valores que efetivamente entraram na conta da OutBox.'],
       ['Como funcionam os prêmios?', 'Tudo que você vender acima de R$30 mil no trimestre vira 3% de bônus de campanha. Na aba Premiações você resgata esse bônus em dinheiro ou troca por um prêmio da loja, até o valor do seu bônus.'],
       ['O que é cliente recorrente?', 'É o cliente que gera receita repetida (planos, manutenção). A comissão recorrente acompanha sua taxa de nível.'],

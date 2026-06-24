@@ -34,7 +34,7 @@ const OB = {
 
   /* ---------- comissão progressiva MARGINAL (cada faixa, sua taxa) ---------- */
   NIVEIS: [
-    { id: 'black',  nome: 'Black',  rate: 0.14, meta: 30000, cor: '#111111' },
+    { id: 'black',  nome: 'Black',  rate: 0.20, meta: 30000, cor: '#111111' },
     { id: 'ouro',   nome: 'Ouro',   rate: 0.12, meta: 15000, cor: '#C9A227' },
     { id: 'prata',  nome: 'Prata',  rate: 0.10, meta: 5000,  cor: '#9AA3AD' },
     { id: 'bronze', nome: 'Bronze', rate: 0.08, meta: 0,     cor: '#B07B4F' }
@@ -44,7 +44,7 @@ const OB = {
     { ate: 5000,     rate: 0.08 },
     { ate: 15000,    rate: 0.10 },
     { ate: 30000,    rate: 0.12 },
-    { ate: Infinity, rate: 0.14 }
+    { ate: Infinity, rate: 0.20 }
   ],
   /* comissão marginal sobre um volume: soma cada faixa com sua taxa */
   comissaoMarginal(volume) {
