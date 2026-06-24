@@ -144,7 +144,7 @@ const App = {
     const pill = document.getElementById('com-pill');
     if (!pill) return;
     const com = OB.comissaoDisponivel(u.id);
-    document.getElementById('com-val').textContent = OB.brl(com.valor);
+    document.getElementById('com-val').textContent = OB.fmt(com.valor);
     if (bump) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
   },
 

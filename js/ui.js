@@ -102,5 +102,28 @@ const UI = {
   maskCEP(v) { return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{1,3})$/, '$1-$2'); },
 
   /* gera código 6 dígitos (string) sem Math.random sensível — ok para protótipo */
-  gerarCodigo() { let c = ''; for (let i = 0; i < 6; i++) c += Math.floor(Math.random() * 10); return c; }
+  gerarCodigo() { let c = ''; for (let i = 0; i < 6; i++) c += Math.floor(Math.random() * 10); return c; },
+
+  /* ---------- máscara de moeda (separa milhar + centavos automático) ---------- */
+  money: {
+    cfg(m) { return OB.MOEDAS[m] || OB.MOEDAS.BRL; },
+    // recebe os dígitos digitados e formata tratando os 2 últimos como centavos
+    format(raw, m) {
+      const c = this.cfg(m);
+      let d = String(raw == null ? '' : raw).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+      while (d.length < 3) d = '0' + d;
+      const cents = d.slice(-2);
+      const int = d.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, c.t);
+      return int + c.d + cents;
+    },
+    parse(str) { const dd = String(str == null ? '' : str).replace(/\D/g, ''); return dd ? parseInt(dd, 10) / 100 : 0; },
+    // preenche o input com um valor numérico já formatado
+    set(input, value, m) { if (input) input.value = this.format(String(Math.round((value || 0) * 100)), m); },
+    // liga a máscara a um input (text). getMoeda() retorna o código da moeda atual.
+    bind(input, getMoeda) {
+      if (!input) return;
+      input.setAttribute('inputmode', 'decimal');
+      input.addEventListener('input', () => { input.value = this.format(input.value, getMoeda ? getMoeda() : 'BRL'); });
+    }
+  }
 };

@@ -34,6 +34,11 @@ const Consultor = {
     if (fn) fn.call(this);
   },
 
+  /* opções do <select> de moeda (default = moeda atual do consultor) */
+  moedaOptions(sel) {
+    return Object.keys(OB.MOEDAS).map(k => `<option value="${k}" ${k === sel ? 'selected' : ''}>${OB.MOEDAS[k].nome}</option>`).join('');
+  },
+
   /* ====================== VISÃO GERAL ====================== */
   view_overview() {
     const u = this.u();
@@ -49,10 +54,10 @@ const Consultor = {
     const v = document.getElementById('main-view');
     v.innerHTML = `
       <div class="cards cols-4" style="margin-bottom:18px">
-        ${this.kpi('cart', OB.brl(volMes), 'Vendido no mês', `Nível ${nivel.nome} · ${(nivel.rate*100)|0}% de comissão`)}
-        ${this.kpi('money', OB.brl(com.valor), 'Comissão disponível', com.vendas.length + ' venda(s) a solicitar')}
+        ${this.kpi('cart', OB.fmt(volMes), 'Vendido no mês', `Nível ${nivel.nome} · ${(nivel.rate*100)|0}% de comissão`)}
+        ${this.kpi('money', OB.fmt(com.valor), 'Comissão disponível', com.vendas.length + ' venda(s) a solicitar')}
         ${this.kpi('clients', clientes.length, 'Clientes cadastrados', rec + ' recorrentes · ' + pon + ' pontuais')}
-        ${this.kpi('prize', OB.brl(OB.volumeTrimestre(u.id)), 'Volume no trimestre', 'Conta para os prêmios')}
+        ${this.kpi('prize', OB.fmt(OB.volumeTrimestre(u.id)), 'Volume no trimestre', 'Conta para os prêmios')}
       </div>
 
       <div class="cards cols-2" style="margin-bottom:18px">
@@ -97,12 +102,12 @@ const Consultor = {
     const falta = prox ? prox.meta - vol : 0;
     return `
       <div class="row between" style="margin-bottom:8px;font-size:13px">
-        <span class="soft">${OB.brl(vol)}</span>
-        <span class="mut">${prox ? 'Meta ' + prox.nome + ': ' + OB.brl(prox.meta) : 'Nível máximo atingido 🎉'}</span>
+        <span class="soft">${OB.fmt(vol)}</span>
+        <span class="mut">${prox ? 'Meta ' + prox.nome + ': ' + OB.fmt(prox.meta) : 'Nível máximo atingido 🎉'}</span>
       </div>
       <div class="bar"><i data-w="${pct}"></i></div>
       <div style="margin-top:12px;font-size:13px" class="soft">
-        ${prox ? `Faltam <b style="color:var(--brand)">${OB.brl(falta)}</b> para subir de <b>${nivel.nome}</b> (${(nivel.rate*100)|0}%) para <b>${prox.nome}</b> (${(prox.rate*100)|0}%)` : `Você está no nível <b>Black</b> com <b>20%</b> de comissão. Excelente!`}
+        ${prox ? `Faltam <b style="color:var(--brand)">${OB.fmt(falta)}</b> para subir de <b>${nivel.nome}</b> (${(nivel.rate*100)|0}%) para <b>${prox.nome}</b> (${(prox.rate*100)|0}%)` : `Você está no nível <b>Black</b> com <b>20%</b> de comissão. Excelente!`}
       </div>
       <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
         ${[...OB.NIVEIS].reverse().map(n => `<span class="chip ${vol>=n.meta?'brand':'gray'}">${n.nome} · ${(n.rate*100)|0}%</span>`).join('')}
@@ -275,8 +280,8 @@ const Consultor = {
     const v = document.getElementById('main-view');
     v.innerHTML = `
       <div class="cards cols-3" style="margin-bottom:18px">
-        ${this.kpi('money', OB.brl(com.valor), 'Comissão disponível', 'Taxa atual ' + ((nivel.rate*100)|0) + '%')}
-        ${this.kpi('cart', OB.brl(volMes), 'Vendido no mês', 'Nível ' + nivel.nome)}
+        ${this.kpi('money', OB.fmt(com.valor), 'Comissão disponível', 'Taxa atual ' + ((nivel.rate*100)|0) + '%')}
+        ${this.kpi('cart', OB.fmt(volMes), 'Vendido no mês', 'Nível ' + nivel.nome)}
         ${this.kpi('receipt', reqs.filter(r=>r.status!=='pago'&&r.status!=='recusado').length, 'Solicitações em aberto', 'Pagamento em até 3 dias úteis')}
       </div>
 
@@ -289,7 +294,7 @@ const Consultor = {
         </div>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <button class="btn brand" id="add-sale">${UI.icon('plus',16)} Lançar venda</button>
-          <button class="btn ghost" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.brl(com.valor)})</button>
+          <button class="btn ghost" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
         </div>
       </div>
 
@@ -314,7 +319,7 @@ const Consultor = {
           const temDesc = s.descontoTipo && s.descontoValor > 0;
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td>
             <td>${p?p.nome:s.produto}</td>
-            <td><span class="strong">${OB.brl(s.valor)}</span>${temDesc?`<br><span class="mut" style="font-size:11px">de ${OB.brl(s.valorBruto)} · -${s.descontoTipo==='percent'?s.descontoValor+'%':OB.brl(s.descontoValor)}</span>`:''}</td>
+            <td><span class="strong">${OB.money(s.valor, s.moeda)}</span>${temDesc?`<br><span class="mut" style="font-size:11px">de ${OB.money(s.valorBruto, s.moeda)} · -${s.descontoTipo==='percent'?s.descontoValor+'%':OB.money(s.descontoValor, s.moeda)}</span>`:''}</td>
             <td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td>${s.statusProposta==='aprovada'?`<span class="chip ${st[0]}">${st[1]}</span>`:'<span class="mut" style="font-size:12px">—</span>'}</td>
             <td class="row" style="gap:6px;justify-content:flex-end">
@@ -360,31 +365,40 @@ const Consultor = {
       title: 'Editar venda',
       sub: 'Ajuste o valor e aplique desconto se quiser',
       body: `
-        <div class="field"><label>Valor bruto (R$) <span class="req">*</span></label><input id="ed-bruto" type="number" min="0" step="50" value="${s.valorBruto||s.valor}"/></div>
+        <div class="grid-2">
+          <div class="field"><label>Valor bruto <span class="req">*</span></label><input id="ed-bruto" type="text" inputmode="decimal"/></div>
+          <div class="field"><label>Moeda</label><select id="ed-moeda">${this.moedaOptions(s.moeda||'BRL')}</select></div>
+        </div>
         <div class="grid-2">
           <div class="field"><label>Tipo de desconto</label>
-            <select id="ed-tipo"><option value="">Sem desconto</option><option value="reais" ${s.descontoTipo==='reais'?'selected':''}>Em reais (R$)</option><option value="percent" ${s.descontoTipo==='percent'?'selected':''}>Em porcentagem (%)</option></select></div>
+            <select id="ed-tipo"><option value="">Sem desconto</option><option value="reais" ${s.descontoTipo==='reais'?'selected':''}>Em dinheiro</option><option value="percent" ${s.descontoTipo==='percent'?'selected':''}>Em porcentagem (%)</option></select></div>
           <div class="field"><label>Valor do desconto</label><input id="ed-desc" type="number" min="0" step="1" value="${s.descontoValor||0}"/></div>
         </div>
-        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.brl(s.valor)}</b></div></div>`,
+        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.money(s.valor, s.moeda)}</b></div></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ed-save">Salvar</button>`
     });
+    const edMoeda = document.getElementById('ed-moeda');
+    UI.money.set(document.getElementById('ed-bruto'), s.valorBruto || s.valor, s.moeda);
+    UI.money.bind(document.getElementById('ed-bruto'), () => edMoeda.value);
     const calc = () => {
-      const bruto = parseFloat(document.getElementById('ed-bruto').value) || 0;
+      const moeda = edMoeda.value;
+      const bruto = UI.money.parse(document.getElementById('ed-bruto').value);
       const tipo = document.getElementById('ed-tipo').value;
       const d = parseFloat(document.getElementById('ed-desc').value) || 0;
       let final = bruto;
       if (tipo === 'reais') final = Math.max(0, bruto - d);
       else if (tipo === 'percent') final = Math.max(0, bruto * (1 - Math.min(d, 100) / 100));
-      document.getElementById('ed-final').textContent = OB.brl(Math.round(final));
-      return { bruto, tipo, d, final: Math.round(final) };
+      document.getElementById('ed-final').textContent = OB.money(Math.round(final), moeda);
+      return { bruto, tipo, d, final: Math.round(final), moeda };
     };
-    ['ed-bruto', 'ed-tipo', 'ed-desc'].forEach(id => document.getElementById(id).oninput = calc);
+    document.getElementById('ed-bruto').addEventListener('input', calc);
+    document.getElementById('ed-desc').oninput = calc;
     document.getElementById('ed-tipo').onchange = calc;
+    edMoeda.onchange = () => { const eb = document.getElementById('ed-bruto'); UI.money.set(eb, UI.money.parse(eb.value), edMoeda.value); calc(); };
     document.getElementById('ed-save').onclick = () => {
       const c = calc();
       if (!c.bruto || c.bruto <= 0) return UI.toast('Informe o valor', '', 'err');
-      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final });
+      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final, moeda: c.moeda });
       OB.updateSale(s);
       UI.closeModal(); UI.toast('Venda atualizada', '', 'ok');
       App.refreshCommission(true);
@@ -397,7 +411,7 @@ const Consultor = {
     if (!s) return;
     if (s.statusComissao !== 'disponivel') return UI.toast('Não é possível excluir', 'Esta venda já entrou em uma solicitação de comissão', 'err');
     const cli = OB.clientById(s.clientId);
-    UI.confirm('Excluir venda', `Remover a venda de ${cli ? cli.nome : 'cliente'} (${OB.brl(s.valor)})? Esta ação não pode ser desfeita.`, () => {
+    UI.confirm('Excluir venda', `Remover a venda de ${cli ? cli.nome : 'cliente'} (${OB.money(s.valor, s.moeda)})? Esta ação não pode ser desfeita.`, () => {
       OB.removeSale(s.id);
       UI.toast('Venda excluída', '', 'ok');
       App.refreshCommission(true);
@@ -419,12 +433,16 @@ const Consultor = {
           <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
         <div class="field"><label>Produto / serviço <span class="req">*</span></label>
           <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}" data-min="${p.ticketMin}" data-max="${p.ticketMax}">${p.nome} · ${OB.brl(p.ticketMin)} a ${OB.brl(p.ticketMax)}</option>`).join('')}</select></div>
-        <div class="field"><label>Valor (R$) <span class="req">*</span></label>
-          <input id="s-val" type="number" min="0" step="100" placeholder="0,00"/>
-          <div class="hint" id="s-hint"></div></div>
+        <div class="grid-2">
+          <div class="field"><label>Valor <span class="req">*</span></label>
+            <input id="s-val" type="text" inputmode="decimal" placeholder="0,00"/>
+            <div class="hint" id="s-hint"></div></div>
+          <div class="field"><label>Moeda</label>
+            <select id="s-moeda">${this.moedaOptions(OB.moedaAtual())}</select></div>
+        </div>
         <div class="grid-2">
           <div class="field"><label>Tipo de desconto</label>
-            <select id="s-dtipo"><option value="">Sem desconto</option><option value="reais">Em reais (R$)</option><option value="percent">Em %</option></select></div>
+            <select id="s-dtipo"><option value="">Sem desconto</option><option value="reais">Em dinheiro</option><option value="percent">Em %</option></select></div>
           <div class="field"><label>Desconto</label><input id="s-dval" type="number" min="0" step="1" value="0"/></div>
         </div>
         <div class="field"><label>Status da proposta</label>
@@ -440,8 +458,12 @@ const Consultor = {
       document.getElementById('s-hint').textContent = `Ticket de mercado: ${OB.brl(+opt.dataset.min)} a ${OB.brl(+opt.dataset.max)}`;
     };
     document.getElementById('s-prod').onchange = hint; hint();
+    const sMoeda = document.getElementById('s-moeda');
+    UI.money.bind(document.getElementById('s-val'), () => sMoeda.value);
+    sMoeda.onchange = () => { const sv = document.getElementById('s-val'); UI.money.set(sv, UI.money.parse(sv.value), sMoeda.value); };
     document.getElementById('s-save').onclick = () => {
-      const bruto = parseFloat(document.getElementById('s-val').value);
+      const moeda = sMoeda.value;
+      const bruto = UI.money.parse(document.getElementById('s-val').value);
       if (!bruto || bruto <= 0) return UI.toast('Informe o valor', 'O valor é obrigatório', 'err');
       const tipo = document.getElementById('s-dtipo').value;
       const d = parseFloat(document.getElementById('s-dval').value) || 0;
@@ -451,7 +473,7 @@ const Consultor = {
       valor = Math.round(valor);
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: document.getElementById('s-cli').value,
-        produto: document.getElementById('s-prod').value, valor, valorBruto: bruto,
+        produto: document.getElementById('s-prod').value, valor, valorBruto: bruto, moeda,
         descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
@@ -475,7 +497,7 @@ const Consultor = {
     const v = document.getElementById('main-view');
     v.innerHTML = `
       <div class="cards cols-3" style="margin-bottom:18px">
-        ${this.kpi('quote', abertos.length, 'Propostas em aberto', OB.brl(valorAberto) + ' aguardando aceite')}
+        ${this.kpi('quote', abertos.length, 'Propostas em aberto', OB.fmt(valorAberto) + ' aguardando aceite')}
         ${this.kpi('check', aprov.length, 'Propostas aprovadas', 'Viraram venda')}
         ${this.kpi('trend', taxaConv + '%', 'Taxa de conversão', 'Aprovadas ÷ total')}
       </div>
@@ -492,7 +514,7 @@ const Consultor = {
         <th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
         ${vendas.map(s => { const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto); const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td>
-            <td class="strong">${OB.brl(s.valor)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
+            <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td class="row" style="gap:6px;justify-content:flex-end">
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
@@ -526,11 +548,11 @@ const Consultor = {
       <div><div class="lbl">Validade</div>${val.toLocaleDateString('pt-BR')}</div>
     </div>
     <table class="tbl"><thead><tr><th>Serviço</th><th style="text-align:right">Valor</th></tr></thead>
-      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Group</span></td><td style="text-align:right">${OB.brl(s.valorBruto || s.valor)}</td></tr></tbody></table>
+      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Group</span></td><td style="text-align:right">${OB.money(s.valorBruto || s.valor, s.moeda)}</td></tr></tbody></table>
     <div class="tot"><div class="box">
-      <div class="row"><span>Subtotal</span><span>${OB.brl(s.valorBruto || s.valor)}</span></div>
-      ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.brl((s.valorBruto || s.valor) - s.valor)}</span></div>` : ''}
-      <div class="row grand"><span>Total</span><b>${OB.brl(s.valor)}</b></div>
+      <div class="row"><span>Subtotal</span><span>${OB.money(s.valorBruto || s.valor, s.moeda)}</span></div>
+      ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.money((s.valorBruto || s.valor) - s.valor, s.moeda)}</span></div>` : ''}
+      <div class="row grand"><span>Total</span><b>${OB.money(s.valor, s.moeda)}</b></div>
     </div></div>
     <div class="note">Esta proposta tem validade de 7 dias. Os valores podem ser parcelados conforme negociação. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
   </div>
@@ -564,7 +586,7 @@ const Consultor = {
           const total = leads.reduce((t, l) => t + (l.valorEstimado || 0), 0);
           return `<div class="kan-col" data-estagio="${e.id}">
             <div class="kan-head"><span class="kan-dot" style="background:${e.cor}"></span><b>${e.emoji} ${e.nome}</b><span class="kan-count">${leads.length}</span></div>
-            <div class="kan-sub">${total ? OB.brl(total) : '&nbsp;'}</div>
+            <div class="kan-sub">${total ? OB.fmt(total) : '&nbsp;'}</div>
             <div class="kan-list" data-estagio="${e.id}">
               ${leads.map(l => this.leadCard(l)).join('')}
             </div>
@@ -582,7 +604,7 @@ const Consultor = {
     return `<div class="kan-card" draggable="true" data-id="${l.id}">
       <div class="row between alc"><b>${l.nome || 'Sem nome'}</b><span class="kan-grip">${UI.icon('edit',13)}</span></div>
       ${sv ? `<div style="margin-top:5px"><span class="chip brand" style="font-size:11px">${sv.nome}</span></div>` : ''}
-      ${l.valorEstimado ? `<div class="kan-val">${OB.brl(l.valorEstimado)}</div>` : ''}
+      ${l.valorEstimado ? `<div class="kan-val">${OB.money(l.valorEstimado, l.moeda)}</div>` : ''}
       ${l.telefone ? `<div class="kan-meta">${UI.icon('whats',12)} ${l.telefone}</div>` : ''}
       ${l.obs ? `<div class="kan-meta mut">${l.obs}</div>` : ''}
     </div>`;
@@ -625,9 +647,10 @@ const Consultor = {
         <div class="field"><label>Serviço de interesse</label>
           <select id="l-serv"><option value="">Selecione (opcional)</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${edit && l.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
           <div class="hint">Ajuda a lembrar o que o contato precisa.</div></div>
+        <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
         <div class="grid-2">
-          <div class="field"><label>Etapa</label><select id="l-est">${OB.ESTAGIOS.map(e => `<option value="${e.id}" ${(edit ? l.estagio === e.id : e.id === preEst) ? 'selected' : ''}>${e.emoji} ${e.nome}</option>`).join('')}</select></div>
-          <div class="field"><label>Valor estimado (R$)</label><input id="l-val" type="number" min="0" step="100" value="${edit ? (l.valorEstimado || 0) : 0}"/></div>
+          <div class="field"><label>Valor estimado</label><input id="l-val" type="text" inputmode="decimal" placeholder="0,00"/></div>
+          <div class="field"><label>Moeda</label><select id="l-moeda">${this.moedaOptions(edit ? (l.moeda || 'BRL') : OB.moedaAtual())}</select></div>
         </div>
         <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>
         <button type="button" class="btn ghost block" id="l-brief" style="border-style:dashed">${UI.icon('docs',16)} Compartilhar briefing com o cliente</button>
@@ -635,6 +658,10 @@ const Consultor = {
       footer: `${edit ? `<button class="btn danger" id="l-del">Excluir</button>` : ''}<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="l-save">${edit ? 'Salvar' : 'Adicionar'}</button>`
     });
     if (document.getElementById('l-tel')) document.getElementById('l-tel').oninput = e => e.target.value = UI.maskPhone(e.target.value);
+    const lMoeda = document.getElementById('l-moeda');
+    UI.money.set(document.getElementById('l-val'), edit ? (l.valorEstimado || 0) : 0, lMoeda.value);
+    UI.money.bind(document.getElementById('l-val'), () => lMoeda.value);
+    lMoeda.onchange = () => { const lv = document.getElementById('l-val'); UI.money.set(lv, UI.money.parse(lv.value), lMoeda.value); };
     document.getElementById('l-brief').onclick = () => this.compartilharBriefing({
       nome: document.getElementById('l-nome').value.trim() || (edit ? l.nome : ''),
       telefone: document.getElementById('l-tel').value.trim()
@@ -643,7 +670,7 @@ const Consultor = {
       const nome = document.getElementById('l-nome').value.trim();
       if (!nome) return UI.toast('Informe o nome', '', 'err');
       const obj = l || { id: OB.uid(), consultorId: u.id, ordem: 0, criadoEm: new Date().toISOString() };
-      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), servico: document.getElementById('l-serv').value, estagio: document.getElementById('l-est').value, valorEstimado: parseFloat(document.getElementById('l-val').value) || 0, obs: document.getElementById('l-obs').value.trim() });
+      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), servico: document.getElementById('l-serv').value, estagio: document.getElementById('l-est').value, valorEstimado: UI.money.parse(document.getElementById('l-val').value), moeda: lMoeda.value, obs: document.getElementById('l-obs').value.trim() });
       OB.upsertLead(obj);
       UI.closeModal(); UI.toast(edit ? 'Contato atualizado' : 'Contato adicionado', '', 'ok');
       this.render('funil');
@@ -682,7 +709,7 @@ const Consultor = {
     const linha = (lbl, val, cls, sub) => `
       <div class="row between alc" style="padding:12px 0;border-bottom:1px solid var(--border)">
         <div><div style="font-size:14px" class="soft">${lbl}</div>${sub ? `<div class="mut" style="font-size:12px">${sub}</div>` : ''}</div>
-        <b style="font-size:16px;${cls || ''}">${OB.brl(val)}</b>
+        <b style="font-size:16px;${cls || ''}">${OB.fmt(val)}</b>
       </div>`;
 
     const bloqueadoHTML = r.bloqueados.length ? r.bloqueados.map(b => `
@@ -690,25 +717,25 @@ const Consultor = {
         <div class="row alc" style="gap:10px">
           <span class="iconbtn" style="width:34px;height:34px;background:var(--surface-3)">${UI.icon('lock',15)}</span>
           <div><b style="font-size:14px">Nível ${b.nivel.nome} · ${(b.nivel.rate*100)|0}%</b>
-          <div class="mut" style="font-size:12px">Faltam ${OB.brl(b.faltaVolume)} em vendas no mês para desbloquear <b style="color:var(--brand)">+${b.extraPct}%</b></div></div>
+          <div class="mut" style="font-size:12px">Faltam ${OB.fmt(b.faltaVolume)} em vendas no mês para desbloquear <b style="color:var(--brand)">+${b.extraPct}%</b></div></div>
         </div>
       </div>`).join('') : `<div class="chip green" style="margin-top:4px">🏆 Você já está no nível máximo (Black · 20%)</div>`;
 
     UI.modal({
       title: 'Sua comissão do mês',
-      sub: `Nível ${r.nivel.nome} · taxa atual ${(r.rate*100)|0}% · volume ${OB.brl(r.volume)}`,
+      sub: `Nível ${r.nivel.nome} · taxa atual ${(r.rate*100)|0}% · volume ${OB.fmt(r.volume)}`,
       body: `
         <div class="card" style="background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:16px">
           <div style="font-size:12px;opacity:.85;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Disponível para solicitar agora</div>
-          <div style="font-size:32px;font-weight:800;letter-spacing:-.02em;margin:2px 0 4px">${OB.brl(r.disponivel)}</div>
-          <div style="font-size:12px;opacity:.9">${(r.rate*100)|0}% sobre ${OB.brl(r.volume)} vendidos no mês</div>
+          <div style="font-size:32px;font-weight:800;letter-spacing:-.02em;margin:2px 0 4px">${OB.fmt(r.disponivel)}</div>
+          <div style="font-size:12px;opacity:.9">${(r.rate*100)|0}% sobre ${OB.fmt(r.volume)} vendidos no mês</div>
         </div>
         ${linha('Em análise pelo admin', r.emAnalise, 'color:var(--text)', 'Aguardando repasse (até 3 dias úteis)')}
         ${linha('Já pago no mês', r.jaPago, 'color:#1fa855')}
         <div class="nav-label" style="padding-left:0;margin-top:8px">${UI.icon('lock',12)} Bloqueado pelo sistema — desbloqueie batendo metas</div>
         ${bloqueadoHTML}
         <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão é <b>progressiva de 10% a 20%</b> conforme o volume do mês. O pagamento é liberado pelo admin <b>mediante a comprovação</b> do serviço e do valor recebido pela OutBox.</div></div>`,
-      footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.brl(r.disponivel)}</button>`
+      footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.fmt(r.disponivel)}</button>`
     });
     const sol = document.getElementById('cp-sol');
     if (sol) sol.onclick = () => { UI.closeModal(); this.solicitarComissao(OB.comissaoDisponivel(u.id)); };
@@ -722,10 +749,10 @@ const Consultor = {
       body: `
         <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>O pagamento é feito <b>em até 3 dias úteis</b>, mediante a comprovação do serviço e dos valores que entraram na conta da OutBox.</div></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Vendas incluídas</span><b>${com.vendas.length}</b></div>
-        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Base de cálculo</span><b>${OB.brl(com.base)}</b></div>
+        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Base de cálculo</span><b>${OB.fmt(com.base)}</b></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Taxa do nível</span><b>${(com.rate*100)|0}%</b></div>
         <hr style="border:none;border-top:1px solid var(--border);margin:14px 0"/>
-        <div class="row between" style="font-size:20px"><b>Total a receber</b><b style="color:var(--brand)">${OB.brl(com.valor)}</b></div>
+        <div class="row between" style="font-size:20px"><b>Total a receber</b><b style="color:var(--brand)">${OB.fmt(com.valor)}</b></div>
         <div class="field" style="margin-top:16px"><label>Dados / chave PIX para recebimento <span class="req">*</span></label><input id="rq-pix" placeholder="CPF, e-mail, telefone ou chave aleatória"/></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="rq-go">Confirmar solicitação</button>`
     });
@@ -736,7 +763,7 @@ const Consultor = {
       OB.addRequest({
         id: OB.uid(), tipo: 'comissao', consultorId: u.id,
         consultorNome: u.nome + ' ' + u.sobrenome, valor: com.valor,
-        detalhe: `${com.vendas.length} venda(s) · base ${OB.brl(com.base)} · ${(com.rate*100)|0}%`,
+        detalhe: `${com.vendas.length} venda(s) · base ${OB.fmt(com.base)} · ${(com.rate*100)|0}%`,
         pix, status: 'solicitado', criadoEm: new Date().toISOString(),
         vendaIds: com.vendas.map(s => s.id)
       });
@@ -756,7 +783,7 @@ const Consultor = {
     return `<div class="table-wrap" style="border:none"><table><thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Valor</th><th>Status</th></tr></thead><tbody>
       ${reqs.map(r => { const st = stMap[r.status] || ['gray', r.status];
         // valor de prêmio não é exibido ao consultor
-        const valorCel = r.tipo === 'comissao' ? `<span class="strong">${OB.brl(r.valor)}</span>` : '<span class="mut">—</span>';
+        const valorCel = r.tipo === 'comissao' ? `<span class="strong">${OB.fmt(r.valor)}</span>` : '<span class="mut">—</span>';
         return `<tr><td>${OB.dataBR(r.criadoEm)}</td><td>${tipoLabel(r)}</td>
         <td class="mut">${r.detalhe||'-'}</td><td>${valorCel}</td>
         <td><span class="chip ${st[0]}">${st[1]}</span></td></tr>`; }).join('')}
@@ -783,8 +810,8 @@ const Consultor = {
             </div>
           </div>
           <div class="center soft" style="font-size:13px;margin-top:6px">
-            Volume no trimestre: <b style="color:var(--brand)">${OB.brl(vol)}</b>
-            ${prox ? ` · faltam <b>${OB.brl(prox.meta - vol)}</b>` : ''}
+            Volume no trimestre: <b style="color:var(--brand)">${OB.fmt(vol)}</b>
+            ${prox ? ` · faltam <b>${OB.fmt(prox.meta - vol)}</b>` : ''}
           </div>
         </div>
         <div class="card">
@@ -793,13 +820,13 @@ const Consultor = {
             <div class="prize reached" style="border:none;box-shadow:none;padding:0">
               <img src="${alc.img}" alt="${alc.nome}"/>
               <b style="font-size:20px">${alc.nome}</b>
-              <div class="meta">Meta de ${OB.brl(alc.meta)} atingida</div>
+              <div class="meta">Meta de ${OB.fmt(alc.meta)} atingida</div>
               <div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap">
                 <button class="btn brand sm" id="prize-produto">🎁 Receber o produto</button>
                 <button class="btn green sm" id="prize-dinheiro">💵 Receber o dinheiro</button>
               </div>
               <div class="hint" style="margin-top:12px">Escolha receber o produto físico ou o valor equivalente em dinheiro. A solicitação vai para o administrador.</div>
-            </div>` : this.empty('prize', 'Nenhum prêmio ainda', 'Continue vendendo! Ao atingir ' + (prox ? OB.brl(prox.meta) + ' você ganha o ' + prox.nome : 'as metas você ganha prêmios') + '.')}
+            </div>` : this.empty('prize', 'Nenhum prêmio ainda', 'Continue vendendo! Ao atingir ' + (prox ? OB.fmt(prox.meta) + ' você ganha o ' + prox.nome : 'as metas você ganha prêmios') + '.')}
         </div>
       </div>
 
@@ -811,7 +838,7 @@ const Consultor = {
             return `<div class="prize card ${reached?'reached':'locked'}" style="padding:18px">
               <img src="${p.img}" alt="${p.nome}"/>
               <b>${p.nome}</b>
-              <div class="meta">${OB.brl(p.meta)}</div>
+              <div class="meta">${OB.fmt(p.meta)}</div>
               <span class="chip ${reached?'green':'gray'}">${reached?'✓ Conquistado':'Bloqueado'}</span>
             </div>`;
           }).join('')}
@@ -1141,6 +1168,12 @@ const Consultor = {
             <div class="field"><label>UF <span class="req">*</span></label><input id="p-uf" value="${u.uf||''}" maxlength="2"/><div class="err">Obrigatório</div></div>
           </div>
 
+          <div class="nav-label" style="padding-left:0">Preferências</div>
+          <div class="field"><label>Moeda padrão</label>
+            <select id="p-moeda">${this.moedaOptions(u.moeda || 'BRL')}</select>
+            <div class="hint">Usada nos valores e totais (vendas, comissão, funil). Escolha Real, Dólar ou Euro para vender no exterior.</div>
+          </div>
+
           <div class="nav-label" style="padding-left:0">Conta e segurança</div>
           <div class="field"><label>E-mail <span class="req">*</span></label>
             <div class="row" style="gap:8px"><input id="p-email" value="${u.email||''}" class="grow" readonly/><button type="button" class="btn ghost" id="p-email-btn">Trocar</button></div>
@@ -1215,11 +1248,13 @@ const Consultor = {
         foto: document.getElementById('p-foto-data').value, nome: val('p-nome'), sobrenome: val('p-sobrenome'),
         nascimento: val('p-nasc'), doc: val('p-doc'), celular: val('p-cel'), instagram: val('p-insta'),
         cep: val('p-cep'), numero: val('p-num'), complemento: val('p-comp'), logradouro: val('p-log'),
-        bairro: val('p-bairro'), cidade: val('p-cidade'), uf: val('p-uf').toUpperCase(), email: val('p-email'), twoFA
+        bairro: val('p-bairro'), cidade: val('p-cidade'), uf: val('p-uf').toUpperCase(), email: val('p-email'), twoFA,
+        moeda: document.getElementById('p-moeda').value
       });
       OB.upsertUser(u);
       UI.toast('Perfil salvo!', 'Seus dados foram atualizados', 'ok');
       App.refreshSidebarUser();
+      App.refreshCommission(true);
     };
   },
 
