@@ -294,7 +294,7 @@ const Consultor = {
         </div>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <button class="btn brand" id="add-sale">${UI.icon('plus',16)} Lançar venda</button>
-          <button class="btn ghost" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
+          <button class="btn green" id="req-com" ${com.valor<=0?'disabled':''}>${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
         </div>
       </div>
 
