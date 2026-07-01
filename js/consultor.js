@@ -1405,54 +1405,113 @@ const Consultor = {
     const docLabel = digs.length > 11 ? 'CNPJ' : 'CPF';
     const docFmt = (typeof UI !== 'undefined' && UI.maskDoc) ? UI.maskDoc(u.doc || '') : (u.doc || '');
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
-    const titulo = o.geral ? 'Certificado de Conclusão da Trilha' : 'Certificado de Conclusão';
+    const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const sub = o.geral ? 'De Conclusão da Trilha' : 'De Conclusão';
     const desc = o.geral
       ? `concluiu integralmente a trilha de treinamentos da <b>OutBox Academy</b>, composta por <b>${o.qtd} treinamentos</b> e carga horária total de <b>${o.horas} horas</b>, com aproveitamento de 100%, dominando os produtos e os fundamentos de venda da OutBox Soluções Digitais.`
-      : `concluiu com aproveitamento de <b>100%</b> o treinamento <b>${o.curso}</b> da OutBox Academy, com carga horária de <b>${o.horas} horas</b>.`;
+      : `concluiu com aproveitamento de <b>100%</b> o treinamento <b>${o.curso}</b> da OutBox Academy, com carga horária de <b>${o.horas} horas</b>, demonstrando domínio do produto e dos argumentos de venda.`;
     const selo = o.geral ? 'TRILHA' : 'APROVADO';
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Certificado OutBox Academy · ${nome}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Pinyon+Script&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
 <style>@page{size:A4 landscape;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#e9edf1;color:#0A0A0A;display:flex;justify-content:center;padding:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.cert{position:relative;width:1040px;max-width:100%;aspect-ratio:1.414/1;background:#fff;padding:52px 62px;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden}
-.bar{position:absolute;top:0;left:0;right:0;height:10px;background:linear-gradient(90deg,#F15532,#e0431f)}
-.frame{position:absolute;inset:18px;border:2px solid #0A0A0A}.frame::before{content:'';position:absolute;inset:6px;border:1px solid #F15532}
-.glow{position:absolute;width:520px;height:520px;right:-160px;bottom:-220px;background:radial-gradient(circle,rgba(241,85,50,.10),transparent 70%)}
-.in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
-.top{display:flex;align-items:center;gap:14px}.mk{width:52px;height:52px;border-radius:26px}
-.bt b{font-size:20px;font-weight:800;letter-spacing:-.01em;display:block;line-height:1}.bt span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8a96a3;font-weight:700}
-.acad{margin-left:auto;font-size:12px;font-weight:800;letter-spacing:.22em;color:#F15532;text-transform:uppercase}
-.mid{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:6px 0}
-.kick{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#8a96a3;font-weight:700}
-h1{font-family:'Playfair Display',serif;font-size:52px;font-weight:900;letter-spacing:.02em;margin:2px 0 12px}
-.intro{font-size:15px;color:#46505c}
-.nome{font-family:'Playfair Display',serif;font-size:38px;font-weight:800;margin:8px auto;border-bottom:2px solid #F15532;padding:0 22px 6px;display:inline-block}
-.desc{font-size:15px;line-height:1.65;color:#2b3440;max-width:750px;margin:2px auto 0}.desc b{color:#0A0A0A}
-.horas{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#fbe9e4;color:#c0371c;font-weight:800;font-size:13.5px;padding:8px 16px;border-radius:999px}
-.foot{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:8px}
-.sign{width:290px;text-align:center}.sign .ln{border-top:1.5px solid #0A0A0A;padding-top:8px}.sign b{font-size:15px;font-weight:800}.sign span{display:block;font-size:11.5px;color:#8a96a3;font-weight:600;margin-top:2px}
-.seal{width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(241,85,50,.4);flex:none}
-.seal b{font-size:20px;font-weight:900;line-height:1}.seal span{font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
-.emit{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:10px;color:#a7b0ba}
-.ph{position:fixed;bottom:16px;right:16px;background:#F15532;color:#fff;padding:11px 18px;border-radius:10px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.35)}
+:root{--brand:#F15532;--brand-dk:#C0371C;--ink:#241708;--ink-soft:#6b5d4d;--cream:#F7F1E7;--paper:#FFFDFA}
+body{font-family:'Inter',sans-serif;background:#d9d2c6;color:var(--ink);display:flex;justify-content:center;padding:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cert{position:relative;width:1060px;max-width:100%;aspect-ratio:1.414/1;background:var(--cream);box-shadow:0 30px 80px rgba(60,40,20,.28);overflow:hidden}
+.art{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.paper{position:absolute;inset:26px;background:var(--paper);z-index:2;overflow:hidden}
+.paper::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(241,85,50,.028) 0 1px,transparent 1px 9px);opacity:.9}
+.paper::after{content:'';position:absolute;inset:14px;border:1.5px solid rgba(36,23,8,.14)}
+.in{position:absolute;inset:26px;z-index:4;display:flex;flex-direction:column;text-align:center;padding:30px 68px 20px}
+.brand{display:flex;align-items:center;justify-content:center;gap:11px;flex:none}
+.brand .mk{width:38px;height:38px;border-radius:11px;box-shadow:0 6px 16px rgba(241,85,50,.35)}
+.brand b{font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1}
+.brand span{display:block;font-size:8.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-top:2px}
+.brand .bt{text-align:left}
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
+h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-spacing:-.01em;line-height:.92;color:var(--ink)}
+.subt{font-size:13.5px;font-weight:800;letter-spacing:.4em;text-transform:uppercase;color:var(--brand);margin-top:10px;padding-left:.4em}
+.pres{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--ink-soft);margin-top:22px;letter-spacing:.02em}
+.nome{font-family:'Pinyon Script',cursive;font-size:52px;line-height:1.05;color:var(--brand-dk);margin:0 0 4px;padding:0 20px;white-space:nowrap;max-width:100%}
+.rule{width:min(540px,72%);height:1.5px;background:linear-gradient(90deg,transparent,rgba(36,23,8,.35),transparent);margin:2px auto 16px}
+.desc{font-family:'Cormorant Garamond',serif;font-size:16.5px;line-height:1.5;color:#5a4c3c;max-width:620px;margin:0 auto;font-weight:600}.desc b{color:var(--ink);font-weight:700}
+.horas{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:rgba(241,85,50,.1);color:var(--brand-dk);font-weight:800;font-size:11.5px;letter-spacing:.02em;padding:7px 17px;border-radius:999px;text-transform:uppercase}
+.foot{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:26px;padding-top:16px}
+.sign{min-width:0}
+.sign .sig{font-family:'Pinyon Script',cursive;font-size:30px;line-height:1;color:var(--ink);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sign .ln{border-top:1.5px solid rgba(36,23,8,.55);padding-top:7px;margin-top:2px}
+.sign b{font-size:13px;font-weight:800;color:var(--ink);display:block}
+.sign span{display:block;font-size:9.5px;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-top:2px;text-transform:uppercase}
+.seal{position:relative;width:112px;height:112px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.seal svg{position:absolute;inset:0;width:100%;height:100%}
+.seal .sc{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.seal .pct{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;line-height:1}
+.seal .sl{font-size:8px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;margin-top:2px;opacity:.95}
+.seal .rib{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.seal .rib i{display:block;width:11px;height:20px;background:var(--brand-dk);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+.seal .rib i:last-child{background:var(--brand)}
+.emit{flex:none;text-align:center;font-size:9px;letter-spacing:.05em;color:#b7a893;margin-top:12px}
+.ph{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:11px 18px;border-radius:10px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.35)}
 @media print{body{background:#fff;padding:0}.cert{box-shadow:none;width:100%;height:100vh;aspect-ratio:auto}.ph{display:none}}</style></head>
-<body><div class="cert"><div class="bar"></div><div class="frame"></div><div class="glow"></div>
+<body><div class="cert">
+  <svg class="art" viewBox="0 0 1414 1000" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB454"/><stop offset="1" stop-color="#F15532"/></linearGradient>
+      <linearGradient id="gB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A18"/><stop offset="1" stop-color="#E8431C"/></linearGradient>
+      <linearGradient id="gC" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C0371C"/><stop offset="1" stop-color="#FF7A18"/></linearGradient>
+      <linearGradient id="gL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC978"/><stop offset="1" stop-color="#FF8A2B"/></linearGradient>
+      <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="3.4" fill="#F15532"/></pattern>
+    </defs>
+    <polygon points="1010,120 1414,0 1414,150" fill="url(#gL)"/>
+    <polygon points="1414,0 1414,430 1010,120" fill="url(#gA)"/>
+    <polygon points="1210,235 1414,165 1414,430" fill="url(#gB)"/>
+    <polygon points="1160,0 1414,0 1250,150" fill="url(#gC)" opacity=".85"/>
+    <polygon points="1250,470 1414,438 1414,470" fill="url(#gL)"/>
+    <polygon points="1250,470 1414,438 1414,600" fill="url(#gB)"/>
+    <polygon points="1414,1000 1414,690 1060,1000" fill="url(#gA)"/>
+    <polygon points="1414,690 1414,1000 1250,1000" fill="url(#gB)"/>
+    <polygon points="1060,1000 1250,845 1414,1000" fill="url(#gC)" opacity=".9"/>
+    <polygon points="0,590 490,1000 0,1000" fill="url(#gA)"/>
+    <polygon points="0,590 0,1000 250,1000" fill="url(#gB)"/>
+    <polygon points="250,1000 490,1000 300,835" fill="url(#gL)"/>
+    <polygon points="0,760 0,1000 210,1000" fill="url(#gC)" opacity=".9"/>
+    <polygon points="60,430 300,360 150,600" fill="url(#gA)"/>
+    <polygon points="60,430 150,600 30,560" fill="url(#gB)"/>
+    <polygon points="0,0 300,0 0,215" fill="url(#gA)"/>
+    <polygon points="0,0 175,0 0,120" fill="url(#gL)"/>
+    <polygon points="0,120 0,215 175,0" fill="url(#gB)" opacity=".55"/>
+    <rect x="600" y="40" width="150" height="72" fill="url(#dots)" opacity=".5"/>
+    <rect x="770" y="330" width="120" height="96" fill="url(#dots)" opacity=".45"/>
+    <rect x="470" y="560" width="120" height="72" fill="url(#dots)" opacity=".4"/>
+    <rect x="150" y="235" width="96" height="72" fill="url(#dots)" opacity=".35"/>
+  </svg>
+  <div class="paper"></div>
   <div class="in">
-    <div class="top">${mark}<div class="bt"><b>OutBox</b><span>Soluções Digitais</span></div><div class="acad">OutBox Academy</div></div>
-    <div class="mid">
-      <div class="kick">${titulo}</div>
-      <h1>CERTIFICADO</h1>
-      <div class="intro">Certificamos que</div>
+    <div class="brand">${mark}<div class="bt"><b>OutBox Academy</b><span>Soluções Digitais</span></div></div>
+    <div class="hero">
+      <h1>Certificado</h1>
+      <div class="subt">${sub}</div>
+      <div class="pres">Certificamos com orgulho que</div>
       <div class="nome">${nome}</div>
+      <div class="rule"></div>
       <div class="desc">${desc}</div>
       <div class="horas">Carga horária: ${o.horas} horas</div>
     </div>
     <div class="foot">
-      <div class="sign"><div class="ln"><b>Felipe Melo Rocha</b><span>CEO · OutBox Group Soluções Digitais</span></div></div>
-      <div class="seal"><b>100%</b><span>${selo}</span></div>
-      <div class="sign"><div class="ln"><b>${nome}</b><span>${docLabel}: ${docFmt || 'não informado'}</span></div></div>
+      <div class="sign"><div class="sig">Felipe Melo Rocha</div><div class="ln"><b>Felipe Melo Rocha</b><span>CEO · OutBox Group Soluções Digitais</span></div></div>
+      <div class="seal">
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="sealg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7A18"/><stop offset="1" stop-color="#E8431C"/></linearGradient></defs>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#E0431C" stroke-width="12" stroke-dasharray="5.1 7.35"/>
+          <circle cx="60" cy="60" r="47" fill="url(#sealg)"/>
+          <circle cx="60" cy="60" r="47" fill="none" stroke="#fff" stroke-width="1.3" opacity=".45"/>
+          <circle cx="60" cy="60" r="39" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="1.5 4" opacity=".85"/>
+        </svg>
+        <div class="sc"><span class="pct">100%</span><span class="sl">${selo}</span></div>
+        <div class="rib"><i></i><i></i></div>
+      </div>
+      <div class="sign"><div class="sig">${nome}</div><div class="ln"><b>${nome}</b><span>${docLabel}: ${docFmt || 'não informado'}</span></div></div>
     </div>
     <div class="emit">Emitido em ${hoje} · OutBox Academy · consultores.outboxgroup.com.br</div>
   </div>
