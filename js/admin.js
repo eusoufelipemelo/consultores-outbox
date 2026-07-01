@@ -414,7 +414,7 @@ const Admin = {
     const a = OB.getAviso();
     const v = document.getElementById('main-view');
     v.innerHTML = `
-      <div class="cards" style="grid-template-columns:1.3fr .9fr;gap:18px;align-items:start">
+      <div class="avisos-grid">
         <div class="card">
           <div class="card-head"><h3>Mensagem do aviso</h3></div>
           <div class="field"><label>Texto que aparecerá na barra</label>
