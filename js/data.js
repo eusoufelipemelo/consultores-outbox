@@ -212,7 +212,9 @@ const OB = {
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
     // progresso de treinamentos: todas as linhas visíveis (RLS: consultor vê as suas, admin vê todas)
     const tprows = (tp && tp.data) ? tp.data : [];
-    this.db.treinosAll = tprows.map(r => ({ consultorId: r.consultor_id, treinoId: r.treino_id, melhorNota: r.melhor_nota || 0, tentativas: r.tentativas || 0, concluido: !!r.concluido }));
+    const objTr = (typeof TREINOS !== 'undefined' ? TREINOS.OBJETIVO : 90);
+    // "concluído" é derivado da nota (>= OBJETIVO), garantindo consistência mesmo em registros salvos com regra antiga
+    this.db.treinosAll = tprows.map(r => ({ consultorId: r.consultor_id, treinoId: r.treino_id, melhorNota: r.melhor_nota || 0, tentativas: r.tentativas || 0, concluido: (r.melhor_nota || 0) >= objTr }));
     this.db.treinos = {};
     this.db.treinosAll.filter(r => r.consultorId === user.id).forEach(r => { this.db.treinos[r.treinoId] = { melhorNota: r.melhorNota, tentativas: r.tentativas, concluido: r.concluido }; });
     this.db.ranking = (rk && rk.data) ? rk.data : [];

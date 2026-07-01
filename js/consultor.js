@@ -1338,24 +1338,26 @@ const Consultor = {
     App.animateBars();
   },
 
-  /* faixa de certificados: o certificado só libera com 100% no treinamento */
+  /* faixa de certificados: o certificado libera ao concluir o treinamento com aprovação (>= OBJETIVO) */
   certificadosStrip(consultorId) {
     const disp = TREINOS.disponiveis();
-    const cem = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= 100);
+    const obj = TREINOS.OBJETIVO;
+    const ok = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= obj);
     const total = disp.length;
-    const todos = total > 0 && cem.length === total;
+    const todos = total > 0 && ok.length === total;
     const hTot = TREINOS.horasTotais();
     return `<div class="card cert-card" style="margin-bottom:18px">
       <div class="row between alc" style="gap:12px;flex-wrap:wrap">
         <div class="row alc" style="gap:10px">
           <span class="tr-ic on">${UI.icon('shield',18)}</span>
-          <div><b style="font-size:15px">Seus certificados</b><div class="mut" style="font-size:12px">${cem.length} de ${total} treinamentos com 100% · o certificado exige nota máxima</div></div>
+          <div><b style="font-size:15px">Seus certificados</b><div class="mut" style="font-size:12px">${ok.length} de ${total} treinamentos concluídos · o certificado exige <b>${obj}%</b> de aproveitamento</div></div>
         </div>
-        <button class="btn ${todos ? 'brand' : 'ghost'}" id="cert-geral" ${todos ? '' : 'disabled'} title="${todos ? 'Emitir o certificado geral da OutBox Academy (' + hTot + 'h)' : 'Conclua todos os treinamentos com 100% para liberar o certificado geral'}">${UI.icon('prize',16)} Certificado geral${todos ? ' · ' + hTot + 'h' : ''}</button>
+        <button class="btn ${todos ? 'brand' : 'ghost'}" id="cert-geral" ${todos ? '' : 'disabled'} title="${todos ? 'Emitir o certificado geral da OutBox Academy (' + hTot + 'h)' : 'Conclua os ' + total + ' treinamentos com no mínimo ' + obj + '% em cada um para liberar o certificado geral'}">${UI.icon('prize',16)} Certificado geral${todos ? ' · ' + hTot + 'h' : ''}</button>
       </div>
-      ${cem.length
-        ? `<div class="cert-list" style="margin-top:12px">${cem.map(p => `<button class="cert-badge dl" data-cert="${p.id}" style="--mc:#C9A227" title="Emitir certificado de ${p.nome} (${TREINOS.horasDe(p.id)}h)">${UI.icon('download',13)} ${p.nome}</button>`).join('')}</div>`
-        : `<div class="mut" style="font-size:13px;margin-top:8px">Faça <b>100%</b> em um treinamento para liberar o certificado dele. Complete os <b>${total} treinamentos</b> com nota máxima para emitir o certificado geral (${hTot} horas).</div>`}
+      ${ok.length
+        ? `<div class="cert-list" style="margin-top:12px">${ok.map(p => `<button class="cert-badge dl" data-cert="${p.id}" style="--mc:#C9A227" title="Emitir certificado de ${p.nome} (${TREINOS.horasDe(p.id)}h)">${UI.icon('download',13)} ${p.nome}</button>`).join('')}</div>`
+        : ''}
+      <div class="mut" style="font-size:12.5px;margin-top:10px;line-height:1.55">${UI.icon('info',12)} O certificado de cada treinamento é liberado ao concluí-lo com <b>${obj}%</b> ou mais de aproveitamento. O <b>certificado geral</b> só é emitido quando <b>100% dos ${total} treinamentos</b> estiverem concluídos, cada um com no mínimo <b>${obj}% de aprovação</b> (carga total de ${hTot} horas).</div>
     </div>`;
   },
 
@@ -1376,17 +1378,22 @@ const Consultor = {
   },
 
   emitirCertificado(treinoId) {
-    if (OB.treinoProgress(treinoId).melhorNota < 100) return UI.toast('Ainda não liberado', 'Faça 100% neste treinamento para emitir o certificado.', 'err');
+    const obj = TREINOS.OBJETIVO;
+    const nota = OB.treinoProgress(treinoId).melhorNota;
+    if (nota < obj) return UI.toast('Ainda não liberado', `Conclua este treinamento com no mínimo ${obj}% de aproveitamento para emitir o certificado.`, 'err');
     if (!this._certPerfilOk()) return;
     const t = TREINOS.buscar(treinoId);
-    this._abrirCertificado(this.buildCertificadoHTML({ curso: t.nome, horas: TREINOS.horasDe(treinoId), consultor: this.u() }));
+    this._abrirCertificado(this.buildCertificadoHTML({ curso: t.nome, horas: TREINOS.horasDe(treinoId), nota, consultor: this.u() }));
   },
 
   emitirCertificadoGeral() {
-    const faltam = TREINOS.disponiveis().filter(p => OB.treinoProgress(p.id).melhorNota < 100);
-    if (faltam.length) return UI.toast('Ainda não liberado', `Faltam ${faltam.length} treinamento(s) com 100% para o certificado geral.`, 'err');
+    const obj = TREINOS.OBJETIVO;
+    const disp = TREINOS.disponiveis();
+    const faltam = disp.filter(p => OB.treinoProgress(p.id).melhorNota < obj);
+    if (faltam.length) return UI.toast('Ainda não liberado', `Faltam ${faltam.length} treinamento(s) concluído(s) com no mínimo ${obj}% para o certificado geral.`, 'err');
     if (!this._certPerfilOk()) return;
-    this._abrirCertificado(this.buildCertificadoHTML({ geral: true, horas: TREINOS.horasTotais(), qtd: TREINOS.disponiveis().length, consultor: this.u() }));
+    const media = Math.round(disp.reduce((s, p) => s + OB.treinoProgress(p.id).melhorNota, 0) / disp.length);
+    this._abrirCertificado(this.buildCertificadoHTML({ geral: true, horas: TREINOS.horasTotais(), qtd: disp.length, media, consultor: this.u() }));
   },
 
   _abrirCertificado(html) {
@@ -1406,10 +1413,11 @@ const Consultor = {
     const docFmt = (typeof UI !== 'undefined' && UI.maskDoc) ? UI.maskDoc(u.doc || '') : (u.doc || '');
     const hoje = new Date().toLocaleDateString('pt-BR');
     const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const notaPct = o.geral ? (o.media != null ? o.media : 100) : (o.nota != null ? o.nota : 100);
     const sub = o.geral ? 'De Conclusão da Trilha' : 'De Conclusão';
     const desc = o.geral
-      ? `concluiu integralmente a trilha de treinamentos da <b>OutBox Academy</b>, composta por <b>${o.qtd} treinamentos</b> e carga horária total de <b>${o.horas} horas</b>, com aproveitamento de 100%, dominando os produtos e os fundamentos de venda da OutBox Soluções Digitais.`
-      : `concluiu com aproveitamento de <b>100%</b> o treinamento <b>${o.curso}</b> da OutBox Academy, com carga horária de <b>${o.horas} horas</b>, demonstrando domínio do produto e dos argumentos de venda.`;
+      ? `concluiu integralmente a trilha de treinamentos da <b>OutBox Academy</b>, composta por <b>${o.qtd} treinamentos</b> e carga horária total de <b>${o.horas} horas</b>, com aproveitamento médio de <b>${notaPct}%</b> e nota mínima de 90% em cada treinamento, dominando os produtos e os fundamentos de venda da OutBox Soluções Digitais.`
+      : `concluiu com aproveitamento de <b>${notaPct}%</b> o treinamento <b>${o.curso}</b> da OutBox Academy, com carga horária de <b>${o.horas} horas</b>, demonstrando domínio do produto e dos argumentos de venda.`;
     const selo = o.geral ? 'TRILHA' : 'APROVADO';
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Certificado OutBox Academy · ${nome}</title>
@@ -1508,7 +1516,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           <circle cx="60" cy="60" r="47" fill="none" stroke="#fff" stroke-width="1.3" opacity=".45"/>
           <circle cx="60" cy="60" r="39" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="1.5 4" opacity=".85"/>
         </svg>
-        <div class="sc"><span class="pct">100%</span><span class="sl">${selo}</span></div>
+        <div class="sc"><span class="pct">${notaPct}%</span><span class="sl">${selo}</span></div>
         <div class="rib"><i></i><i></i></div>
       </div>
       <div class="sign"><div class="sig">${nome}</div><div class="ln"><b>${nome}</b><span>${docLabel}: ${docFmt || 'não informado'}</span></div></div>
@@ -1713,9 +1721,9 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           <div><b>${aprovado ? 'Sim' : 'Ainda não'}</b><span>aprovado</span></div>
           <div><b>${Math.max(nota, antes)}%</b><span>melhor nota</span></div>
         </div>
-        ${Math.max(nota, antes) >= 100
+        ${Math.max(nota, antes) >= TREINOS.OBJETIVO
           ? `<button class="btn block" id="tr-cert" style="margin-top:16px;height:50px;background:linear-gradient(135deg,#C9A227,#b8901f);color:#fff;box-shadow:0 8px 20px rgba(201,162,39,.3)">${UI.icon('prize',18)} Emitir certificado deste treinamento</button>`
-          : `<div class="hint" style="text-align:center;margin-top:14px">${UI.icon('prize',13)} Chegue aos <b>100%</b> para emitir o certificado deste treinamento.</div>`}
+          : `<div class="hint" style="text-align:center;margin-top:14px">${UI.icon('prize',13)} Alcance <b>${TREINOS.OBJETIVO}%</b> de aproveitamento para emitir o certificado deste treinamento.</div>`}
         <div class="row" style="gap:10px;margin-top:16px;flex-wrap:wrap">
           <button class="btn brand grow" id="tr-refazer" style="height:48px">${UI.icon('academy',16)} Treinar de novo</button>
           <button class="btn ghost" id="tr-revisar" style="height:48px">${UI.icon('eye',16)} Revisar respostas</button>

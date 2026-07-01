@@ -6,7 +6,7 @@
    ============================================================ */
 const TREINOS = {
   /* nota mínima (%) para ser aprovado em qualquer treinamento */
-  OBJETIVO: 70,
+  OBJETIVO: 90,
 
   /* níveis de dificuldade (cor + rótulo) */
   NIVEIS: {
