@@ -1621,8 +1621,18 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   },
 
   iniciarTreino(id) {
-    this._quiz = { id, i: 0, respostas: [] };
+    this._quiz = { id, i: 0, respostas: [], ordem: [] };
     this.treinoPergunta();
+  },
+
+  /* Fisher-Yates: retorna [0..n-1] em ordem aleatória (embaralha alternativas) */
+  _embaralhar(n) {
+    const a = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   },
 
   treinoPergunta() {
@@ -1630,6 +1640,9 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const total = quiz.perguntas.length; const p = quiz.perguntas[st.i];
     const niv = TREINOS.NIVEIS[p.nivel] || TREINOS.NIVEIS.basico;
     const pct = Math.round(st.i / total * 100);
+    // ordem embaralhada das alternativas (estável durante a tentativa)
+    let ordem = st.ordem[st.i];
+    if (!ordem) { ordem = this._embaralhar(p.ops.length); st.ordem[st.i] = ordem; }
     const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
     v.innerHTML = `
       <div class="quiz-top">
@@ -1641,7 +1654,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       <div class="card quiz-card" style="max-width:660px;margin:16px auto 0" id="quiz-q">
         <h2 class="quiz-q">${p.q}</h2>
         <div class="quiz-ops" id="quiz-ops">
-          ${p.ops.map((o, k) => `<button class="opt" data-op="${k}"><span class="opt-k">${String.fromCharCode(65 + k)}</span><span class="opt-t">${o}</span></button>`).join('')}
+          ${ordem.map((orig, disp) => `<button class="opt" data-op="${orig}"><span class="opt-k">${String.fromCharCode(65 + disp)}</span><span class="opt-t">${p.ops[orig]}</span></button>`).join('')}
         </div>
         <div id="quiz-fb"></div>
       </div>`;
@@ -1656,10 +1669,11 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     st.respostas[st.i] = idx;
     const acertou = idx === p.correta;
     const ops = document.querySelectorAll('#quiz-ops .opt');
-    ops.forEach((b, k) => {
+    ops.forEach((b) => {
+      const opIdx = parseInt(b.dataset.op);
       b.classList.add('done');
-      if (k === p.correta) b.classList.add('correct');
-      else if (k === idx) b.classList.add('wrong');
+      if (opIdx === p.correta) b.classList.add('correct');
+      else if (opIdx === idx) b.classList.add('wrong');
     });
     const total = quiz.perguntas.length; const ultima = st.i === total - 1;
     document.getElementById('quiz-fb').innerHTML = `
