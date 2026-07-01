@@ -630,3 +630,33 @@ td .strong { color: var(--text); font-weight: 600; }
   .tr-hero-in { justify-content: center; text-align: center; }
   .tr-hero-in .grow { text-align: center; }
 }
+
+/* certificados */
+.cert-card .cert-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.cert-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+  padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--mc); color: var(--mc);
+  background: color-mix(in srgb, var(--mc) 10%, transparent); }
+.cert-badge svg { width: 14px; height: 14px; }
+.cert-badge span { font-weight: 600; opacity: .8; }
+
+/* ranking */
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; }
+.rank-row + .rank-row { border-top: 1px solid var(--border); }
+.rank-row.me { background: var(--brand-soft); }
+.rank-pos { width: 24px; text-align: center; font-weight: 700; color: var(--text-mut); flex: none; }
+.rank-nome { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-stat { font-size: 13px; color: var(--text-soft); flex: none; white-space: nowrap; }
+.rank-stat b { color: var(--text); }
+.rank-media { font-weight: 800; font-size: 14px; color: var(--brand); flex: none; min-width: 44px; text-align: right; }
+
+/* flashcards de objeção */
+.obj-card { border-left: 4px solid var(--brand); }
+.obj-q { display: flex; align-items: flex-start; gap: 8px; font-weight: 700; font-size: 15px; line-height: 1.4; }
+.obj-q svg { color: var(--brand); flex: none; margin-top: 2px; }
+.obj-a { margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--text); }
+.obj-a b { color: #1fa855; }
+.obj-e { margin-top: 8px; font-size: 12.5px; line-height: 1.55; color: var(--text-mut); padding-top: 8px; border-top: 1px solid var(--border); }
+
+@media (max-width: 520px) {
+  .rank-stat { display: none; }
+}

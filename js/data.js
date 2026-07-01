@@ -149,7 +149,7 @@ const OB = {
   ],
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {} },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -184,7 +184,7 @@ const OB = {
   async loadAll() {
     const { data: { user } } = await SB.auth.getUser();
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
-    const [prof, profs, cli, sal, req, lds, avi, tp] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select('*'),
       SB.from('clients').select('*'),
@@ -192,7 +192,8 @@ const OB = {
       SB.from('requests').select('*'),
       SB.from('leads').select('*'),
       SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle(),
-      SB.from('training_progress').select('*').eq('consultor_id', user.id)
+      SB.from('training_progress').select('*'),
+      SB.rpc('ranking_treinamentos')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -209,11 +210,15 @@ const OB = {
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
     this.db.leads = (lds.data || []).map(r => this._lIn(r));
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
+    // progresso de treinamentos: todas as linhas visíveis (RLS: consultor vê as suas, admin vê todas)
+    const tprows = (tp && tp.data) ? tp.data : [];
+    this.db.treinosAll = tprows.map(r => ({ consultorId: r.consultor_id, treinoId: r.treino_id, melhorNota: r.melhor_nota || 0, tentativas: r.tentativas || 0, concluido: !!r.concluido }));
     this.db.treinos = {};
-    (tp && tp.data ? tp.data : []).forEach(r => { this.db.treinos[r.treino_id] = { melhorNota: r.melhor_nota || 0, tentativas: r.tentativas || 0, concluido: !!r.concluido }; });
+    this.db.treinosAll.filter(r => r.consultorId === user.id).forEach(r => { this.db.treinos[r.treinoId] = { melhorNota: r.melhorNota, tentativas: r.tentativas, concluido: r.concluido }; });
+    this.db.ranking = (rk && rk.data) ? rk.data : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {} }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -271,6 +276,17 @@ const OB = {
 
   /* ---------- treinamentos (quiz) ---------- */
   treinoProgress(id) { return this.db.treinos[id] || { melhorNota: 0, tentativas: 0, concluido: false }; },
+  /* progresso de um consultor específico (para o admin) */
+  treinosDoConsultor(consultorId) {
+    const m = {};
+    (this.db.treinosAll || []).filter(r => r.consultorId === consultorId).forEach(r => { m[r.treinoId] = r; });
+    return m;
+  },
+  /* certificados (treinamentos concluídos) de um consultor */
+  certificados(consultorId) {
+    return (this.db.treinosAll || []).filter(r => r.consultorId === consultorId && r.concluido);
+  },
+  rankingTreinos() { return this.db.ranking || []; },
   saveTreino(id, nota) {
     const cur = this.treinoProgress(id);
     const melhor = Math.max(cur.melhorNota, nota);

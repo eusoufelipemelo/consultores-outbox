@@ -481,6 +481,7 @@ const Consultor = {
             <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
             <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
         </div>
+        <div id="s-treino-aviso"></div>
         <div class="field"><label>Preço</label>
           <select id="s-precomodo">
             <option value="tabela">Tabela (pelo porte)</option>
@@ -540,9 +541,20 @@ const Consultor = {
         document.getElementById('s-hint').textContent = ref ? `Referência da tabela (${porteNome}): ${OB.money(ref, sMoeda.value)}. Digite o valor do projeto.` : 'Digite o valor do projeto.';
       }
     };
-    sProd.onchange = aplicarPreco;
+    // lembrete de treinamento: se o produto tem treino disponível e o consultor ainda não foi aprovado
+    const updateTreinoAviso = () => {
+      const box = document.getElementById('s-treino-aviso'); if (!box) return;
+      const t = TREINOS.treinoDoProduto(sProd.value);
+      if (t && t.disponivel && !OB.treinoProgress(t.id).concluido) {
+        box.innerHTML = `<div class="notice" style="margin-bottom:16px;align-items:center">${UI.icon('academy',16)}<div class="grow" style="font-size:12.5px">Você ainda não concluiu o treinamento de <b>${t.nome}</b>. Treinar antes ajuda a vender melhor.</div><button type="button" class="btn ghost" id="s-ir-treino" style="white-space:nowrap;padding:7px 12px;font-size:12px">Treinar</button></div>`;
+        const b = document.getElementById('s-ir-treino');
+        if (b) b.onclick = () => { UI.closeModal(); App.go('treinamentos'); setTimeout(() => this.treinoIntro(t.id), 60); };
+      } else { box.innerHTML = ''; }
+    };
+    sProd.onchange = () => { aplicarPreco(); updateTreinoAviso(); };
     sCli.onchange = () => { sincPorteComCliente(); aplicarPreco(); };
     sPorte.onchange = aplicarPreco;
+    updateTreinoAviso();
     sModo.onchange = () => {
       // ao mudar para personalizado, mantém o valor atual; ao voltar p/ tabela, reaplica
       if (sModo.value === 'personalizado') { sVal.focus(); sVal.select && sVal.select(); }
@@ -1291,6 +1303,7 @@ const Consultor = {
   /* ====================== TREINAMENTOS (quiz gamificado) ====================== */
   view_treinamentos() {
     const v = document.getElementById('main-view');
+    const u = this.u();
     const prods = TREINOS.PRODUTOS;
     const disp = prods.filter(p => p.disponivel);
     const concluidos = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= TREINOS.OBJETIVO).length;
@@ -1311,12 +1324,50 @@ const Consultor = {
           </div>
         </div>
       </div>
+      ${this.certificadosStrip(u.id)}
       <div class="nav-label" style="padding-left:0;margin-bottom:10px">Treinamentos de produto</div>
       <div class="cards cols-2" id="tr-grid">
         ${prods.map(p => this.treinoCard(p)).join('')}
-      </div>`;
+      </div>
+      ${this.rankingHTML(u.id)}`;
     v.querySelectorAll('[data-treino]').forEach(el => el.onclick = () => this.treinoIntro(el.dataset.treino));
     App.animateBars();
+  },
+
+  /* faixa de certificados conquistados (treinamentos concluídos) */
+  certificadosStrip(consultorId) {
+    const certs = OB.certificados(consultorId);
+    const feitos = certs.map(c => TREINOS.PRODUTOS.find(p => p.id === c.treinoId)).filter(Boolean);
+    const total = TREINOS.PRODUTOS.filter(p => p.disponivel).length;
+    return `<div class="card cert-card" style="margin-bottom:18px">
+      <div class="row between alc" style="margin-bottom:${feitos.length ? '12px' : '0'}">
+        <div class="row alc" style="gap:10px">
+          <span class="tr-ic on">${UI.icon('shield',18)}</span>
+          <div><b style="font-size:15px">Seus certificados</b><div class="mut" style="font-size:12px">${feitos.length} de ${total} produtos com você já apto a vender</div></div>
+        </div>
+      </div>
+      ${feitos.length
+        ? `<div class="cert-list">${feitos.map(p => { const pr = OB.treinoProgress(p.id); const med = TREINOS.medalha(pr.melhorNota); return `<div class="cert-badge" style="--mc:${med.cor}" title="Melhor nota: ${pr.melhorNota}%">${UI.icon('prize',14)} ${p.nome} <span>${med.nome}</span></div>`; }).join('')}</div>`
+        : `<div class="mut" style="font-size:13px;padding:2px 0">Conclua um treinamento (nota &ge; ${TREINOS.OBJETIVO}%) para ganhar seu primeiro certificado e mostrar que está apto a vender aquele produto.</div>`}
+    </div>`;
+  },
+
+  /* ranking da equipe (RPC agregada) */
+  rankingHTML(meId) {
+    const rk = OB.rankingTreinos();
+    if (!rk.length) return '';
+    const medalPos = ['#C9A227', '#9AA3AD', '#B07B4F'];
+    return `<div class="nav-label" style="padding-left:0;margin:22px 0 10px">${UI.icon('trend',13)} Ranking de treinamentos da equipe</div>
+      <div class="card" style="padding:6px 4px">
+        ${rk.slice(0, 8).map((r, i) => `
+          <div class="rank-row ${r.consultor_id === meId ? 'me' : ''}">
+            <span class="rank-pos" style="${i < 3 ? 'color:' + medalPos[i] + ';font-weight:800' : ''}">${i + 1}</span>
+            <span class="rank-nome grow">${(r.nome || '').trim() || 'Consultor'}${r.consultor_id === meId ? ' <span class="chip brand" style="font-size:10px;padding:1px 6px">você</span>' : ''}</span>
+            <span class="rank-stat"><b>${r.concluidos}</b> ${r.concluidos == 1 ? 'certificado' : 'certificados'}</span>
+            <span class="rank-media">${r.media}%</span>
+          </div>`).join('')}
+      </div>
+      <div class="hint" style="margin-top:8px">Ranking por certificados conquistados e média das notas. Treine mais para subir!</div>`;
   },
 
   treinoCard(p) {
@@ -1371,10 +1422,36 @@ const Consultor = {
           <div><b>${pr.tentativas ? pr.melhorNota + '%' : '—'}</b><span>sua melhor</span></div>
         </div>
         <button class="btn brand block" id="tr-start" style="margin-top:20px;height:52px;font-size:16px">${UI.icon('academy',18)} ${pr.tentativas ? 'Treinar de novo' : 'Começar treinamento'}</button>
+        <button class="btn ghost block" id="tr-obj" style="margin-top:10px">${UI.icon('shield',16)} Revisão rápida de objeções</button>
         <div class="hint" style="text-align:center;margin-top:10px">Sem pressa. Cada resposta vem com uma explicação para você aprender.</div>
       </div>`;
     document.getElementById('tr-voltar').onclick = () => this.render('treinamentos');
     document.getElementById('tr-start').onclick = () => this.iniciarTreino(id);
+    document.getElementById('tr-obj').onclick = () => this.treinoObjecoes(id);
+  },
+
+  /* modo objeções: flashcards só das questões avançadas (objeções/venda), sem nota */
+  treinoObjecoes(id) {
+    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.PRODUTOS.find(p => p.id === id);
+    if (!quiz) return;
+    const objs = quiz.perguntas.filter(p => p.nivel === 'avancado');
+    const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
+    v.innerHTML = `
+      <button class="tr-back" id="tr-voltar">${UI.icon('chevron',16)} Voltar ao treinamento</button>
+      <div style="max-width:660px;margin:0 auto">
+        <div class="card" style="text-align:center;padding:22px 20px;margin-bottom:14px;background:linear-gradient(135deg,#1a1207,var(--brand-600));color:#fff;border:none">
+          <span class="chip" style="background:rgba(255,255,255,.18);color:#fff;font-weight:700;border:none">Revisão rápida</span>
+          <h2 style="font-size:20px;font-weight:800;margin:10px 0 4px;color:#fff">Objeções de ${prod.nome}</h2>
+          <p style="opacity:.9;font-size:13px;color:#fff;max-width:440px;margin:0 auto">Bata o olho antes da reunião. Cada card traz a objeção do cliente e a melhor resposta.</p>
+        </div>
+        ${objs.map((p, i) => `
+          <div class="card obj-card" style="margin-bottom:12px">
+            <div class="obj-q">${UI.icon('help',16)} <span>${p.q}</span></div>
+            <div class="obj-a"><b>Melhor resposta:</b> ${p.ops[p.correta]}</div>
+            <div class="obj-e">${p.exp}</div>
+          </div>`).join('')}
+      </div>`;
+    document.getElementById('tr-voltar').onclick = () => this.treinoIntro(id);
   },
 
   iniciarTreino(id) {
@@ -1534,6 +1611,7 @@ const Consultor = {
     const u = this.u();
     const v = document.getElementById('main-view');
     v.innerHTML = `
+      ${u.role !== 'admin' ? `<div style="max-width:760px">${this.certificadosStrip(u.id)}</div>` : ''}
       <div class="card pad-lg" style="max-width:760px">
         <form id="form-perfil">
           <div class="avatar-up">

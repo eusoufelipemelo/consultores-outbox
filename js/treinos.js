@@ -15,6 +15,14 @@ const TREINOS = {
     avancado:      { nome: 'Avançado',      chip: 'brand' }
   },
 
+  /* mapeia o produto da venda para o treinamento correspondente */
+  PRODUTO_TREINO: { onepage: 'onepage', institucional: 'institucional', ecommerce: 'ecommerce', sistemas: 'sistemas', identidade: 'identidade' },
+  treinoDoProduto(produtoId) {
+    const tid = this.PRODUTO_TREINO[produtoId];
+    if (!tid) return null;
+    return this.PRODUTOS.find(p => p.id === tid) || null;
+  },
+
   /* medalhas por faixa de nota final */
   medalha(nota) {
     if (nota >= 100) return { id: 'perfeito', nome: 'Especialista', cor: '#111111', sub: 'Gabaritou! Você domina esse produto.' };

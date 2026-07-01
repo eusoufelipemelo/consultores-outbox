@@ -8,6 +8,7 @@ const Admin = {
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
@@ -16,6 +17,7 @@ const Admin = {
     financeiro:  ['Gestão Financeira', 'Comissões e prêmios — pague mediante comprovação'],
     consultores: ['Consultores', 'Todos os consultores e seus números'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
+    treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']
   },
@@ -482,6 +484,46 @@ const Admin = {
         UI.toast('Aviso removido', '', 'ok');
       }, 'Remover');
     };
+  },
+
+  /* ====================== TREINAMENTOS DA EQUIPE ====================== */
+  view_treinamentos() {
+    const v = document.getElementById('main-view');
+    const consultores = this.consultores();
+    const disp = TREINOS.PRODUTOS.filter(p => p.disponivel);
+    // KPIs
+    const totalCert = OB.db.treinosAll.filter(r => r.concluido).length;
+    const comAlgum = new Set(OB.db.treinosAll.filter(r => r.concluido).map(r => r.consultorId)).size;
+    const rk = OB.rankingTreinos();
+    const mediaGeral = rk.length ? Math.round(rk.reduce((t, r) => t + Number(r.media || 0), 0) / rk.length) : 0;
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:18px">
+        ${Consultor.kpi('shield', totalCert, 'Certificados emitidos', 'Treinamentos concluídos no total')}
+        ${Consultor.kpi('users', comAlgum + '/' + consultores.length, 'Consultores certificados', 'Com ao menos 1 treinamento')}
+        ${Consultor.kpi('trend', mediaGeral + '%', 'Média geral', 'Média das melhores notas')}
+      </div>
+      <div class="nav-label" style="padding-left:0;margin-bottom:10px">Progresso por consultor</div>
+      <div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>Consultor</th><th>Certificados</th><th>Progresso</th><th>Produtos</th></tr></thead><tbody>
+        ${consultores.map(c => {
+          const prog = OB.treinosDoConsultor(c.id);
+          const feitos = disp.filter(p => prog[p.id] && prog[p.id].concluido);
+          const pct = disp.length ? Math.round(feitos.length / disp.length * 100) : 0;
+          const chips = disp.map(p => {
+            const pr = prog[p.id];
+            const ok = pr && pr.concluido;
+            return `<span class="chip ${ok ? 'green' : 'gray'} nowrap" title="${p.nome}${pr ? ' · ' + pr.melhorNota + '%' : ' · não iniciado'}">${ok ? UI.icon('check',11) + ' ' : ''}${p.nome}${pr ? ' ' + pr.melhorNota + '%' : ''}</span>`;
+          }).join(' ');
+          return `<tr>
+            <td class="strong">${c.nome} ${c.sobrenome || ''}</td>
+            <td class="strong">${feitos.length}/${disp.length}</td>
+            <td style="min-width:120px"><div class="bar" style="margin:0"><i data-w="${pct}"></i></div></td>
+            <td><div class="row" style="gap:6px;flex-wrap:wrap">${chips}</div></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div></div>
+      <div class="hint" style="margin-top:10px">Conforme novos treinamentos de produto forem lançados, eles aparecem aqui automaticamente para toda a equipe.</div>`;
+    App.animateBars();
   },
 
   /* ====================== PERFIL ADMIN ====================== */
