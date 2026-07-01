@@ -162,6 +162,7 @@ const App = {
     if (payAlert) payAlert.onclick = () => Admin.pagamentosPopup();
 
     this.renderAviso();
+    this.subscribeAviso();
     this.go(goProfile ? 'perfil' : nav[0].id);
   },
 
@@ -176,6 +177,23 @@ const App = {
       <span class="ico">${UI.icon(t.icon, 18)}</span>
       <span class="txt">${(a.texto || '').replace(/</g, '&lt;')}</span>
     </div>`;
+  },
+
+  /* Realtime: o aviso muda na hora para quem já está logado (sem recarregar) */
+  _avisoChannel: null,
+  subscribeAviso() {
+    if (typeof SB === 'undefined' || !SB.channel) return;
+    if (this._avisoChannel) { try { SB.removeChannel(this._avisoChannel); } catch (e) {} this._avisoChannel = null; }
+    this._avisoChannel = SB.channel('avisos-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, (payload) => {
+        const row = payload.new && payload.new.id ? payload.new : payload.old;
+        OB.db.aviso = row ? OB._avIn(row) : null;
+        this.renderAviso();
+      })
+      .subscribe();
+  },
+  unsubscribeAviso() {
+    if (this._avisoChannel) { try { SB.removeChannel(this._avisoChannel); } catch (e) {} this._avisoChannel = null; }
   },
 
   drawer(open) {
@@ -250,6 +268,7 @@ const App = {
   logout() {
     UI.confirm('Sair da conta', 'Deseja realmente sair?', async () => {
       try {
+        this.unsubscribeAviso();
         await SB.auth.signOut();
         OB.clearCache();
         Charts.destroyAll();
