@@ -8,6 +8,7 @@ const Admin = {
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
+    { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
   titles: {
@@ -15,6 +16,7 @@ const Admin = {
     financeiro:  ['Gestão Financeira', 'Comissões e prêmios — pague mediante comprovação'],
     consultores: ['Consultores', 'Todos os consultores e seus números'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
+    avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']
   },
 
@@ -396,6 +398,91 @@ const Admin = {
       document.querySelectorAll('#vd-filter button').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(b.dataset.f);
     });
     const ca = document.getElementById('vd-conf-all'); if (ca) ca.onclick = () => this.pagamentosPopup();
+  },
+
+  /* ====================== AVISOS (barra de comunicado) ====================== */
+  // datas <-> input datetime-local (mantém no fuso local do navegador)
+  _toLocalInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso); if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  },
+  _fromLocalInput(v) { if (!v) return null; const d = new Date(v); return isNaN(d) ? null : d.toISOString(); },
+
+  view_avisos() {
+    const a = OB.getAviso();
+    const v = document.getElementById('main-view');
+    v.innerHTML = `
+      <div class="cards" style="grid-template-columns:1.3fr .9fr;gap:18px;align-items:start">
+        <div class="card">
+          <div class="card-head"><h3>Mensagem do aviso</h3></div>
+          <div class="field"><label>Texto que aparecerá na barra</label>
+            <textarea id="av-texto" rows="3" placeholder="Ex.: Nova tabela de comissões vale a partir de segunda-feira. Confira em Vendas & Comissão!">${a.texto || ''}</textarea>
+            <div class="hint">Aparece no topo da tela de todos os consultores enquanto estiver ativo e dentro do período.</div></div>
+          <div class="grid-2">
+            <div class="field"><label>Cor / tipo do alerta</label>
+              <select id="av-tipo">${OB.TIPOS_AVISO.map(t => `<option value="${t.id}" ${a.tipo === t.id ? 'selected' : ''}>${t.nome}</option>`).join('')}</select></div>
+            <div class="field"><label>Exibir para os consultores</label>
+              <label class="seg" style="padding:3px;width:100%"><button type="button" class="${a.ativo ? '' : 'on'}" id="av-off" style="flex:1">Desligado</button><button type="button" class="${a.ativo ? 'on' : ''}" id="av-on" style="flex:1">Ligado</button></label></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Início (opcional)</label>
+              <input id="av-inicio" type="datetime-local" value="${this._toLocalInput(a.inicio)}"/>
+              <div class="hint">Deixe vazio para começar imediatamente.</div></div>
+            <div class="field"><label>Fim (opcional)</label>
+              <input id="av-fim" type="datetime-local" value="${this._toLocalInput(a.fim)}"/>
+              <div class="hint">Deixe vazio para não expirar automaticamente.</div></div>
+          </div>
+          <div class="row" style="gap:10px;margin-top:6px">
+            <button class="btn brand" id="av-save">${UI.icon('check',16)} Salvar aviso</button>
+            <button class="btn ghost" id="av-remove">${UI.icon('trash',16)} Remover da tela</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Pré-visualização</h3></div>
+          <div class="hint" style="margin-bottom:10px">É assim que a barra aparece no topo do consultor:</div>
+          <div id="av-preview"></div>
+          <div class="notice" style="margin-top:16px">${UI.icon('info',16)}<div>O consultor vê a barra ao <b>abrir ou recarregar</b> o sistema. Fora do período de início/fim, ela não aparece mesmo estando ligada.</div></div>
+        </div>
+      </div>`;
+
+    const get = () => ({
+      texto: document.getElementById('av-texto').value,
+      tipo: document.getElementById('av-tipo').value,
+      ativo: document.getElementById('av-on').classList.contains('on'),
+      inicio: this._fromLocalInput(document.getElementById('av-inicio').value),
+      fim: this._fromLocalInput(document.getElementById('av-fim').value)
+    });
+    const drawPreview = () => {
+      const cur = get();
+      const prev = document.getElementById('av-preview');
+      if (!cur.texto.trim()) { prev.innerHTML = `<div class="hint">Digite um texto para ver a prévia.</div>`; return; }
+      const t = OB.TIPOS_AVISO.find(x => x.id === cur.tipo) || OB.TIPOS_AVISO[0];
+      prev.innerHTML = `<div class="aviso-bar ${cur.tipo}" style="border-radius:12px;animation:none"><span class="ico">${UI.icon(t.icon,18)}</span><span class="txt">${cur.texto.replace(/</g,'&lt;')}</span></div>`;
+    };
+    drawPreview();
+    ['av-texto', 'av-tipo', 'av-inicio', 'av-fim'].forEach(id => { const el = document.getElementById(id); el.oninput = drawPreview; el.onchange = drawPreview; });
+    const on = document.getElementById('av-on'), off = document.getElementById('av-off');
+    on.onclick = () => { on.classList.add('on'); off.classList.remove('on'); };
+    off.onclick = () => { off.classList.add('on'); on.classList.remove('on'); };
+
+    document.getElementById('av-save').onclick = () => {
+      const cur = get();
+      if (cur.ativo && !cur.texto.trim()) return UI.toast('Escreva o texto', 'O aviso precisa de um texto para ser exibido', 'err');
+      if (cur.inicio && cur.fim && new Date(cur.fim) <= new Date(cur.inicio)) return UI.toast('Datas invertidas', 'O fim precisa ser depois do início', 'err');
+      OB.saveAviso(cur);
+      App.renderAviso();
+      UI.toast(cur.ativo ? 'Aviso publicado' : 'Aviso salvo', cur.ativo ? 'Já aparece no topo dos consultores' : 'Salvo, mas desligado', 'ok');
+    };
+    document.getElementById('av-remove').onclick = () => {
+      UI.confirm('Remover aviso', 'Tirar a barra de aviso da tela dos consultores? O texto será apagado.', () => {
+        OB.saveAviso({ texto: '', tipo: document.getElementById('av-tipo').value, ativo: false, inicio: null, fim: null });
+        App.renderAviso();
+        this.render('avisos');
+        UI.toast('Aviso removido', '', 'ok');
+      }, 'Remover');
+    };
   },
 
   /* ====================== PERFIL ADMIN ====================== */

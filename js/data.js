@@ -145,8 +145,17 @@ const OB = {
     { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · com juros da operadora' }
   ],
 
+  /* ---------- aviso/comunicado (barra colorida no topo, gerido pelo admin) ---------- */
+  AVISO_ID: '00000000-0000-0000-0000-0000000000a1',
+  TIPOS_AVISO: [
+    { id: 'info',    nome: 'Informativo (azul)',  icon: 'info' },
+    { id: 'sucesso', nome: 'Novidade (verde)',    icon: 'check' },
+    { id: 'alerta',  nome: 'Atenção (âmbar)',     icon: 'bell' },
+    { id: 'critico', nome: 'Urgente (vermelho)',  icon: 'shield' }
+  ],
+
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -166,6 +175,9 @@ const OB = {
   _sIn(r)  { return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente' }; },
   _sOut(s) { return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto, valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente' }; },
 
+  _avIn(r)  { return r && { id: r.id, texto: r.texto || '', tipo: r.tipo || 'info', ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null }; },
+  _avOut(a) { return { id: this.AVISO_ID, texto: a.texto || '', tipo: a.tipo || 'info', ativo: !!a.ativo, inicio: a.inicio || null, fim: a.fim || null, atualizado_em: new Date().toISOString() }; },
+
   _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, servico: r.servico, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), moeda: r.moeda || 'BRL', obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em }; },
   _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, servico: l.servico || null, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, moeda: l.moeda || 'BRL', obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm }; },
 
@@ -178,13 +190,14 @@ const OB = {
   async loadAll() {
     const { data: { user } } = await SB.auth.getUser();
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
-    const [prof, profs, cli, sal, req, lds] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select('*'),
       SB.from('clients').select('*'),
       SB.from('sales').select('*'),
       SB.from('requests').select('*'),
-      SB.from('leads').select('*')
+      SB.from('leads').select('*'),
+      SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle()
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -200,9 +213,10 @@ const OB = {
     this.db.sales = (sal.data || []).map(r => this._sIn(r));
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
     this.db.leads = (lds.data || []).map(r => this._lIn(r));
+    this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -244,6 +258,19 @@ const OB = {
   /* admin confirma/desfaz o recebimento do pagamento do cliente (libera comissão).
      A RLS permite o admin gravar (policies sales_insert_admin/is_admin). */
   setPagamento(saleId, status) { const s = this.db.sales.find(x => x.id === saleId); if (!s) return null; s.statusPagamento = status; this.updateSale(s); return s; },
+
+  /* ---------- aviso/comunicado ---------- */
+  getAviso() { return this.db.aviso || { id: this.AVISO_ID, texto: '', tipo: 'info', ativo: false, inicio: null, fim: null }; },
+  saveAviso(a) { this.db.aviso = { id: this.AVISO_ID, texto: a.texto || '', tipo: a.tipo || 'info', ativo: !!a.ativo, inicio: a.inicio || null, fim: a.fim || null }; this._save('avisos', this._avOut(this.db.aviso)); return this.db.aviso; },
+  /* aviso a exibir agora (ativo + dentro da janela de início/fim), ou null */
+  avisoAtivo() {
+    const a = this.db.aviso;
+    if (!a || !a.ativo || !a.texto || !a.texto.trim()) return null;
+    const agora = new Date();
+    if (a.inicio && agora < new Date(a.inicio)) return null;
+    if (a.fim && agora > new Date(a.fim)) return null;
+    return a;
+  },
 
   /* ---------- leads (funil / Kanban) ---------- */
   leads() { return this.db.leads; },

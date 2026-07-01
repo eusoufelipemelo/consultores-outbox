@@ -124,6 +124,7 @@ const App = {
         </aside>
 
         <div class="main">
+          <div id="aviso-host"></div>
           <header class="topbar">
             <button class="iconbtn menu-btn" id="menu-btn">${UI.icon('menu',18)}</button>
             <div><h1 id="page-title"></h1><div class="sub" id="page-sub"></div></div>
@@ -160,7 +161,21 @@ const App = {
     const payAlert = document.getElementById('pay-alert');
     if (payAlert) payAlert.onclick = () => Admin.pagamentosPopup();
 
+    this.renderAviso();
     this.go(goProfile ? 'perfil' : nav[0].id);
+  },
+
+  /* ---------- barra de aviso/comunicado no topo (definida pelo admin) ---------- */
+  renderAviso() {
+    const host = document.getElementById('aviso-host');
+    if (!host) return;
+    const a = OB.avisoAtivo();
+    if (!a) { host.innerHTML = ''; return; }
+    const t = (OB.TIPOS_AVISO.find(x => x.id === a.tipo) || OB.TIPOS_AVISO[0]);
+    host.innerHTML = `<div class="aviso-bar ${a.tipo}">
+      <span class="ico">${UI.icon(t.icon, 18)}</span>
+      <span class="txt">${(a.texto || '').replace(/</g, '&lt;')}</span>
+    </div>`;
   },
 
   drawer(open) {

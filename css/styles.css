@@ -432,6 +432,19 @@ td .strong { color: var(--text); font-weight: 600; }
 .notice svg { color: var(--brand); flex: none; margin-top: 1px; }
 .nowrap { white-space: nowrap; }
 
+/* barra de aviso/comunicado no topo (gerida pelo admin) */
+.aviso-bar { display: flex; align-items: center; gap: 12px; padding: 13px 22px; color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1.4; position: relative; z-index: 6;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12); animation: avisoIn .45s cubic-bezier(.16,1,.3,1); }
+.aviso-bar .ico { flex: none; display: flex; opacity: .95; }
+.aviso-bar .txt { flex: 1; }
+.aviso-bar.info    { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.aviso-bar.sucesso { background: linear-gradient(90deg, #15803d, #22c55e); }
+.aviso-bar.alerta  { background: linear-gradient(90deg, #b45309, #f59e0b); color: #1a1205; }
+.aviso-bar.alerta .ico { opacity: .8; }
+.aviso-bar.critico { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+@keyframes avisoIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
 /* ============================================================
    KANBAN (funil)
    ============================================================ */
