@@ -660,3 +660,7 @@ td .strong { color: var(--text); font-weight: 600; }
 @media (max-width: 520px) {
   .rank-stat { display: none; }
 }
+
+/* botão de baixar certificado (badge clicável) */
+.cert-badge.dl { cursor: pointer; font-family: inherit; transition: background .15s, transform .1s; }
+.cert-badge.dl:hover { background: color-mix(in srgb, var(--mc) 22%, transparent); transform: translateY(-1px); }

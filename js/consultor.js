@@ -1334,25 +1334,129 @@ const Consultor = {
       </div>
       ${this.rankingHTML(u.id)}`;
     v.querySelectorAll('[data-treino]').forEach(el => el.onclick = () => this.treinoIntro(el.dataset.treino));
+    this.bindCertificados(v);
     App.animateBars();
   },
 
-  /* faixa de certificados conquistados (treinamentos concluídos) */
+  /* faixa de certificados: o certificado só libera com 100% no treinamento */
   certificadosStrip(consultorId) {
-    const certs = OB.certificados(consultorId);
-    const feitos = certs.map(c => TREINOS.buscar(c.treinoId)).filter(Boolean);
-    const total = TREINOS.disponiveis().length;
+    const disp = TREINOS.disponiveis();
+    const cem = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= 100);
+    const total = disp.length;
+    const todos = total > 0 && cem.length === total;
+    const hTot = TREINOS.horasTotais();
     return `<div class="card cert-card" style="margin-bottom:18px">
-      <div class="row between alc" style="margin-bottom:${feitos.length ? '12px' : '0'}">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
         <div class="row alc" style="gap:10px">
           <span class="tr-ic on">${UI.icon('shield',18)}</span>
-          <div><b style="font-size:15px">Seus certificados</b><div class="mut" style="font-size:12px">${feitos.length} de ${total} produtos com você já apto a vender</div></div>
+          <div><b style="font-size:15px">Seus certificados</b><div class="mut" style="font-size:12px">${cem.length} de ${total} treinamentos com 100% · o certificado exige nota máxima</div></div>
         </div>
+        <button class="btn ${todos ? 'brand' : 'ghost'}" id="cert-geral" ${todos ? '' : 'disabled'} title="${todos ? 'Emitir o certificado geral da OutBox Academy (' + hTot + 'h)' : 'Conclua todos os treinamentos com 100% para liberar o certificado geral'}">${UI.icon('prize',16)} Certificado geral${todos ? ' · ' + hTot + 'h' : ''}</button>
       </div>
-      ${feitos.length
-        ? `<div class="cert-list">${feitos.map(p => { const pr = OB.treinoProgress(p.id); const med = TREINOS.medalha(pr.melhorNota); return `<div class="cert-badge" style="--mc:${med.cor}" title="Melhor nota: ${pr.melhorNota}%">${UI.icon('prize',14)} ${p.nome} <span>${med.nome}</span></div>`; }).join('')}</div>`
-        : `<div class="mut" style="font-size:13px;padding:2px 0">Conclua um treinamento (nota &ge; ${TREINOS.OBJETIVO}%) para ganhar seu primeiro certificado e mostrar que está apto a vender aquele produto.</div>`}
+      ${cem.length
+        ? `<div class="cert-list" style="margin-top:12px">${cem.map(p => `<button class="cert-badge dl" data-cert="${p.id}" style="--mc:#C9A227" title="Emitir certificado de ${p.nome} (${TREINOS.horasDe(p.id)}h)">${UI.icon('download',13)} ${p.nome}</button>`).join('')}</div>`
+        : `<div class="mut" style="font-size:13px;margin-top:8px">Faça <b>100%</b> em um treinamento para liberar o certificado dele. Complete os <b>${total} treinamentos</b> com nota máxima para emitir o certificado geral (${hTot} horas).</div>`}
     </div>`;
+  },
+
+  /* liga os botões de certificado (usado no hub e no perfil) */
+  bindCertificados(root) {
+    const r = root || document;
+    const g = r.querySelector('#cert-geral');
+    if (g && !g.disabled) g.onclick = () => this.emitirCertificadoGeral();
+    r.querySelectorAll('[data-cert]').forEach(b => b.onclick = () => this.emitirCertificado(b.dataset.cert));
+  },
+
+  /* checa perfil (nome + doc) antes de emitir; retorna true se ok */
+  _certPerfilOk() {
+    const u = this.u();
+    if (u.nome && u.doc) return true;
+    UI.confirm('Complete seu perfil', 'Para emitir o certificado precisamos do seu <b>nome</b> e <b>CPF/CNPJ</b> preenchidos no perfil. Deseja completar agora?', () => App.go('perfil'), 'Ir ao perfil');
+    return false;
+  },
+
+  emitirCertificado(treinoId) {
+    if (OB.treinoProgress(treinoId).melhorNota < 100) return UI.toast('Ainda não liberado', 'Faça 100% neste treinamento para emitir o certificado.', 'err');
+    if (!this._certPerfilOk()) return;
+    const t = TREINOS.buscar(treinoId);
+    this._abrirCertificado(this.buildCertificadoHTML({ curso: t.nome, horas: TREINOS.horasDe(treinoId), consultor: this.u() }));
+  },
+
+  emitirCertificadoGeral() {
+    const faltam = TREINOS.disponiveis().filter(p => OB.treinoProgress(p.id).melhorNota < 100);
+    if (faltam.length) return UI.toast('Ainda não liberado', `Faltam ${faltam.length} treinamento(s) com 100% para o certificado geral.`, 'err');
+    if (!this._certPerfilOk()) return;
+    this._abrirCertificado(this.buildCertificadoHTML({ geral: true, horas: TREINOS.horasTotais(), qtd: TREINOS.disponiveis().length, consultor: this.u() }));
+  },
+
+  _abrirCertificado(html) {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) { URL.revokeObjectURL(url); return UI.toast('Permita pop-ups', 'Libere pop-ups para abrir o certificado.', 'err'); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+
+  /* certificado branded (HTML autossuficiente, paisagem, imprimir em PDF) */
+  buildCertificadoHTML(o) {
+    const u = o.consultor;
+    const nome = `${u.nome || ''} ${u.sobrenome || ''}`.trim() || 'Consultor';
+    const digs = (u.doc || '').replace(/\D/g, '');
+    const docLabel = digs.length > 11 ? 'CNPJ' : 'CPF';
+    const docFmt = (typeof UI !== 'undefined' && UI.maskDoc) ? UI.maskDoc(u.doc || '') : (u.doc || '');
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const titulo = o.geral ? 'Certificado de Conclusão da Trilha' : 'Certificado de Conclusão';
+    const desc = o.geral
+      ? `concluiu integralmente a trilha de treinamentos da <b>OutBox Academy</b>, composta por <b>${o.qtd} treinamentos</b> e carga horária total de <b>${o.horas} horas</b>, com aproveitamento de 100%, dominando os produtos e os fundamentos de venda da OutBox Soluções Digitais.`
+      : `concluiu com aproveitamento de <b>100%</b> o treinamento <b>${o.curso}</b> da OutBox Academy, com carga horária de <b>${o.horas} horas</b>.`;
+    const selo = o.geral ? 'TRILHA' : 'APROVADO';
+    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Certificado OutBox Academy · ${nome}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<style>@page{size:A4 landscape;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#e9edf1;color:#0A0A0A;display:flex;justify-content:center;padding:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cert{position:relative;width:1040px;max-width:100%;aspect-ratio:1.414/1;background:#fff;padding:52px 62px;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden}
+.bar{position:absolute;top:0;left:0;right:0;height:10px;background:linear-gradient(90deg,#F15532,#e0431f)}
+.frame{position:absolute;inset:18px;border:2px solid #0A0A0A}.frame::before{content:'';position:absolute;inset:6px;border:1px solid #F15532}
+.glow{position:absolute;width:520px;height:520px;right:-160px;bottom:-220px;background:radial-gradient(circle,rgba(241,85,50,.10),transparent 70%)}
+.in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:14px}.mk{width:52px;height:52px;border-radius:26px}
+.bt b{font-size:20px;font-weight:800;letter-spacing:-.01em;display:block;line-height:1}.bt span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8a96a3;font-weight:700}
+.acad{margin-left:auto;font-size:12px;font-weight:800;letter-spacing:.22em;color:#F15532;text-transform:uppercase}
+.mid{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:6px 0}
+.kick{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#8a96a3;font-weight:700}
+h1{font-family:'Playfair Display',serif;font-size:52px;font-weight:900;letter-spacing:.02em;margin:2px 0 12px}
+.intro{font-size:15px;color:#46505c}
+.nome{font-family:'Playfair Display',serif;font-size:38px;font-weight:800;margin:8px auto;border-bottom:2px solid #F15532;padding:0 22px 6px;display:inline-block}
+.desc{font-size:15px;line-height:1.65;color:#2b3440;max-width:750px;margin:2px auto 0}.desc b{color:#0A0A0A}
+.horas{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#fbe9e4;color:#c0371c;font-weight:800;font-size:13.5px;padding:8px 16px;border-radius:999px}
+.foot{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:8px}
+.sign{width:290px;text-align:center}.sign .ln{border-top:1.5px solid #0A0A0A;padding-top:8px}.sign b{font-size:15px;font-weight:800}.sign span{display:block;font-size:11.5px;color:#8a96a3;font-weight:600;margin-top:2px}
+.seal{width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(241,85,50,.4);flex:none}
+.seal b{font-size:20px;font-weight:900;line-height:1}.seal span{font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
+.emit{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:10px;color:#a7b0ba}
+.ph{position:fixed;bottom:16px;right:16px;background:#F15532;color:#fff;padding:11px 18px;border-radius:10px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.35)}
+@media print{body{background:#fff;padding:0}.cert{box-shadow:none;width:100%;height:100vh;aspect-ratio:auto}.ph{display:none}}</style></head>
+<body><div class="cert"><div class="bar"></div><div class="frame"></div><div class="glow"></div>
+  <div class="in">
+    <div class="top">${mark}<div class="bt"><b>OutBox</b><span>Soluções Digitais</span></div><div class="acad">OutBox Academy</div></div>
+    <div class="mid">
+      <div class="kick">${titulo}</div>
+      <h1>CERTIFICADO</h1>
+      <div class="intro">Certificamos que</div>
+      <div class="nome">${nome}</div>
+      <div class="desc">${desc}</div>
+      <div class="horas">Carga horária: ${o.horas} horas</div>
+    </div>
+    <div class="foot">
+      <div class="sign"><div class="ln"><b>Felipe Melo Rocha</b><span>CEO · OutBox Group Soluções Digitais</span></div></div>
+      <div class="seal"><b>100%</b><span>${selo}</span></div>
+      <div class="sign"><div class="ln"><b>${nome}</b><span>${docLabel}: ${docFmt || 'não informado'}</span></div></div>
+    </div>
+    <div class="emit">Emitido em ${hoje} · OutBox Academy · consultores.outboxgroup.com.br</div>
+  </div>
+</div><button class="ph" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
 
   /* ranking da equipe (RPC agregada) */
@@ -1536,7 +1640,10 @@ const Consultor = {
           <div><b>${aprovado ? 'Sim' : 'Ainda não'}</b><span>aprovado</span></div>
           <div><b>${Math.max(nota, antes)}%</b><span>melhor nota</span></div>
         </div>
-        <div class="row" style="gap:10px;margin-top:20px;flex-wrap:wrap">
+        ${Math.max(nota, antes) >= 100
+          ? `<button class="btn block" id="tr-cert" style="margin-top:16px;height:50px;background:linear-gradient(135deg,#C9A227,#b8901f);color:#fff;box-shadow:0 8px 20px rgba(201,162,39,.3)">${UI.icon('prize',18)} Emitir certificado deste treinamento</button>`
+          : `<div class="hint" style="text-align:center;margin-top:14px">${UI.icon('prize',13)} Chegue aos <b>100%</b> para emitir o certificado deste treinamento.</div>`}
+        <div class="row" style="gap:10px;margin-top:16px;flex-wrap:wrap">
           <button class="btn brand grow" id="tr-refazer" style="height:48px">${UI.icon('academy',16)} Treinar de novo</button>
           <button class="btn ghost" id="tr-revisar" style="height:48px">${UI.icon('eye',16)} Revisar respostas</button>
         </div>
@@ -1546,6 +1653,8 @@ const Consultor = {
     document.getElementById('tr-refazer').onclick = () => this.treinoIntro(st.id);
     document.getElementById('tr-home').onclick = () => this.render('treinamentos');
     document.getElementById('tr-revisar').onclick = () => this.treinoRevisar();
+    const cbtn = document.getElementById('tr-cert');
+    if (cbtn) cbtn.onclick = () => this.emitirCertificado(st.id);
   },
 
   treinoRevisar() {
@@ -1691,6 +1800,7 @@ const Consultor = {
     fields.cel.oninput = e => e.target.value = UI.maskPhone(e.target.value);
     fields.cep.oninput = e => e.target.value = UI.maskCEP(e.target.value);
     fields.cep.onblur = () => this.buscarCEP(fields.cep.value);
+    this.bindCertificados(v);
 
     // foto
     document.getElementById('p-foto').onchange = (e) => {

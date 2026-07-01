@@ -57,6 +57,15 @@ const TREINOS = {
   disponiveis() { return this.PRODUTOS.concat(this.HABILIDADES).filter(p => p.disponivel); },
   buscar(id) { return this.PRODUTOS.find(p => p.id === id) || this.HABILIDADES.find(p => p.id === id) || null; },
 
+  /* carga horária por treinamento (para o certificado) */
+  HORAS: {
+    onepage: 3, institucional: 3, 'institucional-blog': 3, hospedagem: 3, identidade: 3, brandbook: 3,
+    social: 3, ecommerce: 4, 'ecommerce-catalogo': 3, sistemas: 4,
+    spin: 4, prospeccao: 3, objecoes: 3, 'sistema-outbox': 2
+  },
+  horasDe(id) { return this.HORAS[id] || 2; },
+  horasTotais() { return this.disponiveis().reduce((n, p) => n + this.horasDe(p.id), 0); },
+
   /* ============================================================
      QUIZ: SITE ONE PAGE
      ============================================================ */
