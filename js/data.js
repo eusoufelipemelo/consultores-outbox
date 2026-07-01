@@ -149,7 +149,7 @@ const OB = {
   ],
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {} },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -184,14 +184,15 @@ const OB = {
   async loadAll() {
     const { data: { user } } = await SB.auth.getUser();
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
-    const [prof, profs, cli, sal, req, lds, avi] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select('*'),
       SB.from('clients').select('*'),
       SB.from('sales').select('*'),
       SB.from('requests').select('*'),
       SB.from('leads').select('*'),
-      SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle()
+      SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle(),
+      SB.from('training_progress').select('*').eq('consultor_id', user.id)
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -208,9 +209,11 @@ const OB = {
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
     this.db.leads = (lds.data || []).map(r => this._lIn(r));
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
+    this.db.treinos = {};
+    (tp && tp.data ? tp.data : []).forEach(r => { this.db.treinos[r.treino_id] = { melhorNota: r.melhor_nota || 0, tentativas: r.tentativas || 0, concluido: !!r.concluido }; });
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {} }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -264,6 +267,19 @@ const OB = {
     if (a.inicio && agora < new Date(a.inicio)) return null;
     if (a.fim && agora > new Date(a.fim)) return null;
     return a;
+  },
+
+  /* ---------- treinamentos (quiz) ---------- */
+  treinoProgress(id) { return this.db.treinos[id] || { melhorNota: 0, tentativas: 0, concluido: false }; },
+  saveTreino(id, nota) {
+    const cur = this.treinoProgress(id);
+    const melhor = Math.max(cur.melhorNota, nota);
+    const obj = (typeof TREINOS !== 'undefined' ? TREINOS.OBJETIVO : 70);
+    const rec = { melhorNota: melhor, tentativas: cur.tentativas + 1, concluido: melhor >= obj };
+    this.db.treinos[id] = rec;
+    const uid = this.db.profile && this.db.profile.id;
+    if (uid) this._save('training_progress', { consultor_id: uid, treino_id: id, melhor_nota: melhor, tentativas: rec.tentativas, concluido: rec.concluido, atualizado_em: new Date().toISOString() });
+    return rec;
   },
 
   /* ---------- leads (funil / Kanban) ---------- */

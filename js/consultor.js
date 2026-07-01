@@ -10,7 +10,7 @@ const Consultor = {
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
-    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy', soon: true },
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
@@ -1288,33 +1288,206 @@ const Consultor = {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   },
 
-  /* ====================== TREINAMENTOS (em breve) ====================== */
+  /* ====================== TREINAMENTOS (quiz gamificado) ====================== */
   view_treinamentos() {
     const v = document.getElementById('main-view');
-    const trilha = [
-      ['Fundamentos', 'Quem é a OutBox, portfólio e proposta de valor'],
-      ['Os produtos', 'Como funciona cada serviço e para quem indicar'],
-      ['Argumentação', 'Como apresentar e vender cada produto na prática'],
-      ['Fechamento', 'Objeções, negociação e como fechar o contrato']
-    ];
+    const prods = TREINOS.PRODUTOS;
+    const disp = prods.filter(p => p.disponivel);
+    const concluidos = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= TREINOS.OBJETIVO).length;
+    const pct = disp.length ? Math.round(concluidos / disp.length * 100) : 0;
     v.innerHTML = `
-      <div class="card" style="text-align:center;padding:44px 24px;background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:18px">
-        <div style="width:66px;height:66px;border-radius:20px;background:rgba(255,255,255,.16);display:grid;place-items:center;margin:0 auto 16px">${UI.icon('academy',30)}</div>
-        <span class="chip" style="background:rgba(255,255,255,.2);color:#fff;font-weight:700">Em breve</span>
-        <h2 style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin:12px 0 6px">Trilha de Treinamentos</h2>
-        <p style="max-width:460px;margin:0 auto;opacity:.92;font-size:15px;line-height:1.6">Estamos produzindo uma trilha completa, passo a passo, de <b>como vender os produtos da OutBox</b>. Em breve disponível aqui para você.</p>
+      <div class="card tr-hero" style="margin-bottom:18px">
+        <div class="tr-hero-glow"></div>
+        <div class="tr-hero-in">
+          <div class="tr-hero-mark">${UI.icon('academy',30)}</div>
+          <div class="grow">
+            <span class="chip" style="background:rgba(255,255,255,.18);color:#fff;font-weight:700;border:none">OutBox Academy</span>
+            <h2 style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin:10px 0 4px;color:#fff">Treinamento de Produtos</h2>
+            <p style="opacity:.92;font-size:14px;line-height:1.55;color:#fff;max-width:520px">Aprenda vendendo. Cada produto é um quiz, do básico ao avançado, com explicação em toda questão. Mire nos <b>${TREINOS.OBJETIVO}%</b> para ser aprovado e evoluir.</p>
+          </div>
+          <div class="tr-hero-stat">
+            <div class="tr-ring" style="--p:${pct}"><span>${pct}%</span></div>
+            <div class="tr-hero-stat-lbl">${concluidos} de ${disp.length} concluídos</div>
+          </div>
+        </div>
       </div>
-      <div class="nav-label" style="padding-left:0;margin-bottom:10px">O que vem por aí</div>
-      <div class="cards cols-2">
-        ${trilha.map((t, i) => `
-          <div class="card" style="opacity:.75">
-            <div class="row alc" style="gap:12px">
-              <span class="iconbtn" style="background:var(--surface-3);color:var(--text-mut);border:none;font-weight:800">${i + 1}</span>
-              <div class="grow"><b style="font-size:15px">${t[0]}</b><div class="mut" style="font-size:13px">${t[1]}</div></div>
-              <span class="chip gray nowrap">Em breve</span>
-            </div>
-          </div>`).join('')}
+      <div class="nav-label" style="padding-left:0;margin-bottom:10px">Treinamentos de produto</div>
+      <div class="cards cols-2" id="tr-grid">
+        ${prods.map(p => this.treinoCard(p)).join('')}
       </div>`;
+    v.querySelectorAll('[data-treino]').forEach(el => el.onclick = () => this.treinoIntro(el.dataset.treino));
+    App.animateBars();
+  },
+
+  treinoCard(p) {
+    if (!p.disponivel) {
+      return `<div class="card tr-card locked">
+        <div class="row alc" style="gap:12px">
+          <span class="tr-ic">${UI.icon(p.icon,20)}</span>
+          <div class="grow"><b style="font-size:15px">${p.nome}</b><div class="mut" style="font-size:12px">Treinamento em produção</div></div>
+          <span class="chip gray nowrap">Em breve</span>
+        </div>
+      </div>`;
+    }
+    const pr = OB.treinoProgress(p.id);
+    const feito = pr.tentativas > 0;
+    const aprovado = pr.melhorNota >= TREINOS.OBJETIVO;
+    const med = feito ? TREINOS.medalha(pr.melhorNota) : null;
+    const nq = (TREINOS.QUIZ[p.id] || { perguntas: [] }).perguntas.length;
+    const status = !feito
+      ? `<span class="chip brand nowrap">Novo</span>`
+      : `<span class="chip ${aprovado ? 'green' : 'warn'} nowrap">${aprovado ? 'Aprovado' : 'Continue'} · ${pr.melhorNota}%</span>`;
+    return `<div class="card tr-card avail" data-treino="${p.id}">
+      <div class="row alc" style="gap:12px">
+        <span class="tr-ic on">${UI.icon(p.icon,20)}</span>
+        <div class="grow" style="min-width:0"><b style="font-size:15px">${p.nome}</b>
+          <div class="mut tr-resumo" style="font-size:12px">${p.resumo || ''}</div></div>
+        ${status}
+      </div>
+      <div class="row between alc" style="margin-top:12px">
+        <span class="mut" style="font-size:12px">${nq} perguntas · básico ao avançado</span>
+        <span class="tr-go">${feito ? 'Refazer' : 'Começar'} ${UI.icon('chevron',15)}</span>
+      </div>
+      ${feito ? `<div class="tr-medal-mini" style="--mc:${med.cor}">${UI.icon('prize',13)} ${med.nome}</div>` : ''}
+    </div>`;
+  },
+
+  /* tela inicial do treinamento */
+  treinoIntro(id) {
+    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.PRODUTOS.find(p => p.id === id);
+    if (!quiz || !prod) return;
+    const pr = OB.treinoProgress(id);
+    const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
+    v.innerHTML = `
+      <button class="tr-back" id="tr-voltar">${UI.icon('chevron',16)} Voltar aos treinamentos</button>
+      <div class="card quiz-card" style="max-width:640px;margin:0 auto">
+        <div class="quiz-intro-mark">${UI.icon(prod.icon,28)}</div>
+        <span class="chip brand" style="margin:0 auto;display:table">Treinamento de Produto</span>
+        <h2 style="text-align:center;font-size:26px;font-weight:800;letter-spacing:-.02em;margin:12px 0 8px">${quiz.titulo}</h2>
+        <p style="text-align:center;color:var(--text-soft);font-size:14px;line-height:1.6;max-width:520px;margin:0 auto 20px">${quiz.intro}</p>
+        <div class="quiz-meta">
+          <div><b>${quiz.perguntas.length}</b><span>perguntas</span></div>
+          <div><b>${TREINOS.OBJETIVO}%</b><span>para aprovar</span></div>
+          <div><b>${pr.tentativas ? pr.melhorNota + '%' : '—'}</b><span>sua melhor</span></div>
+        </div>
+        <button class="btn brand block" id="tr-start" style="margin-top:20px;height:52px;font-size:16px">${UI.icon('academy',18)} ${pr.tentativas ? 'Treinar de novo' : 'Começar treinamento'}</button>
+        <div class="hint" style="text-align:center;margin-top:10px">Sem pressa. Cada resposta vem com uma explicação para você aprender.</div>
+      </div>`;
+    document.getElementById('tr-voltar').onclick = () => this.render('treinamentos');
+    document.getElementById('tr-start').onclick = () => this.iniciarTreino(id);
+  },
+
+  iniciarTreino(id) {
+    this._quiz = { id, i: 0, respostas: [] };
+    this.treinoPergunta();
+  },
+
+  treinoPergunta() {
+    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id];
+    const total = quiz.perguntas.length; const p = quiz.perguntas[st.i];
+    const niv = TREINOS.NIVEIS[p.nivel] || TREINOS.NIVEIS.basico;
+    const pct = Math.round(st.i / total * 100);
+    const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
+    v.innerHTML = `
+      <div class="quiz-top">
+        <button class="tr-back" id="tr-sair">${UI.icon('x',15)} Sair</button>
+        <span class="quiz-count">Pergunta ${st.i + 1} de ${total}</span>
+        <span class="chip ${niv.chip} nowrap">${niv.nome}</span>
+      </div>
+      <div class="qbar"><i data-w="${pct}"></i></div>
+      <div class="card quiz-card" style="max-width:660px;margin:16px auto 0" id="quiz-q">
+        <h2 class="quiz-q">${p.q}</h2>
+        <div class="quiz-ops" id="quiz-ops">
+          ${p.ops.map((o, k) => `<button class="opt" data-op="${k}"><span class="opt-k">${String.fromCharCode(65 + k)}</span><span class="opt-t">${o}</span></button>`).join('')}
+        </div>
+        <div id="quiz-fb"></div>
+      </div>`;
+    App.animateBars();
+    document.getElementById('tr-sair').onclick = () => UI.confirm('Sair do treinamento', 'Seu progresso nesta rodada será perdido. Deseja sair?', () => this.render('treinamentos'), 'Sair');
+    document.querySelectorAll('#quiz-ops .opt').forEach(b => b.onclick = () => this.treinoResponder(parseInt(b.dataset.op)));
+  },
+
+  treinoResponder(idx) {
+    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id]; const p = quiz.perguntas[st.i];
+    if (st.respostas[st.i] != null) return; // já respondeu
+    st.respostas[st.i] = idx;
+    const acertou = idx === p.correta;
+    const ops = document.querySelectorAll('#quiz-ops .opt');
+    ops.forEach((b, k) => {
+      b.classList.add('done');
+      if (k === p.correta) b.classList.add('correct');
+      else if (k === idx) b.classList.add('wrong');
+    });
+    const total = quiz.perguntas.length; const ultima = st.i === total - 1;
+    document.getElementById('quiz-fb').innerHTML = `
+      <div class="exp-box ${acertou ? 'ok' : 'no'}">
+        <div class="exp-head">${UI.icon(acertou ? 'check' : 'info', 18)} ${acertou ? 'Boa! Resposta certa.' : 'Quase. Veja o porquê:'}</div>
+        <p>${p.exp}</p>
+      </div>
+      <button class="btn brand block" id="quiz-next" style="margin-top:16px;height:48px">${ultima ? 'Ver meu resultado' : 'Próxima pergunta'} ${UI.icon('chevron',16)}</button>`;
+    document.getElementById('quiz-fb').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('quiz-next').onclick = () => {
+      if (ultima) { this.treinoResultado(); }
+      else { st.i++; this.treinoPergunta(); }
+    };
+  },
+
+  treinoResultado() {
+    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id]; const prod = TREINOS.PRODUTOS.find(p => p.id === st.id);
+    const total = quiz.perguntas.length;
+    const acertos = quiz.perguntas.reduce((n, p, k) => n + (st.respostas[k] === p.correta ? 1 : 0), 0);
+    const nota = Math.round(acertos / total * 100);
+    const aprovado = nota >= TREINOS.OBJETIVO;
+    const med = TREINOS.medalha(nota);
+    const antes = OB.treinoProgress(st.id).melhorNota;
+    const recorde = nota > antes;
+    OB.saveTreino(st.id, nota); // persiste melhor nota + tentativa
+    App.refreshCommission && App.refreshCommission();
+    const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
+    v.innerHTML = `
+      <div class="card quiz-card quiz-result ${aprovado ? 'ok' : ''}" style="max-width:640px;margin:0 auto">
+        <div class="medal" style="--mc:${med.cor}">${UI.icon('prize',40)}</div>
+        <div class="quiz-score">${nota}<span>%</span></div>
+        <h2 style="text-align:center;font-size:22px;font-weight:800;margin:2px 0 4px">${med.nome}</h2>
+        <p style="text-align:center;color:var(--text-soft);font-size:14px;max-width:420px;margin:0 auto 4px">${med.sub}</p>
+        ${recorde ? `<div class="chip green" style="margin:8px auto 0;display:table">${UI.icon('trend',13)} Novo recorde pessoal!</div>` : ''}
+        <div class="quiz-meta" style="margin-top:18px">
+          <div><b>${acertos}/${total}</b><span>acertos</span></div>
+          <div><b>${aprovado ? 'Sim' : 'Ainda não'}</b><span>aprovado</span></div>
+          <div><b>${Math.max(nota, antes)}%</b><span>melhor nota</span></div>
+        </div>
+        <div class="row" style="gap:10px;margin-top:20px;flex-wrap:wrap">
+          <button class="btn brand grow" id="tr-refazer" style="height:48px">${UI.icon('academy',16)} Treinar de novo</button>
+          <button class="btn ghost" id="tr-revisar" style="height:48px">${UI.icon('eye',16)} Revisar respostas</button>
+        </div>
+        <button class="btn ghost block" id="tr-home" style="margin-top:10px">Voltar aos treinamentos</button>
+      </div>
+      <div id="tr-review" style="max-width:640px;margin:16px auto 0"></div>`;
+    document.getElementById('tr-refazer').onclick = () => this.treinoIntro(st.id);
+    document.getElementById('tr-home').onclick = () => this.render('treinamentos');
+    document.getElementById('tr-revisar').onclick = () => this.treinoRevisar();
+  },
+
+  treinoRevisar() {
+    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id];
+    const box = document.getElementById('tr-review');
+    if (box.dataset.open === '1') { box.innerHTML = ''; box.dataset.open = '0'; return; }
+    box.dataset.open = '1';
+    box.innerHTML = `<div class="nav-label" style="padding-left:0;margin-bottom:10px">Revisão das respostas</div>` +
+      quiz.perguntas.map((p, k) => {
+        const resp = st.respostas[k]; const acertou = resp === p.correta;
+        return `<div class="card" style="margin-bottom:10px">
+          <div class="row alc" style="gap:10px;align-items:flex-start">
+            <span class="rev-ic ${acertou ? 'ok' : 'no'}">${UI.icon(acertou ? 'check' : 'x', 14)}</span>
+            <div class="grow"><b style="font-size:14px">${k + 1}. ${p.q}</b>
+              <div style="font-size:13px;margin-top:6px;color:var(--text-soft)">Resposta certa: <b style="color:#1fa855">${p.ops[p.correta]}</b></div>
+              ${!acertou && resp != null ? `<div style="font-size:13px;color:var(--text-mut)">Você marcou: ${p.ops[resp]}</div>` : ''}
+              <div class="mut" style="font-size:12.5px;margin-top:6px;line-height:1.5">${p.exp}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 
   /* ====================== AJUDA / GUIA ====================== */
