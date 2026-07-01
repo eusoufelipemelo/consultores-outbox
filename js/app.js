@@ -117,7 +117,7 @@ const App = {
             <span class="side-tag">${isAdmin ? 'Admin' : 'Consultor'}</span>
           </div>
           <nav class="nav" id="nav">
-            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}</button>`).join('')}
+            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}</button>`).join('')}
           </nav>
           <div id="side-user-box"></div>
           <button class="nav-item" id="logout-btn" style="margin-top:6px;color:#e0573f">${UI.icon('logout')}<span>Sair</span></button>
@@ -134,6 +134,7 @@ const App = {
                  <button class="iconbtn" id="notif-btn" style="position:relative" title="Notificações"><span class="notif-dot hidden" id="notif-dot"></span>${UI.icon('bell',18)}</button>`
               : `<div class="com-pills">
                   <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
+                  <button class="commission-pill locked" id="bloq-pill"><div style="text-align:left"><div class="lbl">Mínimo p/ saque</div><div class="val" id="bloq-val">R$ 500,00</div></div>${UI.icon('lock',18)}</button>
                   <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
                 </div>`}
             ${this.themeBtnHTML()}
@@ -156,6 +157,8 @@ const App = {
     if (pill) pill.onclick = () => Consultor.comissaoPopup();
     const confPill = document.getElementById('conf-pill');
     if (confPill) confPill.onclick = () => Consultor.comissaoPopup();
+    const bloqPill = document.getElementById('bloq-pill');
+    if (bloqPill) bloqPill.onclick = () => Consultor.comissaoPopup();
     const notif = document.getElementById('notif-btn');
     if (notif) notif.onclick = () => Admin.notificacoesPopup();
     const payAlert = document.getElementById('pay-alert');
@@ -243,6 +246,20 @@ const App = {
     if (confPill) {
       document.getElementById('conf-val').textContent = OB.fmt(r.emConferencia);
       confPill.classList.remove('hidden'); // sempre visível, mesmo zerado
+    }
+    // botão do mínimo p/ saque: bloqueado até o disponível atingir o mínimo
+    const bloq = document.getElementById('bloq-pill');
+    if (bloq) {
+      const min = OB.saqueMinimo();
+      const liberado = r.disponivel >= min;
+      bloq.classList.toggle('locked', !liberado);
+      bloq.classList.toggle('unlocked', liberado);
+      bloq.querySelector('.lbl').textContent = liberado ? 'Saque liberado' : 'Mínimo p/ saque';
+      document.getElementById('bloq-val').textContent = OB.fmt(min);
+      bloq.querySelector('svg').outerHTML = UI.icon(liberado ? 'check' : 'lock', 18);
+      bloq.title = liberado
+        ? `Você já pode solicitar: o disponível atingiu o mínimo de ${OB.fmt(min)}.`
+        : `O saque só é liberado quando a comissão disponível atingir ${OB.fmt(min)}. Faltam ${OB.fmt(Math.max(0, min - r.disponivel))}.`;
     }
     if (bump) { pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); }
   },

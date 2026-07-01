@@ -10,6 +10,7 @@ const Consultor = {
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy', soon: true },
     { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
@@ -22,6 +23,7 @@ const Consultor = {
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
+    treinamentos: ['Treinamentos', 'Trilha de como vender os produtos da OutBox'],
     ajuda:      ['Dúvidas & Guia', 'Como usar o sistema'],
     perfil:     ['Editar Perfil', 'Mantenha seus dados sempre atualizados']
   },
@@ -1284,6 +1286,35 @@ const Consultor = {
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
+
+  /* ====================== TREINAMENTOS (em breve) ====================== */
+  view_treinamentos() {
+    const v = document.getElementById('main-view');
+    const trilha = [
+      ['Fundamentos', 'Quem é a OutBox, portfólio e proposta de valor'],
+      ['Os produtos', 'Como funciona cada serviço e para quem indicar'],
+      ['Argumentação', 'Como apresentar e vender cada produto na prática'],
+      ['Fechamento', 'Objeções, negociação e como fechar o contrato']
+    ];
+    v.innerHTML = `
+      <div class="card" style="text-align:center;padding:44px 24px;background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:18px">
+        <div style="width:66px;height:66px;border-radius:20px;background:rgba(255,255,255,.16);display:grid;place-items:center;margin:0 auto 16px">${UI.icon('academy',30)}</div>
+        <span class="chip" style="background:rgba(255,255,255,.2);color:#fff;font-weight:700">Em breve</span>
+        <h2 style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin:12px 0 6px">Trilha de Treinamentos</h2>
+        <p style="max-width:460px;margin:0 auto;opacity:.92;font-size:15px;line-height:1.6">Estamos produzindo uma trilha completa, passo a passo, de <b>como vender os produtos da OutBox</b>. Em breve disponível aqui para você.</p>
+      </div>
+      <div class="nav-label" style="padding-left:0;margin-bottom:10px">O que vem por aí</div>
+      <div class="cards cols-2">
+        ${trilha.map((t, i) => `
+          <div class="card" style="opacity:.75">
+            <div class="row alc" style="gap:12px">
+              <span class="iconbtn" style="background:var(--surface-3);color:var(--text-mut);border:none;font-weight:800">${i + 1}</span>
+              <div class="grow"><b style="font-size:15px">${t[0]}</b><div class="mut" style="font-size:13px">${t[1]}</div></div>
+              <span class="chip gray nowrap">Em breve</span>
+            </div>
+          </div>`).join('')}
+      </div>`;
   },
 
   /* ====================== AJUDA / GUIA ====================== */

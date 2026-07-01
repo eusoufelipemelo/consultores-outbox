@@ -277,7 +277,13 @@ img { max-width: 100%; display: block; }
 /* variante âmbar: comissão em conferência (aguardando confirmação de pagamento) */
 .commission-pill.pending { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 10px 24px rgba(217,119,6,.30); }
 .commission-pill.pending:hover { box-shadow: 0 14px 30px rgba(217,119,6,.42); }
-.com-pills { display: flex; align-items: center; gap: 10px; }
+/* variante slate: mínimo p/ saque bloqueado */
+.commission-pill.locked { background: linear-gradient(135deg, #64748b, #475569); box-shadow: 0 10px 24px rgba(71,85,105,.30); }
+.commission-pill.locked:hover { box-shadow: 0 14px 30px rgba(71,85,105,.42); }
+/* variante verde: saque liberado */
+.commission-pill.unlocked { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 10px 24px rgba(22,163,74,.30); }
+.commission-pill.unlocked:hover { box-shadow: 0 14px 30px rgba(22,163,74,.42); }
+.com-pills { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .notif-dot { position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%;
   background: var(--brand); border: 2px solid var(--surface); z-index: 1; }
 .notif-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%;
@@ -431,6 +437,9 @@ td .strong { color: var(--text); font-weight: 600; }
   font-size: 13px; color: var(--text-soft); display: flex; gap: 10px; align-items: flex-start; }
 .notice svg { color: var(--brand); flex: none; margin-top: 1px; }
 .nowrap { white-space: nowrap; }
+/* selo "em breve" nos itens de menu */
+.soon-badge { margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  padding: 3px 8px; border-radius: 999px; background: var(--surface-3); color: var(--text-mut); white-space: nowrap; }
 
 /* barra de aviso/comunicado no topo (gerida pelo admin) */
 .aviso-bar { display: flex; align-items: center; gap: 12px; padding: 13px 22px; color: #fff;
@@ -505,11 +514,12 @@ td .strong { color: var(--text); font-weight: 600; }
 /* no mobile, as pílulas de comissão / alerta descem para a 2ª linha em largura total */
 @media (max-width: 620px) {
   .topbar { padding: 12px 16px; flex-wrap: wrap; row-gap: 10px; }
-  .topbar .com-pills { order: 5; flex-basis: 100%; }
-  .topbar .com-pills .commission-pill { flex: 1; justify-content: space-between; }
+  .topbar .com-pills { order: 5; flex-basis: 100%; gap: 8px; }
+  .topbar .com-pills .commission-pill { flex: 1 1 46%; min-width: 0; justify-content: space-between; padding: 8px 12px; }
+  .topbar .com-pills .commission-pill .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topbar #pay-alert { order: 5; flex-basis: 100%; justify-content: space-between; }
   .topbar .spacer { display: none; }
-  .topbar-title { flex: 1 1 auto; min-width: 0; }
+  .topbar-title { flex: 1 1 0; min-width: 0; }
   .topbar-title h1, .topbar-title .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .commission-pill .val { font-size: 18px; }
   /* filtros segmentados largos não vazam: rolam horizontalmente no mobile */
