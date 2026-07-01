@@ -1304,8 +1304,7 @@ const Consultor = {
   view_treinamentos() {
     const v = document.getElementById('main-view');
     const u = this.u();
-    const prods = TREINOS.PRODUTOS;
-    const disp = prods.filter(p => p.disponivel);
+    const disp = TREINOS.disponiveis();
     const concluidos = disp.filter(p => OB.treinoProgress(p.id).melhorNota >= TREINOS.OBJETIVO).length;
     const pct = disp.length ? Math.round(concluidos / disp.length * 100) : 0;
     v.innerHTML = `
@@ -1327,7 +1326,11 @@ const Consultor = {
       ${this.certificadosStrip(u.id)}
       <div class="nav-label" style="padding-left:0;margin-bottom:10px">Treinamentos de produto</div>
       <div class="cards cols-2" id="tr-grid">
-        ${prods.map(p => this.treinoCard(p)).join('')}
+        ${TREINOS.PRODUTOS.map(p => this.treinoCard(p)).join('')}
+      </div>
+      <div class="nav-label" style="padding-left:0;margin:22px 0 10px">Fundamentos de venda e sistema</div>
+      <div class="cards cols-2">
+        ${TREINOS.HABILIDADES.map(p => this.treinoCard(p)).join('')}
       </div>
       ${this.rankingHTML(u.id)}`;
     v.querySelectorAll('[data-treino]').forEach(el => el.onclick = () => this.treinoIntro(el.dataset.treino));
@@ -1337,8 +1340,8 @@ const Consultor = {
   /* faixa de certificados conquistados (treinamentos concluídos) */
   certificadosStrip(consultorId) {
     const certs = OB.certificados(consultorId);
-    const feitos = certs.map(c => TREINOS.PRODUTOS.find(p => p.id === c.treinoId)).filter(Boolean);
-    const total = TREINOS.PRODUTOS.filter(p => p.disponivel).length;
+    const feitos = certs.map(c => TREINOS.buscar(c.treinoId)).filter(Boolean);
+    const total = TREINOS.disponiveis().length;
     return `<div class="card cert-card" style="margin-bottom:18px">
       <div class="row between alc" style="margin-bottom:${feitos.length ? '12px' : '0'}">
         <div class="row alc" style="gap:10px">

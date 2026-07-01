@@ -490,7 +490,7 @@ const Admin = {
   view_treinamentos() {
     const v = document.getElementById('main-view');
     const consultores = this.consultores();
-    const disp = TREINOS.PRODUTOS.filter(p => p.disponivel);
+    const disp = TREINOS.disponiveis();
     // KPIs
     const totalCert = OB.db.treinosAll.filter(r => r.concluido).length;
     const comAlgum = new Set(OB.db.treinosAll.filter(r => r.concluido).map(r => r.consultorId)).size;
