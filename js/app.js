@@ -127,7 +127,7 @@ const App = {
           <div id="aviso-host"></div>
           <header class="topbar">
             <button class="iconbtn menu-btn" id="menu-btn">${UI.icon('menu',18)}</button>
-            <div><h1 id="page-title"></h1><div class="sub" id="page-sub"></div></div>
+            <div class="topbar-title"><h1 id="page-title"></h1><div class="sub" id="page-sub"></div></div>
             <div class="spacer"></div>
             ${isAdmin
               ? `<button class="commission-pill pending hidden" id="pay-alert" title="Vendas aguardando confirmação de pagamento — clique para conferir"><div style="text-align:left"><div class="lbl">Pagamentos a conferir</div><div class="val" id="pay-alert-n">0</div></div>${UI.icon('clock',18)}</button>

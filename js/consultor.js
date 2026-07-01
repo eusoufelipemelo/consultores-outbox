@@ -120,7 +120,7 @@ const Consultor = {
     const list = OB.clientsOf(u.id);
     const v = document.getElementById('main-view');
     v.innerHTML = `
-      <div class="row between alc" style="margin-bottom:18px">
+      <div class="row between alc" style="margin-bottom:18px;flex-wrap:wrap;gap:12px">
         <div class="seg" id="cli-filter">
           <button class="on" data-f="all">Todos (${list.length})</button>
           <button data-f="recorrente">Recorrentes</button>
