@@ -10,8 +10,8 @@ const Auth = {
     return `
     <div class="grid-fx"></div>
     <div>
-      <img class="a-logo" src="assets/logo-branca.svg" alt="OutBox Group"/>
-      <h1>Portal do <b>Consultor</b><br/>OutBox Group</h1>
+      <img class="a-logo" src="assets/logo-branca.svg" alt="OutBox Soluções Digitais"/>
+      <h1>Portal do <b>Consultor</b><br/>OutBox Soluções Digitais</h1>
       <p>Gerencie suas vendas, clientes, comissões e prêmios em um só lugar. Acompanhe suas metas em tempo real e cresça de Bronze a Black.</p>
     </div>
     <div class="auth-feats">
@@ -75,7 +75,7 @@ const Auth = {
     document.getElementById('auth-card').innerHTML = `
       <img class="mob-logo" src="assets/logo-${App.theme === 'dark' ? 'branca' : 'preta'}.svg"/>
       <h2>Criar conta</h2>
-      <p class="sub">Comece a vender com a OutBox Group</p>
+      <p class="sub">Comece a vender com a OutBox Soluções Digitais</p>
 
       <form id="form-signup">
         <div class="grid-2">

@@ -640,7 +640,7 @@ const Consultor = {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#46505c;--mut:#8a96a3;--bg:#F5F7F9;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{max-width:820px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}.cover{background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:40px 48px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.brand b{font-size:24px;font-weight:800}.cover h1{font-size:30px;font-weight:800;letter-spacing:-.02em}.cover p{color:rgba(255,255,255,.9);margin-top:4px}.body{padding:38px 48px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:28px;font-size:14px}.grid .lbl{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}.tbl{width:100%;border-collapse:collapse;margin-bottom:18px}.tbl th{text-align:left;padding:12px 14px;background:var(--bg);border-bottom:2px solid var(--line);font-size:12px;text-transform:uppercase;color:var(--mut)}.tbl td{padding:14px;border-bottom:1px solid var(--line)}.tot{display:flex;justify-content:flex-end}.tot .box{min-width:280px}.tot .row{display:flex;justify-content:space-between;padding:8px 0;font-size:15px;color:var(--soft)}.tot .grand{border-top:2px solid var(--line);margin-top:6px;padding-top:14px;font-size:22px;font-weight:800;color:var(--ink)}.tot .grand b{color:var(--brand)}.note{margin-top:26px;padding:16px 18px;background:var(--bg);border-radius:12px;font-size:13px;color:var(--soft);border:1px solid var(--line)}.foot{border-top:1px solid var(--line);padding:24px 48px;color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}.foot b{color:var(--ink)}.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3)}.cta{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 4px}.cta a,.cta span{flex:1;min-width:200px;text-align:center;padding:16px 20px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,box-shadow .2s}.cta a:active{transform:translateY(1px)}.cta .accept{background:var(--brand);color:#fff;box-shadow:0 8px 20px rgba(241,85,50,.28)}.cta .pay{background:#16a34a;color:#fff;box-shadow:0 8px 20px rgba(22,163,74,.26)}.cta .done{background:#e8f7ee;color:#15803d;border:1px solid #b7e4c7;box-shadow:none}@media print{.print-hint{display:none}.cta{display:none}.page{box-shadow:none}}</style></head>
 <body><div class="page">
-  <div class="cover"><div class="brand">${mark}<b>OutBox</b></div><h1>Proposta de Orçamento</h1><p>Preparada por ${u.nome || ''} ${u.sobrenome || ''} · Consultor OutBox Group</p></div>
+  <div class="cover"><div class="brand">${mark}<b>OutBox</b></div><h1>Proposta de Orçamento</h1><p>Preparada por ${u.nome || ''} ${u.sobrenome || ''} · Consultor OutBox Soluções Digitais</p></div>
   <div class="body">
     <div class="grid">
       <div><div class="lbl">Cliente</div>${cli ? cli.nome : '-'}</div>
@@ -649,7 +649,7 @@ const Consultor = {
       <div><div class="lbl">Validade</div>${val.toLocaleDateString('pt-BR')}</div>
     </div>
     <table class="tbl"><thead><tr><th>Serviço</th><th style="text-align:right">Valor</th></tr></thead>
-      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Group</span></td><td style="text-align:right">${OB.money(s.valorBruto || s.valor, s.moeda)}</td></tr></tbody></table>
+      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${OB.money(s.valorBruto || s.valor, s.moeda)}</td></tr></tbody></table>
     <div class="tot"><div class="box">
       <div class="row"><span>Subtotal</span><span>${OB.money(s.valorBruto || s.valor, s.moeda)}</span></div>
       ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.money((s.valorBruto || s.valor) - s.valor, s.moeda)}</span></div>` : ''}
@@ -668,7 +668,7 @@ const Consultor = {
     })()}
     <div class="note">Esta proposta tem validade de 7 dias. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
   </div>
-  <div class="foot"><div>OutBox Group · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
+  <div class="foot"><div>OutBox Soluções Digitais · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
 </div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
   /* abre o orçamento renderizado em uma nova aba (apenas visualização) */
@@ -1261,7 +1261,7 @@ const Consultor = {
       ${secoes}
     </div>
     <div class="foot">
-      <div>OutBox Group · Programa de Consultores<br><b>felipe@outboxgroup.com.br</b> · (47) 9.9659-7775</div>
+      <div>OutBox Soluções Digitais · Programa de Consultores<br><b>felipe@outboxgroup.com.br</b> · (47) 9.9659-7775</div>
       <div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div>
     </div>
   </div>
@@ -1343,7 +1343,7 @@ const Consultor = {
         <div>
           <div class="card" style="margin-bottom:18px">
             <div class="card-head"><h3>Precisa de ajuda?</h3></div>
-            <p class="soft" style="font-size:14px;margin-bottom:16px">Fale direto com o time da OutBox Group. Respondemos em horário comercial.</p>
+            <p class="soft" style="font-size:14px;margin-bottom:16px">Fale direto com o time da OutBox Soluções Digitais. Respondemos em horário comercial.</p>
             <a class="btn green block" href="https://wa.me/5547996597775?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20sistema%20de%20consultores." target="_blank" rel="noopener" style="margin-bottom:10px">${UI.icon('whats',16)} Falar no WhatsApp</a>
             <a class="btn ghost block" href="mailto:felipe@outboxgroup.com.br">${UI.icon('mail',16)} felipe@outboxgroup.com.br</a>
           </div>

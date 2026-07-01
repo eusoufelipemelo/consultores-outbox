@@ -62,7 +62,7 @@ const App = {
           data.ja
             ? 'Esta proposta já estava confirmada. Seu consultor foi avisado e dará seguimento ao projeto.'
             : 'Obrigado! Seu aceite foi registrado e o consultor já foi notificado. Em breve iniciamos o briefing do seu projeto.',
-          '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Group · obrigado pela confiança</p>');
+          '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais · obrigado pela confiança</p>');
       } else {
         host.innerHTML = card(alert, '#dc2626', 'Não foi possível confirmar',
           (data && data.erro === 'token') ? 'Este link de aceite não confere. Peça ao seu consultor para reenviar a proposta.' : 'Proposta não encontrada. Fale com o seu consultor.');
@@ -113,9 +113,10 @@ const App = {
       <div class="shell">
         <aside class="sidebar" id="sidebar">
           <div class="brand-row">
-            <img data-logo src="assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg" alt="OutBox"/>
+            <img data-logo src="assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg" alt="OutBox Soluções Digitais"/>
             <span class="side-tag">${isAdmin ? 'Admin' : 'Consultor'}</span>
           </div>
+          <div class="brand-desc">Soluções Digitais</div>
           <nav class="nav" id="nav">
             ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}</button>`).join('')}
           </nav>
