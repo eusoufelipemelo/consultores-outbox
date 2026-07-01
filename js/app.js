@@ -167,16 +167,25 @@ const App = {
   },
 
   /* ---------- barra de aviso/comunicado no topo (definida pelo admin) ---------- */
+  // HTML da barra (texto em loop infinito). preview=true => cantos arredondados, sem animação de entrada
+  avisoBarHTML(a, preview) {
+    const t = (OB.TIPOS_AVISO.find(x => x.id === a.tipo) || OB.TIPOS_AVISO[0]);
+    const txt = (a.texto || '').replace(/</g, '&lt;');
+    const dur = Math.max(10, Math.round((a.texto || '').length * 0.32)); // velocidade constante ~ tamanho do texto
+    return `<div class="aviso-bar ${a.tipo}${preview ? ' no-anim' : ''}"${preview ? ' style="border-radius:12px"' : ''}>
+      <span class="ico">${UI.icon(t.icon, 18)}</span>
+      <div class="aviso-marquee"><div class="aviso-marquee-inner" style="animation-duration:${dur}s">
+        <span class="aviso-seg">${txt}</span><span class="aviso-seg" aria-hidden="true">${txt}</span>
+      </div></div>
+    </div>`;
+  },
   renderAviso() {
     const host = document.getElementById('aviso-host');
     if (!host) return;
+    const u = OB.session();
+    if (u && u.role === 'admin') { host.innerHTML = ''; return; } // admin não vê a barra, só os consultores
     const a = OB.avisoAtivo();
-    if (!a) { host.innerHTML = ''; return; }
-    const t = (OB.TIPOS_AVISO.find(x => x.id === a.tipo) || OB.TIPOS_AVISO[0]);
-    host.innerHTML = `<div class="aviso-bar ${a.tipo}">
-      <span class="ico">${UI.icon(t.icon, 18)}</span>
-      <span class="txt">${(a.texto || '').replace(/</g, '&lt;')}</span>
-    </div>`;
+    host.innerHTML = a ? this.avisoBarHTML(a) : '';
   },
 
   /* Realtime: o aviso muda na hora para quem já está logado (sem recarregar) */

@@ -458,8 +458,7 @@ const Admin = {
       const cur = get();
       const prev = document.getElementById('av-preview');
       if (!cur.texto.trim()) { prev.innerHTML = `<div class="hint">Digite um texto para ver a prévia.</div>`; return; }
-      const t = OB.TIPOS_AVISO.find(x => x.id === cur.tipo) || OB.TIPOS_AVISO[0];
-      prev.innerHTML = `<div class="aviso-bar ${cur.tipo}" style="border-radius:12px;animation:none"><span class="ico">${UI.icon(t.icon,18)}</span><span class="txt">${cur.texto.replace(/</g,'&lt;')}</span></div>`;
+      prev.innerHTML = App.avisoBarHTML(cur, true);
     };
     drawPreview();
     ['av-texto', 'av-tipo', 'av-inicio', 'av-fim'].forEach(id => { const el = document.getElementById(id); el.oninput = drawPreview; el.onchange = drawPreview; });

@@ -436,8 +436,18 @@ td .strong { color: var(--text); font-weight: 600; }
 .aviso-bar { display: flex; align-items: center; gap: 12px; padding: 13px 22px; color: #fff;
   font-size: 14px; font-weight: 600; line-height: 1.4; position: relative; z-index: 6;
   box-shadow: 0 6px 18px rgba(0,0,0,.12); animation: avisoIn .45s cubic-bezier(.16,1,.3,1); }
+.aviso-bar.no-anim { animation: none; }
 .aviso-bar .ico { flex: none; display: flex; opacity: .95; }
-.aviso-bar .txt { flex: 1; }
+/* texto em loop infinito (marquee) */
+.aviso-marquee { flex: 1; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22px, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22px, #000 calc(100% - 22px), transparent); }
+.aviso-marquee-inner { display: inline-flex; white-space: nowrap;
+  animation-name: avisoScroll; animation-timing-function: linear; animation-iteration-count: infinite; will-change: transform; }
+.aviso-bar:hover .aviso-marquee-inner { animation-play-state: paused; }
+.aviso-seg { padding-right: 64px; }
+@keyframes avisoScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .aviso-marquee-inner { animation: none; } }
 .aviso-bar.info    { background: linear-gradient(90deg, #2563eb, #3b82f6); }
 .aviso-bar.sucesso { background: linear-gradient(90deg, #15803d, #22c55e); }
 .aviso-bar.alerta  { background: linear-gradient(90deg, #b45309, #f59e0b); color: #1a1205; }
