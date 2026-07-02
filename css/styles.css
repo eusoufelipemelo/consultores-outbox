@@ -833,5 +833,5 @@ td .strong { color: var(--text); font-weight: 600; }
    Mobile mantém o tamanho atual (melhor para o toque).
    ============================================================ */
 @media (min-width: 861px) {
-  .shell, .modal-bg, #toasts { zoom: .9; }
+  .shell, .modal-bg, #toasts { zoom: .85; }
 }
