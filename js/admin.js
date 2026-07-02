@@ -285,7 +285,7 @@ const Admin = {
           const completo = c.foto && c.doc && c.celular && c.cep;
           return `<div class="card cons-card" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
             <div class="row alc" style="gap:10px">
-              <div class="side-user av cons-av ${on ? 'on' : ''}">${c.foto ? `<img src="${c.foto}">` : (c.nome ? c.nome[0] : '?')}</div>
+              <div class="av-box cons-av ${on ? 'on' : ''}">${c.foto ? `<img src="${c.foto}">` : (c.nome ? c.nome[0] : '?')}</div>
               <div class="grow" style="min-width:0">
                 <b class="cons-nome">${c.nome} ${c.sobrenome || ''}</b>
                 <div class="mut cons-sub">${c.cidade ? `${c.cidade}/${c.uf || ''}` : 'Sem cidade'}${c.pais && c.pais !== 'Brasil' ? ' · ' + c.pais : ''}</div>
