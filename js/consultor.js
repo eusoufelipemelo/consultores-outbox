@@ -137,11 +137,11 @@ const Consultor = {
       const el = document.getElementById('cli-table');
       if (!rows.length) { el.innerHTML = this.empty('clients', 'Nenhum cliente', 'Cadastre seu primeiro cliente para começar a controlar suas vendas.'); return; }
       el.innerHTML = `<div class="table-wrap"><table><thead><tr>
-        <th>Cliente</th><th>Contato</th><th>Serviço</th><th>Telefone</th><th>Tipo</th><th></th></tr></thead><tbody>
-        ${rows.map(c => { const sv = OB.PRODUTOS.find(p => p.id === c.servico); return `<tr>
+        <th>Cliente</th><th>Contato</th><th>Porte</th><th>Telefone</th><th>Tipo</th><th></th></tr></thead><tbody>
+        ${rows.map(c => { const pt = OB.PORTES.find(p => p.id === c.porte); return `<tr>
           <td><span class="strong">${c.nome}</span><br><span class="mut" style="font-size:12px">${c.cidade ? c.cidade + '/' + c.uf : ''}</span></td>
           <td>${c.contato || '-'}<br><span class="mut" style="font-size:12px">${c.email || ''}</span></td>
-          <td>${sv ? `<span class="chip brand">${sv.nome}</span>` : '-'}</td>
+          <td>${pt ? `<span class="chip gray">${pt.nome}</span>` : '-'}</td>
           <td>${c.telefone || '-'}</td>
           <td><span class="chip ${c.tipo==='recorrente'?'green':'gray'}">${c.tipo==='recorrente'?'Recorrente':'Pontual'}</span></td>
           <td class="row" style="gap:6px;justify-content:flex-end">
@@ -168,7 +168,6 @@ const Consultor = {
   clienteModal(c) {
     const edit = !!c;
     const g = (k) => edit ? (c[k] || '') : '';
-    const servicoOpts = OB.PRODUTOS.map(p => `<option value="${p.id}" ${edit && c.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('');
     UI.modal({
       size: 'lg',
       title: edit ? 'Editar cliente' : 'Novo cliente',
@@ -200,20 +199,11 @@ const Consultor = {
         </div>
 
         <div class="nav-label" style="padding-left:0">Negócio</div>
-        <div class="grid-2">
-          <div class="field"><label>Tipo de cliente <span class="req">*</span></label>
-            <select id="c-tipo">
-              <option value="pontual" ${edit && c.tipo === 'pontual' ? 'selected' : ''}>Pontual (compra única)</option>
-              <option value="recorrente" ${edit && c.tipo === 'recorrente' ? 'selected' : ''}>Recorrente (gera comissão recorrente)</option>
-            </select>
-          </div>
-          <div class="field"><label>Tipo de serviço <span class="req">*</span></label>
-            <select id="c-servico">
-              <option value="">Selecione o serviço</option>
-              ${servicoOpts}
-            </select>
-            <div class="err">Selecione o serviço</div>
-          </div>
+        <div class="field"><label>Tipo de cliente <span class="req">*</span></label>
+          <select id="c-tipo">
+            <option value="pontual" ${edit && c.tipo === 'pontual' ? 'selected' : ''}>Pontual (compra única)</option>
+            <option value="recorrente" ${edit && c.tipo === 'recorrente' ? 'selected' : ''}>Recorrente (gera comissão recorrente)</option>
+          </select>
         </div>
         <div class="field"><label>Porte da empresa <span class="req">*</span></label>
           <select id="c-porte">${OB.PORTES.map(p => `<option value="${p.id}" ${edit ? (c.porte === p.id ? 'selected' : '') : (p.id === 'pequena' ? 'selected' : '')}>${p.nome}</option>`).join('')}</select>
@@ -223,7 +213,6 @@ const Consultor = {
         <div class="field"><label>Observações</label><textarea id="c-obs">${g('obs')}</textarea></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="c-save">${edit ? 'Salvar' : 'Cadastrar'}</button>`
     });
-    if (edit && c.servico) document.getElementById('c-servico').value = c.servico;
     document.getElementById('c-tel').oninput = e => e.target.value = UI.maskPhone(e.target.value);
     document.getElementById('c-doc').oninput = e => e.target.value = UI.maskDoc(e.target.value);
     const cep = document.getElementById('c-cep');
@@ -238,7 +227,7 @@ const Consultor = {
         ['c-nome', v => !!v], ['c-contato', v => !!v], ['c-doc', v => UI.validCPFouCNPJ(v)],
         ['c-tel', v => !!v], ['c-email', v => UI.validEmail(v)], ['c-cep', v => !!v],
         ['c-num', v => !!v], ['c-log', v => !!v], ['c-bairro', v => !!v],
-        ['c-cidade', v => !!v], ['c-uf', v => !!v], ['c-servico', v => !!v]
+        ['c-cidade', v => !!v], ['c-uf', v => !!v]
       ];
       let ok = true;
       req.forEach(([id, test]) => {
@@ -254,7 +243,7 @@ const Consultor = {
         instagram: val('c-insta'), email: val('c-email'), cep: val('c-cep'), numero: val('c-num'),
         complemento: val('c-comp'), logradouro: val('c-log'), bairro: val('c-bairro'),
         cidade: val('c-cidade'), uf: val('c-uf').toUpperCase(), tipo: document.getElementById('c-tipo').value,
-        servico: document.getElementById('c-servico').value, porte: document.getElementById('c-porte').value, obs: val('c-obs')
+        porte: document.getElementById('c-porte').value, obs: val('c-obs')
       });
       OB.upsertClient(obj);
       UI.closeModal(); UI.toast(edit ? 'Cliente atualizado' : 'Cliente cadastrado', '', 'ok');
@@ -328,7 +317,7 @@ const Consultor = {
           const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
           const temDesc = s.descontoTipo && s.descontoValor > 0;
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td>
-            <td>${p?p.nome:s.produto}</td>
+            <td>${OB.produtosNomes(s)}</td>
             <td><span class="strong">${OB.money(s.valor, s.moeda)}</span>${temDesc?`<br><span class="mut" style="font-size:11px">de ${OB.money(s.valorBruto, s.moeda)} · -${s.descontoTipo==='percent'?s.descontoValor+'%':OB.money(s.descontoValor, s.moeda)}</span>`:''}</td>
             <td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td>${s.statusProposta==='aprovada' ? (s.statusPagamento==='recebido' ? `<span class="chip ${st[0]}">${st[1]}</span>` : `<span class="chip warn" title="Aguardando o admin confirmar o pagamento do cliente">Em conferência</span>`) : '<span class="mut" style="font-size:12px">—</span>'}</td>
@@ -379,11 +368,11 @@ const Consultor = {
           <div class="field"><label>Valor bruto <span class="req">*</span></label><input id="ed-bruto" type="text" inputmode="decimal"/></div>
           <div class="field"><label>Moeda</label><select id="ed-moeda">${this.moedaOptions(s.moeda||'BRL')}</select></div>
         </div>
-        <div class="grid-2">
-          <div class="field"><label>Tipo de desconto</label>
-            <select id="ed-tipo"><option value="">Sem desconto</option><option value="reais" ${s.descontoTipo==='reais'?'selected':''}>Em dinheiro</option><option value="percent" ${s.descontoTipo==='percent'?'selected':''}>Em porcentagem (%)</option></select></div>
-          <div class="field"><label>Valor do desconto</label><input id="ed-desc" type="number" min="0" step="1" value="${s.descontoValor||0}"/></div>
-        </div>
+        <div class="field"><label>Desconto</label>
+          <select id="ed-desc">
+            ${[0, 3, 5, 8, 10].map(p => `<option value="${p}" ${(s.descontoTipo === 'percent' && s.descontoValor === p) || (!s.descontoTipo && p === 0) ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('')}
+          </select>
+          <div class="hint">Descontos pré-aprovados pela OutBox, aplicados sobre o valor do projeto.</div></div>
         <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.money(s.valor, s.moeda)}</b></div></div>
         <div class="field" style="margin-top:14px"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <input id="ed-link" type="url" value="${s.linkPagamento || ''}" placeholder="https://... cole o link da cobrança"/>
@@ -396,22 +385,18 @@ const Consultor = {
     const calc = () => {
       const moeda = edMoeda.value;
       const bruto = UI.money.parse(document.getElementById('ed-bruto').value);
-      const tipo = document.getElementById('ed-tipo').value;
-      const d = parseFloat(document.getElementById('ed-desc').value) || 0;
-      let final = bruto;
-      if (tipo === 'reais') final = Math.max(0, bruto - d);
-      else if (tipo === 'percent') final = Math.max(0, bruto * (1 - Math.min(d, 100) / 100));
-      document.getElementById('ed-final').textContent = OB.money(Math.round(final), moeda);
-      return { bruto, tipo, d, final: Math.round(final), moeda };
+      const d = parseInt(document.getElementById('ed-desc').value, 10) || 0;
+      const final = Math.round(Math.max(0, bruto * (1 - d / 100)));
+      document.getElementById('ed-final').textContent = OB.money(final, moeda);
+      return { bruto, d, final, moeda };
     };
     document.getElementById('ed-bruto').addEventListener('input', calc);
-    document.getElementById('ed-desc').oninput = calc;
-    document.getElementById('ed-tipo').onchange = calc;
+    document.getElementById('ed-desc').onchange = calc;
     edMoeda.onchange = () => { const eb = document.getElementById('ed-bruto'); UI.money.set(eb, UI.money.parse(eb.value), edMoeda.value); calc(); };
     document.getElementById('ed-save').onclick = () => {
       const c = calc();
       if (!c.bruto || c.bruto <= 0) return UI.toast('Informe o valor', '', 'err');
-      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.tipo || null, descontoValor: c.tipo ? c.d : 0, valor: c.final, moeda: c.moeda, linkPagamento: (document.getElementById('ed-link').value || '').trim() });
+      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.d ? 'percent' : null, descontoValor: c.d, valor: c.final, moeda: c.moeda, linkPagamento: (document.getElementById('ed-link').value || '').trim() });
       OB.updateSale(s);
       UI.closeModal(); UI.toast('Venda atualizada', '', 'ok');
       App.refreshCommission(true);
@@ -474,13 +459,15 @@ const Consultor = {
       body: `
         <div class="field"><label>Cliente <span class="req">*</span></label>
           <select id="s-cli">${clientes.map(c => `<option value="${c.id}" ${opts.clientId===c.id?'selected':''}>${c.nome} (${c.tipo})</option>`).join('')}</select></div>
-        <div class="grid-2">
-          <div class="field"><label>Produto / serviço <span class="req">*</span></label>
-            <select id="s-prod">${OB.PRODUTOS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}</select></div>
-          <div class="field"><label>Porte da empresa</label>
-            <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
-            <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
-        </div>
+        <div class="field"><label>Serviços <span class="req">*</span></label>
+          <div class="svc-multi" id="s-prods">
+            ${OB.PRODUTOS.map(p => `<label class="svc-opt"><input type="checkbox" value="${p.id}"><span>${p.nome}</span></label>`).join('')}
+          </div>
+          <div class="hint">Marque um ou mais serviços. O preço de tabela soma todos automaticamente.</div>
+          <div class="err">Selecione ao menos um serviço</div></div>
+        <div class="field"><label>Porte da empresa</label>
+          <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
+          <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
         <div id="s-treino-aviso"></div>
         <div class="field"><label>Preço</label>
           <select id="s-precomodo">
@@ -494,11 +481,13 @@ const Consultor = {
           <div class="field"><label>Moeda</label>
             <select id="s-moeda">${this.moedaOptions(OB.moedaAtual())}</select></div>
         </div>
-        <div class="grid-2">
-          <div class="field"><label>Tipo de desconto</label>
-            <select id="s-dtipo"><option value="">Sem desconto</option><option value="reais">Em dinheiro</option><option value="percent">Em %</option></select></div>
-          <div class="field"><label>Desconto</label><input id="s-dval" type="number" min="0" step="1" value="0"/></div>
-        </div>
+        <div class="field"><label>Desconto</label>
+          <select id="s-desc">
+            <option value="0">Sem desconto</option>
+            <option value="3">3%</option><option value="5">5%</option>
+            <option value="8">8%</option><option value="10">10%</option>
+          </select>
+          <div class="hint">Descontos pré-aprovados pela OutBox. Aplicado sobre o valor do projeto.</div></div>
         <div class="field"><label>Forma de pagamento</label>
           <select id="s-pgto">${OB.FORMAS_PAGAMENTO.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select>
           <div class="hint" id="s-pgto-hint">${OB.FORMAS_PAGAMENTO[0].detalhe}</div></div>
@@ -515,10 +504,11 @@ const Consultor = {
     });
     const sMoeda = document.getElementById('s-moeda');
     const sCli = document.getElementById('s-cli');
-    const sProd = document.getElementById('s-prod');
     const sVal = document.getElementById('s-val');
     const sModo = document.getElementById('s-precomodo');
     const sPorte = document.getElementById('s-porte');
+    // serviços selecionados (múltipla escolha)
+    const prodsSel = () => [...document.querySelectorAll('#s-prods input:checked')].map(i => i.value);
     UI.money.bind(sVal, () => sMoeda.value);
     // sincroniza o porte com o cliente selecionado
     const sincPorteComCliente = () => {
@@ -526,32 +516,31 @@ const Consultor = {
       sPorte.value = cliente ? (cliente.porte || 'pequena') : 'pequena';
     };
     sincPorteComCliente();
-    // preço automático pela tabela (porte selecionado) OU personalizado (digita livre)
+    // preço automático pela tabela (soma dos serviços marcados) OU personalizado (digita livre)
     const aplicarPreco = () => {
       const modo = sModo.value;
       const porte = sPorte.value;
       const porteNome = (OB.PORTES.find(p => p.id === porte) || {}).nome || '';
+      const sel = prodsSel();
+      const soma = sel.reduce((t, id) => t + (OB.precoTabela(id, porte) || 0), 0);
       if (modo === 'tabela') {
-        const preco = OB.precoTabela(sProd.value, porte);
-        UI.money.set(sVal, preco, sMoeda.value);
-        document.getElementById('s-hint').textContent = preco ? `Preço de tabela · ${porteNome}: ${OB.money(preco, sMoeda.value)} (ajuste se precisar)` : '';
+        UI.money.set(sVal, soma, sMoeda.value);
+        document.getElementById('s-hint').textContent = soma ? `Tabela · ${porteNome} · ${sel.length} serviço(s): ${OB.money(soma, sMoeda.value)} (ajuste se precisar)` : 'Marque os serviços para calcular.';
       } else {
-        // personalizado: mantém o que está digitado e mostra a referência
-        const ref = OB.precoTabela(sProd.value, porte);
-        document.getElementById('s-hint').textContent = ref ? `Referência da tabela (${porteNome}): ${OB.money(ref, sMoeda.value)}. Digite o valor do projeto.` : 'Digite o valor do projeto.';
+        document.getElementById('s-hint').textContent = soma ? `Referência da tabela (${porteNome}, ${sel.length} serviço(s)): ${OB.money(soma, sMoeda.value)}. Digite o valor do projeto.` : 'Digite o valor do projeto.';
       }
     };
-    // lembrete de treinamento: se o produto tem treino disponível e o consultor ainda não foi aprovado
+    // lembrete de treinamento: primeiro serviço marcado cujo treino ainda não foi concluído
     const updateTreinoAviso = () => {
       const box = document.getElementById('s-treino-aviso'); if (!box) return;
-      const t = TREINOS.treinoDoProduto(sProd.value);
-      if (t && t.disponivel && !OB.treinoProgress(t.id).concluido) {
-        box.innerHTML = `<div class="notice" style="margin-bottom:16px;align-items:center">${UI.icon('academy',16)}<div class="grow" style="font-size:12.5px">Você ainda não concluiu o treinamento de <b>${t.nome}</b>. Treinar antes ajuda a vender melhor.</div><button type="button" class="btn ghost" id="s-ir-treino" style="white-space:nowrap;padding:7px 12px;font-size:12px">Treinar</button></div>`;
+      const pend = prodsSel().map(id => TREINOS.treinoDoProduto(id)).find(t => t && t.disponivel && !OB.treinoProgress(t.id).concluido);
+      if (pend) {
+        box.innerHTML = `<div class="notice" style="margin-bottom:16px;align-items:center">${UI.icon('academy',16)}<div class="grow" style="font-size:12.5px">Você ainda não concluiu o treinamento de <b>${pend.nome}</b>. Treinar antes ajuda a vender melhor.</div><button type="button" class="btn ghost" id="s-ir-treino" style="white-space:nowrap;padding:7px 12px;font-size:12px">Treinar</button></div>`;
         const b = document.getElementById('s-ir-treino');
-        if (b) b.onclick = () => { UI.closeModal(); App.go('treinamentos'); setTimeout(() => this.treinoIntro(t.id), 60); };
+        if (b) b.onclick = () => { UI.closeModal(); App.go('treinamentos'); setTimeout(() => this.treinoIntro(pend.id), 60); };
       } else { box.innerHTML = ''; }
     };
-    sProd.onchange = () => { aplicarPreco(); updateTreinoAviso(); };
+    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { aplicarPreco(); updateTreinoAviso(); });
     sCli.onchange = () => { sincPorteComCliente(); aplicarPreco(); };
     sPorte.onchange = aplicarPreco;
     updateTreinoAviso();
@@ -566,18 +555,16 @@ const Consultor = {
     sPgto.onchange = () => { document.getElementById('s-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === sPgto.value) || {}).detalhe || ''; };
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
+      const produtos = prodsSel();
+      if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço', 'err'); }
       const bruto = UI.money.parse(document.getElementById('s-val').value);
       if (!bruto || bruto <= 0) return UI.toast('Informe o valor', 'O valor é obrigatório', 'err');
-      const tipo = document.getElementById('s-dtipo').value;
-      const d = parseFloat(document.getElementById('s-dval').value) || 0;
-      let valor = bruto;
-      if (tipo === 'reais') valor = Math.max(0, bruto - d);
-      else if (tipo === 'percent') valor = Math.max(0, bruto * (1 - Math.min(d, 100) / 100));
-      valor = Math.round(valor);
+      const d = parseInt(document.getElementById('s-desc').value, 10) || 0;
+      const valor = Math.round(Math.max(0, bruto * (1 - d / 100)));
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: document.getElementById('s-cli').value,
-        produto: document.getElementById('s-prod').value, valor, valorBruto: bruto, moeda,
-        descontoTipo: tipo || null, descontoValor: tipo ? d : 0,
+        produto: produtos[0], produtos, valor, valorBruto: bruto, moeda,
+        descontoTipo: d ? 'percent' : null, descontoValor: d,
         precoModo: sModo.value, // 'tabela' ou 'personalizado'
         formaPagamento: sPgto.value,
         linkPagamento: (document.getElementById('s-link').value || '').trim(),
@@ -619,8 +606,8 @@ const Consultor = {
     else {
       el.innerHTML = `<div class="table-wrap"><table><thead><tr>
         <th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
-        ${vendas.map(s => { const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto); const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
-          return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${p?p.nome:s.produto}</td>
+        ${vendas.map(s => { const cli = OB.clientById(s.clientId); const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
+          return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${OB.produtosNomes(s)}</td>
             <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
             <td class="row" style="gap:6px;justify-content:flex-end">
               <button class="iconbtn" data-view="${s.id}" title="Visualizar em nova aba">${UI.icon('external',16)}</button>
@@ -643,7 +630,23 @@ const Consultor = {
 
   /* gera o orçamento branded (HTML autossuficiente p/ baixar/imprimir em PDF) */
   buildOrcamentoHTML(s) {
-    const u = this.u(); const cli = OB.clientById(s.clientId); const p = OB.PRODUTOS.find(x => x.id === s.produto);
+    const u = this.u(); const cli = OB.clientById(s.clientId);
+    // linhas de serviço: 1 por produto. Com vários, mostra o preço de tabela de cada um
+    // (pelo porte do cliente) e uma linha de ajuste quando o total foi personalizado.
+    const prodIds = OB.produtosDaVenda(s);
+    const porteCli = cli ? (cli.porte || 'pequena') : 'pequena';
+    const bruto = s.valorBruto || s.valor;
+    let linhasSvc = '';
+    if (prodIds.length <= 1) {
+      const p0 = OB.PRODUTOS.find(x => x.id === prodIds[0]);
+      linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
+    } else {
+      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, val: OB.precoTabela(id, porteCli) || 0 }; });
+      const somaTab = itens.reduce((t, i) => t + i.val, 0);
+      linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${i.val ? OB.money(i.val, s.moeda) : '-'}</td></tr>`).join('');
+      const ajuste = bruto - somaTab;
+      if (somaTab && Math.abs(ajuste) >= 1) linhasSvc += `<tr><td><b>Ajuste do projeto</b><br><span style="color:var(--mut);font-size:13px">Personalização do escopo</span></td><td style="text-align:right">${ajuste > 0 ? '' : '- '}${OB.money(Math.abs(ajuste), s.moeda)}</td></tr>`;
+    }
     const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
     const temDesc = s.descontoTipo && s.descontoValor > 0;
     const hoje = new Date(); const val = new Date(hoje.getTime() + 7 * 864e5);
@@ -660,8 +663,8 @@ const Consultor = {
       <div><div class="lbl">Contato</div>${cli ? (cli.contato || '-') : '-'}${cli && cli.telefone ? ' · ' + cli.telefone : ''}</div>
       <div><div class="lbl">Validade</div>${val.toLocaleDateString('pt-BR')}</div>
     </div>
-    <table class="tbl"><thead><tr><th>Serviço</th><th style="text-align:right">Valor</th></tr></thead>
-      <tbody><tr><td><b>${p ? p.nome : s.produto}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${OB.money(s.valorBruto || s.valor, s.moeda)}</td></tr></tbody></table>
+    <table class="tbl"><thead><tr><th>Serviço${prodIds.length > 1 ? 's' : ''}</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>${linhasSvc}</tbody></table>
     <div class="tot"><div class="box">
       <div class="row"><span>Subtotal</span><span>${OB.money(s.valorBruto || s.valor, s.moeda)}</span></div>
       ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.money((s.valorBruto || s.valor) - s.valor, s.moeda)}</span></div>` : ''}
@@ -711,7 +714,7 @@ const Consultor = {
     const p = OB.PRODUTOS.find(x => x.id === s.produto);
     const nome = cli ? cli.nome : 'cliente';
     const titulo = `Orçamento OutBox — ${nome}`;
-    const texto = `Olá${cli ? ', ' + cli.nome.split(' ')[0] : ''}! Segue o orçamento ${p ? 'de ' + p.nome + ' ' : ''}no valor de ${OB.money(s.valor, s.moeda)}. Qualquer dúvida estou à disposição. — ${u.nome || 'OutBox'}`;
+    const texto = `Olá${cli ? ', ' + cli.nome.split(' ')[0] : ''}! Segue o orçamento ${OB.produtosNomes(s) ? 'de ' + OB.produtosNomes(s) + ' ' : ''}no valor de ${OB.money(s.valor, s.moeda)}. Qualquer dúvida estou à disposição. — ${u.nome || 'OutBox'}`;
     const arquivo = new File([this.buildOrcamentoHTML(s)], `Orcamento OutBox - ${nome}.html`, { type: 'text/html' });
 
     // 1) Web Share API com arquivo (ideal no celular)
@@ -744,6 +747,7 @@ const Consultor = {
         <p class="mut" style="font-size:13px;max-width:560px">Arraste os cartões entre as colunas para organizar seus contatos. Tudo é salvo automaticamente.</p>
         <button class="btn brand" id="novo-lead">${UI.icon('plus',16)} Novo contato</button>
       </div>
+      ${this.followupsStrip()}
       <div class="kanban" id="kanban">
         ${OB.ESTAGIOS.map(e => {
           const leads = OB.leadsOf(u.id).filter(l => l.estagio === e.id);
@@ -760,6 +764,7 @@ const Consultor = {
       </div>`;
     document.getElementById('novo-lead').onclick = () => this.leadModal();
     v.querySelectorAll('[data-add]').forEach(b => b.onclick = () => this.leadModal(null, b.dataset.add));
+    v.querySelectorAll('[data-fu]').forEach(b => b.onclick = () => this.leadModal(OB.leadsOf(u.id).find(l => l.id === b.dataset.fu)));
     this.bindKanban();
   },
 
@@ -768,9 +773,61 @@ const Consultor = {
     return `<div class="kan-card" draggable="true" data-id="${l.id}">
       <div class="row between alc"><b>${l.nome || 'Sem nome'}</b><span class="kan-grip">${UI.icon('edit',13)}</span></div>
       ${sv ? `<div style="margin-top:5px"><span class="chip brand" style="font-size:11px">${sv.nome}</span></div>` : ''}
+      ${this.followupChip(l)}
       ${l.valorEstimado ? `<div class="kan-val">${OB.money(l.valorEstimado, l.moeda)}</div>` : ''}
       ${l.telefone ? `<div class="kan-meta">${UI.icon('whats',12)} ${l.telefone}</div>` : ''}
       ${l.obs ? `<div class="kan-meta mut">${l.obs}</div>` : ''}
+    </div>`;
+  },
+
+  /* ---------- follow-up: chip, lista e alertas ---------- */
+  followupChip(l) {
+    if (!l.followupEm) return '';
+    const d = new Date(l.followupEm);
+    const hoje = new Date(); const ehHoje = d.toDateString() === hoje.toDateString();
+    const vencido = d.getTime() < Date.now();
+    const txt = `${ehHoje ? 'Hoje' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · ${d.toTimeString().slice(0, 5)}`;
+    const cls = vencido ? 'fu-late' : (ehHoje ? 'fu-today' : 'fu-ok');
+    return `<div class="fu-chip ${cls}">${UI.icon('bell',11)} ${txt}</div>`;
+  },
+
+  followupsOrdenados() {
+    const u = this.u();
+    return OB.leadsOf(u.id).filter(l => l.followupEm && l.estagio !== 'ganho' && l.estagio !== 'perdido')
+      .sort((a, b) => new Date(a.followupEm) - new Date(b.followupEm));
+  },
+
+  /* checa lembretes vencidos: badge no menu Funil + toast (1x por lembrete) */
+  checkFollowups() {
+    const u = OB.session(); if (!u || u.role === 'admin') return;
+    const agora = Date.now();
+    const due = this.followupsOrdenados().filter(l => new Date(l.followupEm).getTime() <= agora);
+    const badge = document.getElementById('fu-badge');
+    if (badge) { badge.textContent = due.length; badge.classList.toggle('hidden', !due.length); }
+    this._fuAvisados = this._fuAvisados || new Set();
+    due.forEach(l => {
+      const key = l.id + l.followupEm;
+      // só avisa lembretes das últimas 24h (os mais antigos ficam no badge/na lista)
+      if (!this._fuAvisados.has(key) && agora - new Date(l.followupEm).getTime() < 24 * 3600 * 1000) {
+        this._fuAvisados.add(key);
+        UI.toast(`Follow-up: ${l.nome}`, `Hora de falar com este cliente (${new Date(l.followupEm).toTimeString().slice(0, 5)}). Veja no Funil de Vendas.`, 'info');
+      }
+    });
+  },
+
+  /* faixa de próximos follow-ups no topo do funil */
+  followupsStrip() {
+    const fus = this.followupsOrdenados().slice(0, 8);
+    if (!fus.length) return '';
+    return `<div class="fu-strip">
+      <div class="fu-strip-head">${UI.icon('bell',14)} <b>Próximos follow-ups</b><span class="mut" style="font-size:12px">clique para abrir o contato</span></div>
+      <div class="fu-strip-list">
+        ${fus.map(l => { const d = new Date(l.followupEm); const vencido = d.getTime() < Date.now();
+          return `<button class="fu-item ${vencido ? 'late' : ''}" data-fu="${l.id}">
+            <b>${l.nome || 'Contato'}</b>
+            <span>${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${d.toTimeString().slice(0, 5)}${vencido ? ' · atrasado' : ''}</span>
+          </button>`; }).join('')}
+      </div>
     </div>`;
   },
 
@@ -800,6 +857,9 @@ const Consultor = {
 
   leadModal(l, estagioPreset) {
     const edit = !!l; const u = this.u(); const preEst = estagioPreset || 'frio';
+    const fu = edit && l.followupEm ? new Date(l.followupEm) : null;
+    const fuData = fu ? `${fu.getFullYear()}-${String(fu.getMonth() + 1).padStart(2, '0')}-${String(fu.getDate()).padStart(2, '0')}` : '';
+    const fuHora = fu ? fu.toTimeString().slice(0, 5) : '';
     UI.modal({
       title: edit ? 'Editar contato' : 'Novo contato',
       body: `
@@ -816,6 +876,12 @@ const Consultor = {
           <div class="field"><label>Valor estimado</label><input id="l-val" type="text" inputmode="decimal" placeholder="0,00"/></div>
           <div class="field"><label>Moeda</label><select id="l-moeda">${this.moedaOptions(edit ? (l.moeda || 'BRL') : OB.moedaAtual())}</select></div>
         </div>
+        <div class="nav-label" style="padding-left:0">${UI.icon('bell',13)} Lembrete de follow-up</div>
+        <div class="grid-2">
+          <div class="field"><label>Data</label><input type="date" id="l-fu-data" value="${fuData}"/></div>
+          <div class="field"><label>Hora</label><input type="time" id="l-fu-hora" value="${fuHora}"/></div>
+        </div>
+        <div class="hint" style="margin-top:-6px;margin-bottom:12px">Defina quando falar com este cliente de novo: você recebe um alerta no sistema na data e hora marcadas. Deixe em branco para remover o lembrete.</div>
         <div class="field"><label>Observações</label><textarea id="l-obs">${edit ? (l.obs || '') : ''}</textarea></div>
         <button type="button" class="btn ghost block" id="l-brief" style="border-style:dashed">${UI.icon('docs',16)} Compartilhar briefing com o cliente</button>
         <div class="hint" style="text-align:center">Use quando o cliente fechar, para coletar as informações do projeto.</div>`,
@@ -834,7 +900,12 @@ const Consultor = {
       const nome = document.getElementById('l-nome').value.trim();
       if (!nome) return UI.toast('Informe o nome', '', 'err');
       const obj = l || { id: OB.uid(), consultorId: u.id, ordem: 0, criadoEm: new Date().toISOString() };
-      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), servico: document.getElementById('l-serv').value, estagio: document.getElementById('l-est').value, valorEstimado: UI.money.parse(document.getElementById('l-val').value), moeda: lMoeda.value, obs: document.getElementById('l-obs').value.trim() });
+      // lembrete de follow-up: data obrigatória; hora padrão 09:00 se vazia
+      const fuD = document.getElementById('l-fu-data').value;
+      const fuH = document.getElementById('l-fu-hora').value;
+      const followupEm = fuD ? new Date(`${fuD}T${fuH || '09:00'}`).toISOString() : null;
+      Object.assign(obj, { nome, telefone: document.getElementById('l-tel').value.trim(), email: document.getElementById('l-email').value.trim(), servico: document.getElementById('l-serv').value, estagio: document.getElementById('l-est').value, valorEstimado: UI.money.parse(document.getElementById('l-val').value), moeda: lMoeda.value, obs: document.getElementById('l-obs').value.trim(), followupEm });
+      if (followupEm) this._fuAvisados && this._fuAvisados.delete(obj.id + followupEm);
       OB.upsertLead(obj);
       UI.closeModal(); UI.toast(edit ? 'Contato atualizado' : 'Contato adicionado', '', 'ok');
       this.render('funil');
@@ -1844,6 +1915,25 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             <div class="field"><label>Cidade <span class="req">*</span></label><input id="p-cidade" value="${u.cidade||''}"/><div class="err">Obrigatório</div></div>
             <div class="field"><label>UF <span class="req">*</span></label><input id="p-uf" value="${u.uf||''}" maxlength="2"/><div class="err">Obrigatório</div></div>
           </div>
+          <div class="field"><label>País</label><input id="p-pais" value="${u.pais||'Brasil'}"/></div>
+
+          <div class="nav-label" style="padding-left:0">Dados de pagamento</div>
+          <div class="hint" style="margin-top:-4px;margin-bottom:10px">Conta usada pela OutBox para depositar suas comissões e prêmios. Você pode alterar quando precisar.</div>
+          <div class="grid-2">
+            <div class="field"><label>Banco</label><input id="p-banco" value="${u.banco||''}" placeholder="Ex.: Nubank, Itaú, Caixa"/></div>
+            <div class="field"><label>Tipo de conta</label>
+              <select id="p-conta-tipo">
+                <option value="corrente" ${(u.contaTipo||'corrente')==='corrente'?'selected':''}>Conta corrente</option>
+                <option value="poupanca" ${u.contaTipo==='poupanca'?'selected':''}>Poupança</option>
+                <option value="pagamento" ${u.contaTipo==='pagamento'?'selected':''}>Conta de pagamento</option>
+              </select></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Agência</label><input id="p-agencia" value="${u.agencia||''}" placeholder="0000"/></div>
+            <div class="field"><label>Conta (com dígito)</label><input id="p-conta" value="${u.conta||''}" placeholder="00000-0"/></div>
+          </div>
+          <div class="field"><label>Chave Pix</label><input id="p-pix" value="${u.pix||''}" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"/>
+            <div class="hint">Preferimos Pix para pagar mais rápido. Preencha ao menos a chave Pix ou os dados da conta.</div></div>
 
           <div class="nav-label" style="padding-left:0">Preferências</div>
           <div class="field"><label>Moeda padrão</label>
@@ -1927,7 +2017,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         foto: document.getElementById('p-foto-data').value, nome: val('p-nome'), sobrenome: val('p-sobrenome'),
         nascimento: val('p-nasc'), doc: val('p-doc'), celular: val('p-cel'), instagram: val('p-insta'),
         cep: val('p-cep'), numero: val('p-num'), complemento: val('p-comp'), logradouro: val('p-log'),
-        bairro: val('p-bairro'), cidade: val('p-cidade'), uf: val('p-uf').toUpperCase(), email: val('p-email'), twoFA,
+        bairro: val('p-bairro'), cidade: val('p-cidade'), uf: val('p-uf').toUpperCase(), pais: val('p-pais') || 'Brasil',
+        email: val('p-email'), twoFA,
+        banco: val('p-banco'), agencia: val('p-agencia'), conta: val('p-conta'),
+        contaTipo: document.getElementById('p-conta-tipo').value, pix: val('p-pix'),
         moeda: document.getElementById('p-moeda').value
       });
       OB.upsertUser(u);

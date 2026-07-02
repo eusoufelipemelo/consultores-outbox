@@ -232,34 +232,96 @@ const Admin = {
   },
 
   /* ====================== CONSULTORES ====================== */
+  /* filtros da lista de consultores (persistem enquanto navega na view) */
+  _consFiltro: { nome: '', online: 'todos', de: '', ate: '', cidade: '', uf: '', pais: '' },
+
   view_consultores() {
     const cons = this.consultores();
     const v = document.getElementById('main-view');
     if (!cons.length) { v.innerHTML = Consultor.empty('users', 'Nenhum consultor', 'Os consultores aparecem aqui após criarem conta.'); return; }
-    v.innerHTML = `<div class="cards cols-3">
-      ${cons.map(c => {
-        const volMes = OB.volumeMes(c.id), volTri = OB.volumeTrimestre(c.id);
-        const nivel = OB.nivelPorVolume(volMes);
-        const com = OB.comissaoDisponivel(c.id);
-        const nClientes = OB.clientsOf(c.id).length;
-        const completo = c.foto && c.doc && c.celular && c.cep;
-        return `<div class="card">
-          <div class="row alc" style="gap:12px;margin-bottom:14px">
-            <div class="side-user av" style="width:46px;height:46px;font-size:16px">${c.foto?`<img src="${c.foto}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:(c.nome[0]||'?')}</div>
-            <div class="grow"><b style="font-size:15px">${c.nome} ${c.sobrenome}</b><div class="mut" style="font-size:12px">${c.email}</div></div>
-            <span class="tier-badge" style="background:${nivel.cor};font-size:11px;padding:4px 10px">${nivel.nome}</span>
-          </div>
-          <div class="row between" style="font-size:13px;margin-bottom:6px"><span class="soft">Vendido no mês</span><b>${OB.brl(volMes)}</b></div>
-          <div class="row between" style="font-size:13px;margin-bottom:6px"><span class="soft">No trimestre</span><b>${OB.brl(volTri)}</b></div>
-          <div class="row between" style="font-size:13px;margin-bottom:6px"><span class="soft">Comissão disponível</span><b style="color:var(--brand)">${OB.brl(com.valor)}</b></div>
-          <div class="row between" style="font-size:13px;margin-bottom:12px"><span class="soft">Clientes</span><b>${nClientes}</b></div>
-          <div class="row between alc">
-            <span class="chip ${completo?'green':'warn'}">${completo?'Perfil completo':'Perfil incompleto'}</span>
-            <button class="btn sm ghost" data-view-cons="${c.id}">Ver detalhes</button>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
+    const f = this._consFiltro;
+    const ufs = [...new Set(cons.map(c => (c.uf || '').toUpperCase()).filter(Boolean))].sort();
+    const paises = [...new Set(cons.map(c => c.pais || 'Brasil'))].sort();
+
+    // aplica filtros
+    const lista = cons.filter(c => {
+      if (f.nome && !(`${c.nome} ${c.sobrenome || ''} ${c.email || ''}`.toLowerCase().includes(f.nome.toLowerCase()))) return false;
+      if (f.online === 'online' && !OB.online(c)) return false;
+      if (f.de && (!c.criadoEm || c.criadoEm.slice(0, 10) < f.de)) return false;
+      if (f.ate && (!c.criadoEm || c.criadoEm.slice(0, 10) > f.ate)) return false;
+      if (f.cidade && !(c.cidade || '').toLowerCase().includes(f.cidade.toLowerCase())) return false;
+      if (f.uf && (c.uf || '').toUpperCase() !== f.uf) return false;
+      if (f.pais && (c.pais || 'Brasil') !== f.pais) return false;
+      return true;
+    });
+    const nOnline = cons.filter(c => OB.online(c)).length;
+
+    v.innerHTML = `
+      <div class="card cons-filtros" style="margin-bottom:16px">
+        <div class="cons-filtros-grid">
+          <div class="field"><label>Nome ou e-mail</label><input id="cf-nome" value="${f.nome}" placeholder="Buscar consultor..."/></div>
+          <div class="field"><label>Status</label>
+            <select id="cf-online">
+              <option value="todos" ${f.online === 'todos' ? 'selected' : ''}>Todos</option>
+              <option value="online" ${f.online === 'online' ? 'selected' : ''}>Logados agora (${nOnline})</option>
+            </select></div>
+          <div class="field"><label>1º acesso de</label><input type="date" id="cf-de" value="${f.de}"/></div>
+          <div class="field"><label>até</label><input type="date" id="cf-ate" value="${f.ate}"/></div>
+          <div class="field"><label>Cidade</label><input id="cf-cidade" value="${f.cidade}" placeholder="Qualquer"/></div>
+          <div class="field"><label>Estado</label>
+            <select id="cf-uf"><option value="">Todos</option>${ufs.map(u2 => `<option value="${u2}" ${f.uf === u2 ? 'selected' : ''}>${u2}</option>`).join('')}</select></div>
+          <div class="field"><label>País</label>
+            <select id="cf-pais"><option value="">Todos</option>${paises.map(p => `<option value="${p}" ${f.pais === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+          <button class="btn ghost" id="cf-limpar" title="Limpar filtros">${UI.icon('x',14)} Limpar</button>
+        </div>
+        <div class="mut" style="font-size:12px;margin-top:8px">${lista.length} de ${cons.length} consultor(es) · ${nOnline} online agora</div>
+      </div>
+      ${lista.length ? `<div class="cons-grid">
+        ${lista.map(c => {
+          const volMes = OB.volumeMes(c.id);
+          const nivel = OB.nivelPorVolume(volMes);
+          const com = OB.comissaoDisponivel(c.id);
+          const on = OB.online(c);
+          const completo = c.foto && c.doc && c.celular && c.cep;
+          return `<div class="card cons-card" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
+            <div class="row alc" style="gap:10px">
+              <div class="side-user av cons-av ${on ? 'on' : ''}">${c.foto ? `<img src="${c.foto}">` : (c.nome ? c.nome[0] : '?')}</div>
+              <div class="grow" style="min-width:0">
+                <b class="cons-nome">${c.nome} ${c.sobrenome || ''}</b>
+                <div class="mut cons-sub">${c.cidade ? `${c.cidade}/${c.uf || ''}` : 'Sem cidade'}${c.pais && c.pais !== 'Brasil' ? ' · ' + c.pais : ''}</div>
+              </div>
+              <span class="tier-badge" style="background:${nivel.cor}">${nivel.nome}</span>
+            </div>
+            <div class="cons-nums">
+              <div><span>Mês</span><b>${OB.brl(volMes)}</b></div>
+              <div><span>Comissão</span><b style="color:var(--brand)">${OB.brl(com.valor)}</b></div>
+            </div>
+            <div class="row between alc cons-foot">
+              <span class="cons-status ${on ? 'on' : ''}">${on ? 'Online agora' : (c.lastSeenEm ? 'Visto ' + OB.dataBR(c.lastSeenEm) : 'Nunca acessou')}</span>
+              <span class="mut" style="font-size:10.5px">1º acesso ${c.criadoEm ? OB.dataBR(c.criadoEm) : '-'}</span>
+            </div>
+            ${completo ? '' : '<span class="chip warn cons-incompleto">Perfil incompleto</span>'}
+          </div>`;
+        }).join('')}
+      </div>` : Consultor.empty('users', 'Nenhum resultado', 'Nenhum consultor bate com os filtros. Ajuste ou limpe os filtros.')}`;
+
+    // binds dos filtros (re-render mantendo estado)
+    const aplicar = () => {
+      const focoId = document.activeElement && document.activeElement.id;
+      this._consFiltro = {
+        nome: document.getElementById('cf-nome').value, online: document.getElementById('cf-online').value,
+        de: document.getElementById('cf-de').value, ate: document.getElementById('cf-ate').value,
+        cidade: document.getElementById('cf-cidade').value, uf: document.getElementById('cf-uf').value,
+        pais: document.getElementById('cf-pais').value
+      };
+      this.view_consultores();
+      // devolve o foco ao campo que estava sendo digitado
+      if (focoId) { const el = document.getElementById(focoId); if (el) { el.focus(); const n = (el.value || '').length; try { el.setSelectionRange(n, n); } catch (e) {} } }
+    };
+    let deb;
+    ['cf-nome', 'cf-cidade'].forEach(id => document.getElementById(id).oninput = () => { clearTimeout(deb); deb = setTimeout(aplicar, 350); });
+    ['cf-online', 'cf-de', 'cf-ate', 'cf-uf', 'cf-pais'].forEach(id => document.getElementById(id).onchange = aplicar);
+    document.getElementById('cf-limpar').onclick = () => { this._consFiltro = { nome: '', online: 'todos', de: '', ate: '', cidade: '', uf: '', pais: '' }; this.view_consultores(); };
     v.querySelectorAll('[data-view-cons]').forEach(b => b.onclick = () => this.detalheConsultor(b.dataset.viewCons));
   },
 
@@ -283,12 +345,21 @@ const Admin = {
           <div><span class="mut">CPF/CNPJ:</span> ${c.doc||'-'}</div>
           <div><span class="mut">Instagram:</span> ${c.instagram||'-'}</div>
           <div><span class="mut">Nascimento:</span> ${c.nascimento?OB.dataBR(c.nascimento):'-'}</div>
-          <div><span class="mut">Cidade:</span> ${c.cidade?c.cidade+'/'+c.uf:'-'}</div>
+          <div><span class="mut">Cidade:</span> ${c.cidade?c.cidade+'/'+c.uf:'-'}${c.pais&&c.pais!=='Brasil'?' · '+c.pais:''}</div>
+          <div><span class="mut">1º acesso:</span> ${c.criadoEm?OB.dataBR(c.criadoEm):'-'}</div>
+          <div><span class="mut">Último acesso:</span> ${OB.online(c)?'<b style="color:#1fa855">Online agora</b>':(c.lastSeenEm?OB.dataBR(c.lastSeenEm):'-')}</div>
           <div style="grid-column:1/-1"><span class="mut">Endereço:</span> ${c.logradouro?`${c.logradouro}, ${c.numero} ${c.complemento||''} — ${c.bairro}, CEP ${c.cep}`:'-'}</div>
+        </div>
+        <div class="nav-label" style="padding-left:0">Dados de pagamento</div>
+        <div class="grid-2" style="font-size:13px;gap:6px 16px;margin-bottom:14px">
+          <div><span class="mut">Chave Pix:</span> ${c.pix||'-'}</div>
+          <div><span class="mut">Banco:</span> ${c.banco||'-'}</div>
+          <div><span class="mut">Agência:</span> ${c.agencia||'-'}</div>
+          <div><span class="mut">Conta:</span> ${c.conta?`${c.conta} (${c.contaTipo==='poupanca'?'poupança':c.contaTipo==='pagamento'?'pagamento':'corrente'})`:'-'}</div>
         </div>
         <div class="nav-label" style="padding-left:0">Vendas (${vendas.length})</div>
         ${vendas.length?`<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr><th>Data</th><th>Produto</th><th>Valor</th><th>Comissão</th></tr></thead><tbody>
-          ${vendas.slice().sort((a,b)=>new Date(b.data)-new Date(a.data)).map(s=>{const p=OB.PRODUTOS.find(x=>x.id===s.produto);return `<tr><td>${OB.dataBR(s.data)}</td><td>${p?p.nome:s.produto}</td><td>${OB.brl(s.valor)}</td><td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td></tr>`}).join('')}
+          ${vendas.slice().sort((a,b)=>new Date(b.data)-new Date(a.data)).map(s=>{const p=OB.PRODUTOS.find(x=>x.id===s.produto);return `<tr><td>${OB.dataBR(s.data)}</td><td>${OB.produtosNomes(s)}</td><td>${OB.brl(s.valor)}</td><td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td></tr>`}).join('')}
         </tbody></table></div>`:'<p class="mut" style="font-size:13px;margin-bottom:14px">Sem vendas.</p>'}
         <div class="nav-label" style="padding-left:0">Solicitações (${reqs.length})</div>
         ${reqs.length?Consultor.reqList(reqs):'<p class="mut" style="font-size:13px">Sem solicitações.</p>'}`,
@@ -327,7 +398,7 @@ const Admin = {
       return `<div class="row between alc" style="padding:12px 0;border-bottom:1px solid var(--border);gap:12px">
         <div style="min-width:0">
           <b style="font-size:14px">${cli ? cli.nome : '-'} · ${OB.brl(s.valor)}</b>
-          <div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p ? p.nome : s.produto} · ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'} · ${OB.dataBR(s.data)}</div>
+          <div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${OB.produtosNomes(s)} · ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'} · ${OB.dataBR(s.data)}</div>
         </div>
         <button class="btn green" data-conf="${s.id}" style="white-space:nowrap;padding:8px 14px;font-size:13px">${UI.icon('check',15)} Recebido</button>
       </div>`;
@@ -382,7 +453,7 @@ const Admin = {
                 : `<button class="btn green" data-confirmar="${s.id}" style="padding:7px 14px;font-size:13px;white-space:nowrap">${UI.icon('check',15)} Confirmar</button>`)
             : '';
           return `<tr><td class="nowrap">${OB.dataBR(s.data)}</td><td class="strong">${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</td>
-            <td>${cli ? cli.nome : '-'}</td><td>${p ? p.nome : s.produto}</td><td class="strong nowrap">${OB.brl(s.valor)}</td>
+            <td>${cli ? cli.nome : '-'}</td><td>${OB.produtosNomes(s)}</td><td class="strong nowrap">${OB.brl(s.valor)}</td>
             <td>${pag}</td><td>${this.comLabel(s)}</td>
             <td class="row" style="justify-content:flex-end">${acao}</td></tr>`;
         }).join('')}

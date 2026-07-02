@@ -221,7 +221,7 @@ const App = {
           </div>
           <div class="brand-desc">Soluções Digitais</div>
           <nav class="nav" id="nav">
-            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}</button>`).join('')}
+            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}</button>`).join('')}
           </nav>
           <div id="side-user-box"></div>
           <button class="nav-item" id="logout-btn" style="margin-top:6px;color:#e0573f">${UI.icon('logout')}<span>Sair</span></button>
@@ -276,6 +276,15 @@ const App = {
 
     this.renderAviso();
     this.subscribeAviso();
+    // presença (quem está logado) + lembretes de follow-up
+    OB.pingPresenca();
+    if (this._presTimer) clearInterval(this._presTimer);
+    this._presTimer = setInterval(() => OB.pingPresenca(), 4 * 60 * 1000);
+    if (!isAdmin) {
+      Consultor.checkFollowups();
+      if (this._fuTimer) clearInterval(this._fuTimer);
+      this._fuTimer = setInterval(() => Consultor.checkFollowups(), 60 * 1000);
+    }
     // portão de perfil: consultor precisa completar e salvar o perfil antes de usar o sistema
     this.perfilLock = OB.precisaCompletarPerfil();
     const shell = document.querySelector('.shell');
@@ -423,6 +432,8 @@ const App = {
     UI.confirm('Sair da conta', 'Deseja realmente sair?', async () => {
       try {
         this.unsubscribeAviso();
+        if (this._presTimer) { clearInterval(this._presTimer); this._presTimer = null; }
+        if (this._fuTimer) { clearInterval(this._fuTimer); this._fuTimer = null; }
         await SB.auth.signOut();
         OB.clearCache();
         Charts.destroyAll();
