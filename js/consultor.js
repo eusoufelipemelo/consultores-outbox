@@ -1803,8 +1803,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   view_perfil() {
     const u = this.u();
     const v = document.getElementById('main-view');
+    const bloqueado = !!(typeof App !== 'undefined' && App.perfilLock);
     v.innerHTML = `
-      ${u.role !== 'admin' ? `<div style="max-width:760px">${this.certificadosStrip(u.id)}</div>` : ''}
+      ${bloqueado ? `<div class="perfil-lock-banner" style="max-width:760px">${UI.icon('lock',18)}<div><b>Complete seu cadastro para liberar o sistema</b><span>Preencha todos os campos obrigatórios e clique em <b>Salvar perfil</b>. Só assim o restante do sistema é liberado. Leva menos de 2 minutos.</span></div></div>` : ''}
+      ${(u.role !== 'admin' && !bloqueado) ? `<div style="max-width:760px">${this.certificadosStrip(u.id)}</div>` : ''}
       <div class="card pad-lg" style="max-width:760px">
         <form id="form-perfil">
           <div class="avatar-up">
@@ -1874,6 +1876,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   bindPerfil(u) {
     let twoFA = u.twoFA;
+    const v = document.getElementById('main-view');
     const fields = {
       doc: document.getElementById('p-doc'), cel: document.getElementById('p-cel'), cep: document.getElementById('p-cep')
     };
@@ -1928,9 +1931,15 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         moeda: document.getElementById('p-moeda').value
       });
       OB.upsertUser(u);
-      UI.toast('Perfil salvo!', 'Seus dados foram atualizados', 'ok');
       App.refreshSidebarUser();
       App.refreshCommission(true);
+      if (App.perfilLock) {
+        // perfil completo: libera o sistema e leva o consultor para a Visão Geral
+        UI.toast('Tudo pronto!', 'Perfil completo. Sistema liberado, boas vendas!', 'ok');
+        App.liberarPerfil();
+      } else {
+        UI.toast('Perfil salvo!', 'Seus dados foram atualizados', 'ok');
+      }
     };
   },
 

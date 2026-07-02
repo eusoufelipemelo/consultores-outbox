@@ -739,3 +739,18 @@ td .strong { color: var(--text); font-weight: 600; }
   .tg-actions { flex-direction: column-reverse; }
   .tg-actions .btn { width: 100%; }
 }
+
+/* ============================================================
+   Portão de perfil obrigatório (consultor completa antes de usar)
+   ============================================================ */
+.perfil-lock-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  margin-bottom: 16px; padding: 16px 18px; border-radius: var(--radius-sm);
+  background: var(--brand-soft); border: 1px solid rgba(241,85,50,.28); color: var(--text);
+}
+.perfil-lock-banner svg { flex: none; color: var(--brand); margin-top: 1px; }
+.perfil-lock-banner b { font-size: 14.5px; display: block; }
+.perfil-lock-banner span { display: block; font-size: 12.5px; color: var(--text-soft); margin-top: 3px; line-height: 1.5; }
+/* menu esmaecido enquanto o perfil não está completo (a navegação fica bloqueada) */
+.shell.perfil-lock #nav .nav-item:not(.active) { opacity: .4; }
+.shell.perfil-lock #nav .nav-item:not(.active):hover { background: transparent; cursor: not-allowed; }

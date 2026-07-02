@@ -276,7 +276,20 @@ const App = {
 
     this.renderAviso();
     this.subscribeAviso();
-    this.go(goProfile ? 'perfil' : nav[0].id);
+    // portão de perfil: consultor precisa completar e salvar o perfil antes de usar o sistema
+    this.perfilLock = OB.precisaCompletarPerfil();
+    const shell = document.querySelector('.shell');
+    if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
+    if (this.perfilLock) { this.go('perfil'); }
+    else { this.go(goProfile ? 'perfil' : nav[0].id); }
+  },
+
+  /* libera o sistema depois que o consultor completa e salva o perfil */
+  liberarPerfil() {
+    this.perfilLock = false;
+    const shell = document.querySelector('.shell');
+    if (shell) shell.classList.remove('perfil-lock');
+    this.go(this.mod().NAV[0].id);
   },
 
   /* ---------- barra de aviso/comunicado no topo (definida pelo admin) ---------- */
@@ -325,6 +338,11 @@ const App = {
 
   /* ---------- navegação ---------- */
   go(viewId) {
+    // enquanto o perfil não estiver completo, o consultor fica preso na tela de perfil
+    if (this.perfilLock && OB.session() && OB.session().role !== 'admin' && viewId !== 'perfil') {
+      UI.toast('Complete seu perfil', 'Preencha e salve todos os dados para liberar o sistema.', 'info');
+      viewId = 'perfil';
+    }
     this.current = viewId;
     document.getElementById('main-view').classList.remove('view-wide'); // funil reativa abaixo
     document.querySelectorAll('#nav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
