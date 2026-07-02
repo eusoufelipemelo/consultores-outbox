@@ -272,7 +272,7 @@ const OB = {
   /* perfil está completo? (mesmos obrigatórios da validação do formulário de perfil) */
   _perfilCompleto(u) {
     if (!u) return false;
-    const obrig = [u.foto, u.nome, u.sobrenome, u.nascimento, u.celular, u.instagram, u.cep, u.numero, u.logradouro, u.bairro, u.cidade, u.uf];
+    const obrig = [u.foto, u.nome, u.sobrenome, u.nascimento, u.celular, u.instagram, u.cep, u.numero, u.logradouro, u.bairro, u.cidade, u.uf, u.banco, u.agencia, u.conta, u.pix];
     if (obrig.some(v => !String(v == null ? '' : v).trim())) return false;
     const doc = String(u.doc || '').replace(/\D/g, '');
     if (doc.length !== 11 && doc.length !== 14) return false;

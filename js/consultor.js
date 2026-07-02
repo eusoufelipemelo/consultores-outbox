@@ -1918,10 +1918,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           <div class="field"><label>País</label><input id="p-pais" value="${u.pais||'Brasil'}"/></div>
 
           <div class="nav-label" style="padding-left:0">Dados de pagamento</div>
-          <div class="hint" style="margin-top:-4px;margin-bottom:10px">Conta usada pela OutBox para depositar suas comissões e prêmios. Você pode alterar quando precisar.</div>
+          <div class="hint" style="margin-top:-4px;margin-bottom:10px">Conta usada pela OutBox para depositar suas comissões e prêmios. Obrigatória para receber. Você pode alterar quando precisar.</div>
           <div class="grid-2">
-            <div class="field"><label>Banco</label><input id="p-banco" value="${u.banco||''}" placeholder="Ex.: Nubank, Itaú, Caixa"/></div>
-            <div class="field"><label>Tipo de conta</label>
+            <div class="field"><label>Banco <span class="req">*</span></label><input id="p-banco" value="${u.banco||''}" placeholder="Ex.: Nubank, Itaú, Caixa"/><div class="err">Obrigatório</div></div>
+            <div class="field"><label>Tipo de conta <span class="req">*</span></label>
               <select id="p-conta-tipo">
                 <option value="corrente" ${(u.contaTipo||'corrente')==='corrente'?'selected':''}>Conta corrente</option>
                 <option value="poupanca" ${u.contaTipo==='poupanca'?'selected':''}>Poupança</option>
@@ -1929,11 +1929,12 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
               </select></div>
           </div>
           <div class="grid-2">
-            <div class="field"><label>Agência</label><input id="p-agencia" value="${u.agencia||''}" placeholder="0000"/></div>
-            <div class="field"><label>Conta (com dígito)</label><input id="p-conta" value="${u.conta||''}" placeholder="00000-0"/></div>
+            <div class="field"><label>Agência <span class="req">*</span></label><input id="p-agencia" value="${u.agencia||''}" placeholder="0000"/><div class="err">Obrigatório</div></div>
+            <div class="field"><label>Conta (com dígito) <span class="req">*</span></label><input id="p-conta" value="${u.conta||''}" placeholder="00000-0"/><div class="err">Obrigatório</div></div>
           </div>
-          <div class="field"><label>Chave Pix</label><input id="p-pix" value="${u.pix||''}" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"/>
-            <div class="hint">Preferimos Pix para pagar mais rápido. Preencha ao menos a chave Pix ou os dados da conta.</div></div>
+          <div class="field"><label>Chave Pix <span class="req">*</span></label><input id="p-pix" value="${u.pix||''}" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"/>
+            <div class="err">Obrigatório</div>
+            <div class="hint">Preferimos Pix para pagar mais rápido.</div></div>
 
           <div class="nav-label" style="padding-left:0">Preferências</div>
           <div class="field"><label>Moeda padrão</label>
@@ -2000,7 +2001,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         ['p-foto-data', v => !!v], ['p-nome', v => !!v], ['p-sobrenome', v => !!v],
         ['p-nasc', v => !!v], ['p-doc', v => UI.validCPFouCNPJ(v)], ['p-cel', v => !!v],
         ['p-insta', v => !!v], ['p-cep', v => !!v], ['p-num', v => !!v], ['p-log', v => !!v],
-        ['p-bairro', v => !!v], ['p-cidade', v => !!v], ['p-uf', v => !!v], ['p-email', v => UI.validEmail(v)]
+        ['p-bairro', v => !!v], ['p-cidade', v => !!v], ['p-uf', v => !!v], ['p-email', v => UI.validEmail(v)],
+        ['p-banco', v => !!v], ['p-agencia', v => !!v], ['p-conta', v => !!v], ['p-pix', v => !!v]
       ];
       let ok = true, firstBad = null;
       req.forEach(([id, test]) => {
