@@ -827,3 +827,11 @@ td .strong { color: var(--text); font-weight: 600; }
 .cons-status { font-size: 10.5px; font-weight: 700; color: var(--text-mut); }
 .cons-status.on { color: #16a34a; }
 .cons-incompleto { position: absolute; top: -7px; right: 10px; font-size: 9.5px; padding: 2px 7px; }
+
+/* ============================================================
+   Densidade: tipografia ~10% menor no desktop (admin + consultor)
+   Mobile mantém o tamanho atual (melhor para o toque).
+   ============================================================ */
+@media (min-width: 861px) {
+  .shell, .modal-bg, #toasts { zoom: .9; }
+}
