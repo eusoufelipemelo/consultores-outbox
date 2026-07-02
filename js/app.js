@@ -28,8 +28,111 @@ const App = {
     }
 
     const { data: { session } } = await SB.auth.getSession();
-    if (session) { await OB.loadAll(); this.boot(); }
+    if (session) {
+      await OB.loadAll();
+      if (OB.precisaAceitarTermos()) { this.showTermosGate(); }
+      else { this.boot(); }
+    }
     else Auth.render();
+  },
+
+  /* ---------- portão de aceite dos termos (novos e antigos consultores) ---------- */
+  showTermosGate() {
+    document.getElementById('auth').style.display = 'none';
+    const app = document.getElementById('app'); app.style.display = 'none';
+    const old = document.getElementById('termos-gate'); if (old) old.remove();
+    const host = document.createElement('div');
+    host.id = 'termos-gate';
+    const abas = TERMOS.ABAS;
+    host.innerHTML = `
+      <div class="tg-card">
+        <div class="tg-head">
+          <div class="tg-mark">${UI.icon('shield', 22)}</div>
+          <div>
+            <h2>Termo de Adesão e Políticas</h2>
+            <p>Para acessar o sistema, leia e aceite os documentos abaixo. O acesso só é liberado com o aceite.</p>
+          </div>
+        </div>
+        <div class="tg-tabs" id="tg-tabs">
+          ${abas.map((a, i) => `<button class="tg-tab ${i === 0 ? 'on' : ''}" data-doc="${a.id}">${a.nome}</button>`).join('')}
+        </div>
+        <div class="tg-doc doc-view" id="tg-doc">${TERMOS.docPorId(abas[0].id)}</div>
+        <div class="tg-foot">
+          <label class="tg-check">
+            <input type="checkbox" id="tg-agree">
+            <span>Declaro que li e concordo com o <b>Termo de Prestação de Serviços (não vínculo empregatício)</b>, os <b>Termos de Uso</b> e a <b>Política de Privacidade</b>, e que atuo por conta própria (CPF ou CNPJ), sem vínculo empregatício com a ${TERMOS.EMPRESA.razao}.</span>
+          </label>
+          <div class="tg-actions">
+            <button class="btn ghost" id="tg-sair">${UI.icon('logout',16)} Sair</button>
+            <button class="btn brand" id="tg-aceitar" disabled>${UI.icon('check',16)} Aceito e continuar</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(host);
+
+    // troca de documento
+    host.querySelectorAll('#tg-tabs .tg-tab').forEach(b => b.onclick = () => {
+      host.querySelectorAll('#tg-tabs .tg-tab').forEach(x => x.classList.toggle('on', x === b));
+      const doc = document.getElementById('tg-doc');
+      doc.innerHTML = TERMOS.docPorId(b.dataset.doc);
+      doc.scrollTop = 0;
+    });
+    // habilita o botão só com o aceite marcado
+    const chk = document.getElementById('tg-agree');
+    const btn = document.getElementById('tg-aceitar');
+    chk.onchange = () => { btn.disabled = !chk.checked; };
+    // sair
+    document.getElementById('tg-sair').onclick = () => this.sairDoAceite();
+    // aceitar
+    btn.onclick = async () => {
+      if (!chk.checked) return;
+      btn.disabled = true; btn.innerHTML = 'Registrando aceite...';
+      const meta = { userAgent: navigator.userAgent, ip: await this._buscarIP() };
+      try {
+        await OB.aceitarTermos(meta);
+        host.remove();
+        this.boot();
+        UI.toast('Tudo certo!', 'Aceite registrado. Bom trabalho!', 'ok');
+      } catch (e) {
+        console.error('Erro ao registrar aceite:', e);
+        btn.disabled = false; btn.innerHTML = `${UI.icon('check',16)} Aceito e continuar`;
+        UI.toast('Não foi possível registrar', 'Tente novamente em instantes.', 'err');
+      }
+    };
+  },
+
+  /* busca o IP público do usuário (best-effort, para a auditoria do aceite) */
+  async _buscarIP() {
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 2500);
+      const r = await fetch('https://api.ipify.org?format=json', { signal: ctrl.signal });
+      clearTimeout(to);
+      const j = await r.json();
+      return (j && j.ip) || null;
+    } catch (e) { return null; }
+  },
+
+  sairDoAceite() {
+    (async () => {
+      try { await SB.auth.signOut(); } catch (e) {}
+      OB.clearCache();
+      const g = document.getElementById('termos-gate'); if (g) g.remove();
+      const app = document.getElementById('app'); app.style.display = 'none'; app.innerHTML = '';
+      this.current = null;
+      Auth.mode = 'login';
+      Auth.render();
+    })();
+  },
+
+  /* abre um documento legal em modal (acesso pelo rodapé, a qualquer momento) */
+  verDocumento(id) {
+    UI.modal({
+      title: 'Documentos legais',
+      size: 'lg',
+      body: `<div class="doc-view doc-modal">${TERMOS.docPorId(id)}</div>`,
+      footer: `<button class="btn ghost" data-close>Fechar</button>`
+    });
   },
 
   /* ---------- página pública de aceite da proposta ---------- */
@@ -122,6 +225,11 @@ const App = {
           </nav>
           <div id="side-user-box"></div>
           <button class="nav-item" id="logout-btn" style="margin-top:6px;color:#e0573f">${UI.icon('logout')}<span>Sair</span></button>
+          <div class="side-legal">
+            <button data-doc="termo">Termo de Não Vínculo</button>
+            <button data-doc="uso">Termos de Uso</button>
+            <button data-doc="privacidade">Política de Privacidade</button>
+          </div>
         </aside>
 
         <div class="main">
@@ -151,6 +259,7 @@ const App = {
     this.refreshBadge();
 
     document.querySelectorAll('#nav .nav-item').forEach(b => b.onclick = () => this.go(b.dataset.view));
+    document.querySelectorAll('.side-legal [data-doc]').forEach(b => b.onclick = () => this.verDocumento(b.dataset.doc));
     document.getElementById('logout-btn').onclick = () => this.logout();
     document.getElementById('menu-btn').onclick = () => this.drawer(true);
     document.getElementById('scrim').onclick = () => this.drawer(false);

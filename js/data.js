@@ -160,8 +160,8 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL' }; },
-  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL' }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null }; },
+  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
@@ -230,6 +230,45 @@ const OB = {
      SESSÃO / USUÁRIOS (a partir do cache)
      ============================================================ */
   session() { return this.db.profile; },
+
+  /* precisa aceitar os termos? (consultor que ainda não aceitou a versão vigente) */
+  precisaAceitarTermos() {
+    const u = this.db.profile;
+    if (!u || u.role === 'admin') return false;               // admin não passa pelo aceite
+    if (typeof TERMOS === 'undefined') return false;
+    return u.termosVersao !== TERMOS.VERSAO;
+  },
+
+  /* registra o aceite: atualiza o perfil e grava um registro imutável de auditoria */
+  async aceitarTermos(meta) {
+    const u = this.db.profile;
+    if (!u) return { ok: false };
+    const agora = new Date().toISOString();
+    // 1) perfil (usado como portão rápido no login)
+    u.termosVersao = TERMOS.VERSAO;
+    u.termosAceitoEm = agora;
+    if (this.db.profile && this.db.profile.id === u.id) this.db.profile = u;
+    const idx = this.db.profiles.findIndex(p => p.id === u.id);
+    if (idx >= 0) this.db.profiles[idx] = u;
+    await this._save('profiles', this._pOut(u));
+    // 2) trilha de auditoria (append-only). Best-effort: falha aqui não bloqueia o acesso.
+    try {
+      const digs = (u.doc || '').replace(/\D/g, '');
+      await SB.from('aceites_termos').insert({
+        consultor_id: u.id,
+        versao: TERMOS.VERSAO,
+        documentos: TERMOS.DOCUMENTOS,
+        tipo_doc: digs.length > 11 ? 'CNPJ' : 'CPF',
+        documento: u.doc || null,
+        nome: `${u.nome || ''} ${u.sobrenome || ''}`.trim() || null,
+        ip: (meta && meta.ip) || null,
+        user_agent: (meta && meta.userAgent) || null,
+        aceito_em: agora
+      });
+    } catch (e) { console.error('[OB] falha ao gravar auditoria de aceite:', e); }
+    return { ok: true };
+  },
+
   users() { return this.db.profiles; },
   userById(id) { return this.db.profiles.find(u => u.id === id) || null; },
   userByEmail(email) { return this.db.profiles.find(u => (u.email || '').toLowerCase() === String(email).toLowerCase()) || null; },
