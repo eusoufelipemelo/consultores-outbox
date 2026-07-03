@@ -228,8 +228,7 @@ img { max-width: 100%; display: block; }
 .sidebar {
   background: var(--surface); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; padding: 22px 16px; gap: 6px;
-  position: sticky; top: 0; height: 100dvh;
-  overflow-y: auto; scrollbar-width: thin; /* box vai até o fim; conteúdo rola por dentro */
+  min-height: 100dvh; /* box estica até o fim da página, tudo aparente, sem scroll interno */
 }
 .sidebar .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px; }
 .sidebar .brand-row img { height: 30px; }
@@ -506,7 +505,8 @@ td .strong { color: var(--text); font-weight: 600; }
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .sidebar { position: fixed; left: 0; top: 0; z-index: 40; width: 280px; transform: translateX(-100%);
-    transition: transform .3s; box-shadow: var(--shadow-lg); }
+    transition: transform .3s; box-shadow: var(--shadow-lg);
+    height: 100dvh; overflow-y: auto; } /* drawer sobreposto: precisa caber na tela do celular */
   .sidebar.open { transform: none; }
   .scrim.show { display: block; }
   .topbar .menu-btn { display: grid; }
