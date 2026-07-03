@@ -229,6 +229,7 @@ img { max-width: 100%; display: block; }
   background: var(--surface); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; padding: 22px 16px; gap: 6px;
   position: sticky; top: 0; height: 100dvh;
+  overflow-y: auto; scrollbar-width: thin; /* box vai até o fim; conteúdo rola por dentro */
 }
 .sidebar .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px; }
 .sidebar .brand-row img { height: 30px; }
