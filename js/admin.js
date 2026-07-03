@@ -283,6 +283,11 @@ const Admin = {
           const com = OB.comissaoDisponivel(c.id);
           const on = OB.online(c);
           const completo = c.foto && c.doc && c.celular && c.cep;
+          // progresso de treinamentos (concluído = nota >= objetivo)
+          const disp = TREINOS.disponiveis();
+          const prog = OB.treinosDoConsultor(c.id);
+          const nTr = disp.filter(p => prog[p.id] && prog[p.id].concluido).length;
+          const pctTr = disp.length ? Math.round(nTr / disp.length * 100) : 0;
           return `<div class="card cons-card" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
             <div class="row alc" style="gap:10px">
               <div class="av-box cons-av ${on ? 'on' : ''}">${c.foto ? `<img src="${c.foto}">` : (c.nome ? c.nome[0] : '?')}</div>
@@ -295,6 +300,10 @@ const Admin = {
             <div class="cons-nums">
               <div><span>Mês</span><b>${OB.brl(volMes)}</b></div>
               <div><span>Comissão</span><b style="color:var(--brand)">${OB.brl(com.valor)}</b></div>
+            </div>
+            <div class="cons-trein" title="${nTr} de ${disp.length} treinamentos concluídos (aprovação de ${TREINOS.OBJETIVO}% ou mais)">
+              <div class="row between alc"><span>Treinamentos</span><b class="${pctTr === 100 ? 'done' : ''}">${nTr}/${disp.length}</b></div>
+              <div class="cons-trein-bar ${pctTr === 100 ? 'done' : ''}"><i style="width:${pctTr}%"></i></div>
             </div>
             <div class="row between alc cons-foot">
               <span class="cons-status ${on ? 'on' : ''}">${on ? 'Online agora' : (c.lastSeenEm ? 'Visto ' + OB.dataBR(c.lastSeenEm) : 'Nunca acessou')}</span>

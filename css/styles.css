@@ -835,3 +835,12 @@ td .strong { color: var(--text); font-weight: 600; }
 @media (min-width: 861px) {
   .shell, .modal-bg, #toasts { zoom: .85; }
 }
+
+/* barra de progresso de treinamentos no card do consultor (admin) */
+.cons-trein { margin: 0 0 9px; }
+.cons-trein .row span { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mut); font-weight: 700; }
+.cons-trein .row b { font-size: 10.5px; }
+.cons-trein .row b.done { color: #16a34a; }
+.cons-trein-bar { margin-top: 4px; height: 5px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.cons-trein-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-600)); transition: width .4s ease; }
+.cons-trein-bar.done i { background: linear-gradient(90deg, #22c55e, #16a34a); }
