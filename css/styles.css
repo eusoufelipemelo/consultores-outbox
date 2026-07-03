@@ -867,3 +867,24 @@ td .strong { color: var(--text); font-weight: 600; }
   .ebook-card { flex-direction: column; }
   .ebook-capa { width: 100%; max-width: 240px; margin: 0 auto; }
 }
+
+/* ============================================================
+   Menu inteiro visível na tela (desktop): sem scroll, sem corte.
+   Box fica na altura exata da janela (compensa o zoom .85) e os
+   espaçamentos são compactados para tudo caber de uma vez.
+   ============================================================ */
+@media (min-width: 861px) {
+  .sidebar {
+    position: sticky; top: 0;
+    height: calc(100dvh / 0.85); /* compensa o zoom .85 do .shell = altura exata da tela */
+    min-height: 0; padding: 14px 14px; gap: 4px;
+  }
+  .sidebar .brand-desc { padding-bottom: 8px; }
+  .nav { gap: 2px; }
+  .nav-item { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
+  .nav-item svg { width: 18px; height: 18px; }
+  .side-user { padding: 7px 10px; margin-top: 6px; }
+  .side-user .av { width: 32px; height: 32px; font-size: 13px; }
+  .side-legal { margin-top: 8px; padding-top: 8px; gap: 1px; }
+  .side-legal button { font-size: 11px; padding: 3px 2px; }
+}
