@@ -642,11 +642,17 @@ const Consultor = {
       const p0 = OB.PRODUTOS.find(x => x.id === prodIds[0]);
       linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${escopoDe(p0, prodIds[0])}</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
     } else {
+      // distribui o valor do orçamento entre os serviços, proporcional ao preço de tabela
+      // (as linhas sempre somam exatamente o subtotal, sem linha de ajuste)
       const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteCli) || 0 }; });
       const somaTab = itens.reduce((t, i) => t + i.val, 0);
-      linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${i.escopo}</span></td><td style="text-align:right">${i.val ? OB.money(i.val, s.moeda) : '-'}</td></tr>`).join('');
-      const ajuste = bruto - somaTab;
-      if (somaTab && Math.abs(ajuste) >= 1) linhasSvc += `<tr><td><b>Ajuste do projeto</b><br><span style="color:var(--mut);font-size:13px">Personalização do escopo</span></td><td style="text-align:right">${ajuste > 0 ? '' : '- '}${OB.money(Math.abs(ajuste), s.moeda)}</td></tr>`;
+      let acum = 0;
+      itens.forEach((it, idx) => {
+        const ultimo = idx === itens.length - 1;
+        const v = ultimo ? bruto - acum : Math.round(bruto * (somaTab ? it.val / somaTab : 1 / itens.length));
+        it.mostra = Math.max(0, v); acum += v;
+      });
+      linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${i.escopo}</span></td><td style="text-align:right">${OB.money(i.mostra, s.moeda)}</td></tr>`).join('');
     }
     const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
     const temDesc = s.descontoTipo && s.descontoValor > 0;
