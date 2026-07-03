@@ -10,6 +10,7 @@ const Consultor = {
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
+    { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
@@ -23,6 +24,7 @@ const Consultor = {
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
+    ebooks:     ['E-Books', 'Materiais exclusivos para baixar, estudar e compartilhar conhecimento'],
     treinamentos: ['Treinamentos', 'Trilha de como vender os produtos da OutBox'],
     ajuda:      ['Dúvidas & Guia', 'Como usar o sistema'],
     perfil:     ['Editar Perfil', 'Mantenha seus dados sempre atualizados']
@@ -1836,6 +1838,42 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         </div>`;
       }).join('');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  /* ====================== E-BOOKS ====================== */
+  /* catálogo: para publicar um novo e-book, adicione o PDF + capa em
+     assets/ebooks/ e inclua um item aqui. Entra sozinho na tela. */
+  EBOOKS: [
+    {
+      id: 'energia-dinheiro',
+      titulo: 'Libere a energia do dinheiro dentro de você',
+      autor: 'Mayra Maximiano',
+      desc: 'Entenda o processo emocional que atrai e afasta sua prosperidade.',
+      paginas: 79,
+      capa: 'assets/ebooks/energia-dinheiro-capa.jpg',
+      arquivo: 'assets/ebooks/libere-a-energia-do-dinheiro.pdf'
+    }
+  ],
+
+  view_ebooks() {
+    const v = document.getElementById('main-view');
+    if (!this.EBOOKS.length) { v.innerHTML = this.empty('book', 'Nenhum e-book ainda', 'Os e-books disponibilizados pela OutBox aparecem aqui.'); return; }
+    v.innerHTML = `
+      <div class="ebook-grid">
+        ${this.EBOOKS.map(e => `
+          <div class="card ebook-card">
+            <div class="ebook-capa"><img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/></div>
+            <div class="ebook-info">
+              <b>${e.titulo}</b>
+              <span class="ebook-autor">${e.autor}${e.paginas ? ' · ' + e.paginas + ' páginas' : ''}</span>
+              <p>${e.desc || ''}</p>
+              <div class="row" style="gap:8px;margin-top:auto">
+                <a class="btn ghost" href="${e.arquivo}" target="_blank" rel="noopener" title="Ler agora em nova aba">${UI.icon('eye',15)} Ler</a>
+                <a class="btn brand grow" href="${e.arquivo}" download title="Baixar o PDF">${UI.icon('download',15)} Baixar e-book</a>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>`;
   },
 
   /* ====================== AJUDA / GUIA ====================== */
