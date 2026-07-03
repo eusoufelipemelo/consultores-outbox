@@ -637,13 +637,14 @@ const Consultor = {
     const porteCli = cli ? (cli.porte || 'pequena') : 'pequena';
     const bruto = s.valorBruto || s.valor;
     let linhasSvc = '';
+    const escopoDe = (p, id) => (p && p.incluso) ? p.incluso : 'Desenvolvido pela OutBox Soluções Digitais';
     if (prodIds.length <= 1) {
       const p0 = OB.PRODUTOS.find(x => x.id === prodIds[0]);
-      linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
+      linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${escopoDe(p0, prodIds[0])}</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
     } else {
-      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, val: OB.precoTabela(id, porteCli) || 0 }; });
+      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteCli) || 0 }; });
       const somaTab = itens.reduce((t, i) => t + i.val, 0);
-      linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px">Desenvolvido pela OutBox Soluções Digitais</span></td><td style="text-align:right">${i.val ? OB.money(i.val, s.moeda) : '-'}</td></tr>`).join('');
+      linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${i.escopo}</span></td><td style="text-align:right">${i.val ? OB.money(i.val, s.moeda) : '-'}</td></tr>`).join('');
       const ajuste = bruto - somaTab;
       if (somaTab && Math.abs(ajuste) >= 1) linhasSvc += `<tr><td><b>Ajuste do projeto</b><br><span style="color:var(--mut);font-size:13px">Personalização do escopo</span></td><td style="text-align:right">${ajuste > 0 ? '' : '- '}${OB.money(Math.abs(ajuste), s.moeda)}</td></tr>`;
     }

@@ -18,12 +18,18 @@ const OB = {
 
   /* ---------- catálogo de produtos + tabela de preços fixos por porte (R$) ---------- */
   PRODUTOS: [
-    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4500,  grande: 6500,  industria: 9000 } },
-    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1500,  media: 2500,  grande: 3500,  industria: 4500 } },
-    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2500,  media: 3800,  grande: 4900,  industria: 6000 } },
-    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5000,  media: 8500,  grande: 11500, industria: 15000 } },
-    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9000,  media: 16000, grande: 23000, industria: 30000 } },
-    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 18000, media: 45000, grande: 80000, industria: 120000 } }
+    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4500,  grande: 6500,  industria: 9000 },
+      incluso: 'Criação de logotipo profissional com variações, paleta de cores, tipografia da marca, manual básico de aplicação e entrega dos arquivos em alta resolução para uso digital e impresso.' },
+    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1500,  media: 2500,  grande: 3500,  industria: 4500 },
+      incluso: 'Página única focada em conversão: texto persuasivo, chamada para ação, botão de WhatsApp, formulário de contato, otimização para celular e publicação no ar.' },
+    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2500,  media: 3800,  grande: 4900,  industria: 6000 },
+      incluso: 'Site completo em página única: apresentação da empresa, serviços, diferenciais, depoimentos, mapa de localização, botão de WhatsApp, otimização para celular e para o Google.' },
+    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5000,  media: 8500,  grande: 11500, industria: 15000 },
+      incluso: 'Site com múltiplas páginas (início, sobre, serviços, contato), formulário de contato, botão de WhatsApp, otimização para celular e SEO básico para ser encontrado no Google.' },
+    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9000,  media: 16000, grande: 23000, industria: 30000 },
+      incluso: 'Loja virtual completa: cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gerenciar pedidos.' },
+    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 18000, media: 45000, grande: 80000, industria: 120000 },
+      incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' }
   ],
   /* preço de tabela conforme produto + porte do cliente */
   precoTabela(produtoId, porteId) {
