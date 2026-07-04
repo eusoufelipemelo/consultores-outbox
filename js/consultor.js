@@ -2022,24 +2022,32 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     fields.cep.onblur = () => this.buscarCEP(fields.cep.value);
     this.bindCertificados(v);
 
-    // foto: redimensiona para no máx 400px e comprime em JPEG (evita base64 de MBs no banco)
+    // foto: comprime automaticamente até ficar bem abaixo de 500KB (nunca bloqueia o consultor)
+    const TETO_FOTO = 480 * 1024; // teto do arquivo final ~480KB (bem abaixo de 1MB)
+    const bytesDataUrl = (d) => Math.round((d.length - (d.indexOf(',') + 1)) * 3 / 4);
     document.getElementById('p-foto').onchange = (e) => {
       const f = e.target.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type)) { UI.toast('Arquivo inválido', 'Envie uma imagem (JPG ou PNG).', 'err'); e.target.value = ''; return; }
       const r = new FileReader();
       r.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const MAX = 400;
-          let w = img.width, h = img.height;
-          if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-          else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
-          let data;
-          try { data = cv.toDataURL('image/jpeg', 0.82); }
-          catch (err) { data = r.result; } // fallback (ex.: imagem com CORS) mantém o original
+          let data = r.result, maxPx = 400, q = 0.85;
+          try {
+            for (let t = 0; t < 8; t++) {
+              let w = img.width, h = img.height;
+              if (w > h && w > maxPx) { h = Math.round(h * maxPx / w); w = maxPx; }
+              else if (h > maxPx) { w = Math.round(w * maxPx / h); h = maxPx; }
+              const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+              cv.getContext('2d').drawImage(img, 0, 0, w, h);
+              data = cv.toDataURL('image/jpeg', q);
+              if (bytesDataUrl(data) <= TETO_FOTO) break;
+              if (q > 0.5) q -= 0.12; else maxPx = Math.round(maxPx * 0.85); // 1º baixa qualidade, depois tamanho
+            }
+          } catch (err) { data = r.result; }
           document.getElementById('p-foto-data').value = data;
           document.getElementById('av-pic').innerHTML = `<img src="${data}"/>`;
+          UI.toast('Foto otimizada', `Ajustada para ~${Math.max(1, Math.round(bytesDataUrl(data) / 1024))} KB, carrega mais rápido.`, 'ok');
         };
         img.onerror = () => { document.getElementById('p-foto-data').value = r.result; document.getElementById('av-pic').innerHTML = `<img src="${r.result}"/>`; };
         img.src = r.result;
