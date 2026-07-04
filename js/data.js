@@ -308,6 +308,58 @@ const OB = {
     return (Date.now() - new Date(u.lastSeenEm).getTime()) < this.ONLINE_JANELA_MIN * 60 * 1000;
   },
 
+  /* ---------- fotos (avatares) carregadas sob demanda + auto-compressão ----------
+     A lista de profiles NÃO traz a foto (base64 pesado). As fotos são buscadas em
+     2º plano; se alguma estiver grande, o sistema encolhe e salva a miniatura de volta,
+     então a partir daí tudo fica leve. Admin pode salvar de qualquer um (RPC set_foto). */
+  fotos: {},
+  _comprimirFoto(dataUrl) {
+    return new Promise((res) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 300; let w = img.width, h = img.height;
+          if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let out; try { out = cv.toDataURL('image/jpeg', 0.8); } catch (e) { out = dataUrl; }
+          res(out && out.length < dataUrl.length ? out : dataUrl);
+        };
+        img.onerror = () => res(dataUrl);
+        img.src = dataUrl;
+      } catch (e) { res(dataUrl); }
+    });
+  },
+  async _salvarFotoEncolhida(id, foto) {
+    if (!foto || foto.length <= 120000) return foto; // já é leve
+    const thumb = await this._comprimirFoto(foto);
+    if (thumb && thumb.length < foto.length * 0.9) {
+      try { await SB.rpc('set_foto', { p_id: id, p_foto: thumb }); } catch (e) {}
+      if (this.db.profile && this.db.profile.id === id) this.db.profile.foto = thumb;
+      return thumb;
+    }
+    return foto;
+  },
+  /* busca as fotos que faltam no cache e encolhe as grandes; devolve o mapa id->foto */
+  async carregarFotos() {
+    const own = this.db.profile;
+    if (own && own.foto && this.fotos[own.id] === undefined) {
+      this.fotos[own.id] = own.foto;
+      this.fotos[own.id] = await this._salvarFotoEncolhida(own.id, own.foto);
+    }
+    const faltam = (this.db.profiles || []).map(p => p.id).filter(id => this.fotos[id] === undefined);
+    if (faltam.length) {
+      const { data } = await SB.from('profiles').select('id,foto').in('id', faltam);
+      for (const row of (data || [])) {
+        this.fotos[row.id] = row.foto || null;
+        if (row.foto) this.fotos[row.id] = await this._salvarFotoEncolhida(row.id, row.foto);
+      }
+      faltam.forEach(id => { if (this.fotos[id] === undefined) this.fotos[id] = null; });
+    }
+    return this.fotos;
+  },
+
   /* ---------- serviços de uma venda (compat: antigas têm só 1) ---------- */
   produtosDaVenda(s) {
     if (Array.isArray(s.produtos) && s.produtos.length) return s.produtos;

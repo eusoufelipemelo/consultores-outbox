@@ -282,7 +282,8 @@ const Admin = {
           const nivel = OB.nivelPorVolume(volMes);
           const com = OB.comissaoDisponivel(c.id);
           const on = OB.online(c);
-          const completo = c.foto && c.doc && c.celular && c.cep;
+          const completo = c.doc && c.celular && c.cep && c.pix; // foto não vem na lista (perf)
+          const fotoCache = OB.fotos[c.id];
           // progresso de treinamentos (concluído = nota >= objetivo)
           const disp = TREINOS.disponiveis();
           const prog = OB.treinosDoConsultor(c.id);
@@ -290,7 +291,7 @@ const Admin = {
           const pctTr = disp.length ? Math.round(nTr / disp.length * 100) : 0;
           return `<div class="card cons-card" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
             <div class="row alc" style="gap:10px">
-              <div class="av-box cons-av ${on ? 'on' : ''}">${c.foto ? `<img src="${c.foto}">` : (c.nome ? c.nome[0] : '?')}</div>
+              <div class="av-box cons-av ${on ? 'on' : ''}" data-av="${c.id}">${fotoCache ? `<img src="${fotoCache}">` : (c.nome ? c.nome[0] : '?')}</div>
               <div class="grow" style="min-width:0">
                 <b class="cons-nome">${c.nome} ${c.sobrenome || ''}</b>
                 <div class="mut cons-sub">${c.cidade ? `${c.cidade}/${c.uf || ''}` : 'Sem cidade'}${c.pais && c.pais !== 'Brasil' ? ' · ' + c.pais : ''}</div>
@@ -332,6 +333,14 @@ const Admin = {
     ['cf-online', 'cf-de', 'cf-ate', 'cf-uf', 'cf-pais'].forEach(id => document.getElementById(id).onchange = aplicar);
     document.getElementById('cf-limpar').onclick = () => { this._consFiltro = { nome: '', online: 'todos', de: '', ate: '', cidade: '', uf: '', pais: '' }; this.view_consultores(); };
     v.querySelectorAll('[data-view-cons]').forEach(b => b.onclick = () => this.detalheConsultor(b.dataset.viewCons));
+
+    // fotos em 2º plano: a tela já abriu com iniciais; as fotos entram assim que chegam
+    OB.carregarFotos().then(() => {
+      document.querySelectorAll('.cons-av[data-av]').forEach(el => {
+        const f = OB.fotos[el.dataset.av];
+        if (f) el.innerHTML = `<img src="${f}">`;
+      });
+    }).catch(() => {});
   },
 
   detalheConsultor(id) {
