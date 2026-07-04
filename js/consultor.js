@@ -2022,11 +2022,28 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     fields.cep.onblur = () => this.buscarCEP(fields.cep.value);
     this.bindCertificados(v);
 
-    // foto
+    // foto: redimensiona para no máx 400px e comprime em JPEG (evita base64 de MBs no banco)
     document.getElementById('p-foto').onchange = (e) => {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = () => { document.getElementById('p-foto-data').value = r.result; document.getElementById('av-pic').innerHTML = `<img src="${r.result}"/>`; };
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 400;
+          let w = img.width, h = img.height;
+          if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let data;
+          try { data = cv.toDataURL('image/jpeg', 0.82); }
+          catch (err) { data = r.result; } // fallback (ex.: imagem com CORS) mantém o original
+          document.getElementById('p-foto-data').value = data;
+          document.getElementById('av-pic').innerHTML = `<img src="${data}"/>`;
+        };
+        img.onerror = () => { document.getElementById('p-foto-data').value = r.result; document.getElementById('av-pic').innerHTML = `<img src="${r.result}"/>`; };
+        img.src = r.result;
+      };
       r.readAsDataURL(f);
     };
 

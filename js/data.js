@@ -190,9 +190,12 @@ const OB = {
   async loadAll() {
     const { data: { user } } = await SB.auth.getUser();
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
+    // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
+    // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
+    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
     const [prof, profs, cli, sal, req, lds, avi, tp, rk] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-      SB.from('profiles').select('*'),
+      SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
       SB.from('sales').select('*'),
       SB.from('requests').select('*'),
