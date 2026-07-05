@@ -887,3 +887,23 @@ td .strong { color: var(--text); font-weight: 600; }
   .side-legal { margin-top: 8px; padding-top: 8px; gap: 1px; }
   .side-legal button { font-size: 11px; padding: 3px 2px; }
 }
+
+/* ============================================================
+   Botão do grupo do WhatsApp na sidebar (consultor)
+   ============================================================ */
+.side-whats {
+  display: flex; align-items: center; gap: 11px; margin: 8px 0 4px;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, #25D366, #128C7E); color: #fff;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, .28);
+  transition: transform .12s, box-shadow .2s, filter .2s;
+}
+.side-whats:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(37, 211, 102, .38); filter: saturate(1.05); }
+.side-whats:active { transform: translateY(0); }
+.side-whats .wa-ico {
+  width: 34px; height: 34px; flex: none; border-radius: 50%;
+  background: rgba(255,255,255,.18); display: grid; place-items: center;
+}
+.side-whats .wa-txt { min-width: 0; line-height: 1.15; }
+.side-whats .wa-txt b { font-size: 13px; font-weight: 700; display: block; white-space: nowrap; }
+.side-whats .wa-txt small { font-size: 10.5px; opacity: .92; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
