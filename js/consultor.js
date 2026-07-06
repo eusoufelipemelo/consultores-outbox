@@ -1940,7 +1940,6 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             <defs><clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SHAPE}"/></clipPath></defs>
             <g clip-path="url(#${cid})">
               <image href="assets/briefings/${b.tipo}.jpg" x="0" y="0" width="210" height="340" preserveAspectRatio="xMidYMid slice"/>
-              <rect x="0" y="0" width="210" height="340" fill="rgba(241,85,50,.32)"/>
             </g>
           </svg>
           <span class="bcard__hash">#TudoPassa.AVendaNão</span>
@@ -1950,8 +1949,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           </div>
         </a>
         <div class="brief-cell-actions">
-          <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
-          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir em nova guia</a>
+          <button type="button" class="btn ghost sm" data-copylink="${link}" aria-label="Copiar link do briefing de ${b.nome}">${UI.icon('docs',15)}<span>Copiar</span></button>
+          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener" aria-label="Abrir briefing de ${b.nome} em nova guia">${UI.icon('external',15)}<span>Abrir</span></a>
         </div>
       </div>`;
     }).join('');

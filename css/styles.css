@@ -1001,8 +1001,8 @@ td .strong { color: var(--text); font-weight: 600; }
 .brief-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 20px; }
 .brief-cell { display: flex; flex-direction: column; gap: 9px; }
 .brief-cell-actions { display: flex; gap: 8px; }
-.brief-cell-actions .btn { flex: 1; min-width: 0; justify-content: center; white-space: nowrap; }
-@media (max-width: 380px) { .brief-cell-actions { flex-direction: column; } }
+.brief-cell-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; gap: 6px; padding: 9px 8px; font-size: 12.5px; }
+.brief-cell-actions .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bcard {
   position: relative; display: block; text-decoration: none;
   aspect-ratio: 210 / 340; border-radius: 18px; overflow: hidden;
