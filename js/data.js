@@ -161,7 +161,7 @@ const OB = {
   /* App de briefing publicado (dentro do próprio sistema). Cada serviço tem seu formulário (?p=...);
      quando enviado por um projeto, o link leva pid+token e o preenchimento volta sozinho para a tabela projetos. */
   BRIEFING_BASE: 'https://consultores.outboxgroup.com.br/briefing/',
-  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', identidade: 'identidade', ecommerce: 'site', sistemas: 'site' },
+  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
   briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
   briefingLink(produtoId, pid, token) {
     let url = this.BRIEFING_BASE + '?p=' + this.briefingTipo(produtoId);
@@ -174,7 +174,9 @@ const OB = {
     { tipo: 'landing', nome: 'Landing Page' },
     { tipo: 'vendas', nome: 'Página de Vendas' },
     { tipo: 'onepage', nome: 'OnePage' },
-    { tipo: 'identidade', nome: 'Identidade Visual' }
+    { tipo: 'identidade', nome: 'Identidade Visual' },
+    { tipo: 'ecommerce', nome: 'E-commerce' },
+    { tipo: 'sistemas', nome: 'Sistema Sob Medida' }
   ],
   briefingLinkTipo(tipo) { return this.BRIEFING_BASE + '?p=' + tipo; },
 

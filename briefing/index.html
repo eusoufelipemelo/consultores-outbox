@@ -477,6 +477,16 @@ button { font-family: var(--body); cursor: pointer; }
         <h3>Identidade Visual</h3>
         <div class="hub-actions"><a class="btn btn--accent" href="?p=identidade">Abrir</a><button type="button" class="btn btn--outline-w hub-copy">Copiar link</button></div>
       </div>
+      <div class="hub-card" data-p="ecommerce">
+        <span class="ptype__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.6"/><circle cx="19" cy="21" r="1.6"/><path d="M2 3h3l2.6 12.5a2 2 0 0 0 2 1.5h8.7a2 2 0 0 0 2-1.5L22 7H6"/></svg></span>
+        <h3>E-commerce</h3>
+        <div class="hub-actions"><a class="btn btn--accent" href="?p=ecommerce">Abrir</a><button type="button" class="btn btn--outline-w hub-copy">Copiar link</button></div>
+      </div>
+      <div class="hub-card" data-p="sistemas">
+        <span class="ptype__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 8l2.5 2.5L7 13"/><line x1="13" y1="13" x2="17" y2="13"/></svg></span>
+        <h3>Sistema Sob Medida</h3>
+        <div class="hub-actions"><a class="btn btn--accent" href="?p=sistemas">Abrir</a><button type="button" class="btn btn--outline-w hub-copy">Copiar link</button></div>
+      </div>
     </div>
   </div>
   <div class="gate__foot">Desenvolvido por: <a href="https://www.outboxgroup.com.br" target="_blank" rel="noopener">OutBox Group</a></div>
@@ -1035,6 +1045,130 @@ button { font-family: var(--body); cursor: pointer; }
         { eyebrow: "Finais", h2: "Para fechar", hint: "Últimos detalhes e o que mais você quiser compartilhar.", fields: [
           { t: "area", name: "historia", label: "História da marca", q: "Sua empresa ou algum produto que você comercializa possui uma história? Conte resumidamente.", req: true },
           { t: "area", name: "consideracoes", label: "Considerações finais", q: "Fique à vontade para dizer mais sobre a sua empresa ou dar considerações finais.", req: true }
+        ]}
+      ]
+    },
+
+    ecommerce: {
+      label: "E-commerce", fala: "sua loja", tag: "Briefing · E-commerce",
+      title: "Sua loja virtual começa <em>aqui.</em>",
+      sub: "Este briefing é a base da loja virtual que vamos construir para você vender online. Quanto mais detalhe você trouxer sobre produtos, pagamento e entrega, mais certeira será a loja. Responda com calma, não existem respostas erradas.",
+      steps: [
+        { eyebrow: "Sobre você", h2: "Primeiro, quem é você?", hint: "Seus dados de contato e o nome da loja.", fields: [
+          { t: "text", name: "nome", label: "Nome completo", q: "Nome completo", req: true, ph: "Como você se chama?" },
+          { t: "email", name: "email", label: "E-mail de contato", q: "E-mail de contato", req: true, ph: "voce@email.com" },
+          { t: "text", name: "whatsapp", label: "WhatsApp", q: "WhatsApp", req: true, ph: "(00) 0 0000-0000" },
+          { t: "text", name: "loja", label: "Nome da loja", q: "Qual o nome da sua loja ou marca?", req: true, ph: "Nome que aparece para o cliente" },
+          { t: "text", name: "insta", label: "Instagram/site atual", q: "Instagram ou site atual, se tiver", req: false, ph: "@sualoja ou www.sualoja.com.br" }
+        ]},
+        { eyebrow: "O negócio", h2: "Sobre o seu negócio", hint: "O que você vende e o momento atual da loja.", fields: [
+          { t: "area", name: "descricao", label: "O que a loja vende", q: "Descreva o que sua loja vende.", req: true, desc: "Tipo de produto, público e o que torna sua loja diferente." },
+          { t: "text", name: "tempo", label: "Tempo de existência", q: "Há quanto tempo o negócio existe?", req: true, ph: "Ex: 2 anos, ainda vou abrir..." },
+          { t: "multi", name: "vende_hoje", label: "Onde vende hoje", q: "Você já vende hoje? Onde?", req: true, options: ["Ainda não vendo", "Loja física / presencial", "Instagram e WhatsApp", "Já tenho loja virtual", "Marketplaces (Mercado Livre, Shopee...)"] },
+          { t: "single", name: "objetivo", label: "Maior objetivo", q: "Qual seu maior objetivo com a loja virtual?", req: true, options: [
+            { v: "Vender 24h no automático", hint: "Faturar sem depender de atendimento manual." },
+            { v: "Profissionalizar a marca", hint: "Passar mais credibilidade." },
+            { v: "Parar de vender só no WhatsApp", hint: "Organizar os pedidos em um só lugar." },
+            { v: "Escalar as vendas", hint: "Vender muito mais do que hoje." }
+          ]},
+          { t: "text", name: "meta", label: "Meta de vendas", q: "Você tem uma meta de vendas ou faturamento?", req: false, ph: "Ex: 100 pedidos/mês (opcional)" }
+        ]},
+        { eyebrow: "Produtos", h2: "Seus produtos e catálogo", hint: "Como é o seu catálogo hoje.", fields: [
+          { t: "single", name: "qtd_produtos", label: "Quantidade de produtos", q: "Quantos produtos pretende cadastrar?", req: true, options: [
+            { v: "Até 10" }, { v: "11 a 50" }, { v: "51 a 200" }, { v: "Mais de 200" }, { v: "Ainda não sei" }
+          ]},
+          { t: "multi", name: "variacoes", label: "Variações dos produtos", q: "Seus produtos têm variações?", req: true, options: ["Tamanho", "Cor", "Sabor / Peso", "Voltagem", "Não têm variação", "Outra"] },
+          { t: "single", name: "fotos", label: "Fotos dos produtos", q: "Você já tem as fotos dos produtos?", req: true, options: [
+            { v: "Sim, prontas e com boa qualidade" }, { v: "Tenho algumas" }, { v: "Ainda não tenho" }, { v: "Preciso de ajuda com as fotos" }
+          ]},
+          { t: "single", name: "descricoes", label: "Descrições e preços", q: "Já tem as descrições e os preços dos produtos?", req: true, options: [
+            { v: "Sim, tudo pronto" }, { v: "Parcialmente" }, { v: "Ainda não" }
+          ]},
+          { t: "text", name: "catalogo_link", label: "Link do catálogo/planilha", q: "Se já tiver uma planilha ou catálogo, deixe o link aqui.", req: false, ph: "Link do Drive, planilha, PDF... (opcional)" }
+        ]},
+        { eyebrow: "Pagamento e entrega", h2: "Como você vai receber e entregar", hint: "As regras comerciais da loja.", fields: [
+          { t: "multi", name: "pagamentos", label: "Formas de pagamento", q: "Quais formas de pagamento você quer oferecer?", req: true, options: ["Pix", "Cartão de crédito", "Boleto", "Cartão de débito", "Carteiras (PicPay, PayPal...)", "Não sei, me orientem"] },
+          { t: "text", name: "gateway", label: "Meio de pagamento atual", q: "Já tem conta em algum meio de pagamento?", req: false, ph: "Ex: Mercado Pago, PagSeguro, Stripe... (opcional)" },
+          { t: "multi", name: "entrega", label: "Formas de entrega", q: "Como pretende entregar os produtos?", req: true, options: ["Correios", "Transportadora", "Motoboy / entrega local", "Retirada na loja", "Frete grátis por região", "Produto digital (sem envio)", "Não sei ainda"] },
+          { t: "single", name: "nota", label: "Nota fiscal", q: "Você emite nota fiscal?", req: true, options: [
+            { v: "Sim, já emito" }, { v: "Ainda não" }, { v: "Vou passar a emitir" }
+          ]}
+        ]},
+        { eyebrow: "Recursos", h2: "Recursos e integrações", hint: "O que a loja precisa ter para vender melhor.", fields: [
+          { t: "multi", name: "recursos", label: "Recursos desejados", q: "Quais recursos você gostaria na loja?", req: true, options: ["Cupom de desconto", "Frete grátis acima de um valor", "Área do cliente", "Lista de desejos", "Avaliações de clientes", "Botão de WhatsApp", "Recuperação de carrinho abandonado", "Clube de assinatura", "Rastreamento de pedidos"] },
+          { t: "multi", name: "integracoes", label: "Integrações", q: "Quais integrações você gostaria?", req: false, options: ["Instagram Shopping", "Google Shopping", "E-mail marketing", "ERP / controle de estoque", "Marketplaces", "WhatsApp", "Não sei"] },
+          { t: "text", name: "dominio", label: "Domínio", q: "Já tem um domínio registrado? Se sim, qual?", req: false, ph: "www.sualoja.com.br (deixe em branco se não tiver)" }
+        ]},
+        { eyebrow: "Visual e referências", h2: "A cara da sua loja", hint: "A identidade e o que serve de inspiração.", fields: [
+          { t: "single", name: "identidade", label: "Identidade visual", q: "Você já tem logotipo e identidade visual?", req: true, options: [
+            { v: "Sim, tudo pronto" }, { v: "Só o logo" }, { v: "Ainda não tenho" }
+          ]},
+          { t: "text", name: "cores", label: "Cores da marca", q: "Quais as cores da sua marca?", req: false, ph: "Ex: verde e branco (opcional)" },
+          { t: "area", name: "referencias", label: "Lojas de referência", q: "Quais lojas ou sites você admira? Cite ao menos 3.", req: true, desc: "Coloque nomes e links. Ajuda muito a entender seu gosto." },
+          { t: "text", name: "nao_quero", label: "O que não quer", q: "Tem algo que você NÃO quer na sua loja?", req: false, ph: "Cores, estilos, elementos... (opcional)" }
+        ]},
+        { eyebrow: "Prazo", h2: "Prazo e considerações finais", hint: "Para fecharmos o briefing.", fields: [
+          { t: "text", name: "prazo", label: "Prazo desejado", q: "Tem uma data ou prazo em mente?", req: false, ph: "Ex: até o fim do mês (opcional)" },
+          { t: "single", name: "urgencia", label: "Urgência", q: "Como está a urgência?", req: false, options: [
+            { v: "Para ontem", hint: "Tem data batendo na porta." }, { v: "Próximas semanas", hint: "Tem prazo, com margem saudável." }, { v: "Sem pressa, quero bem feito", hint: "Prioridade é qualidade." }
+          ]},
+          { t: "area", name: "obs", label: "Observações finais", q: "Algo mais que a gente deveria saber?", req: false, ph: "Fique à vontade, esse espaço é seu." }
+        ]}
+      ]
+    },
+
+    sistemas: {
+      label: "Sistema Sob Medida", fala: "seu sistema", tag: "Briefing · Sistema Sob Medida",
+      title: "Seu sistema sob medida começa <em>aqui.</em>",
+      sub: "Este briefing é a base do sistema que vamos desenvolver para o seu processo. Quanto melhor entendermos o problema, quem usa e o que ele precisa fazer, mais certeiro será o resultado. Responda com calma, não existem respostas erradas.",
+      steps: [
+        { eyebrow: "Sobre você", h2: "Primeiro, quem é você?", hint: "Seus dados de contato e a empresa.", fields: [
+          { t: "text", name: "nome", label: "Nome completo", q: "Nome completo", req: true, ph: "Como você se chama?" },
+          { t: "email", name: "email", label: "E-mail de contato", q: "E-mail de contato", req: true, ph: "voce@email.com" },
+          { t: "text", name: "whatsapp", label: "WhatsApp", q: "WhatsApp", req: true, ph: "(00) 0 0000-0000" },
+          { t: "text", name: "empresa", label: "Empresa / negócio", q: "Nome da empresa ou negócio", req: true, ph: "Nome do seu negócio" },
+          { t: "text", name: "cargo", label: "Cargo / função", q: "Qual a sua função na empresa?", req: false, ph: "Ex: dono, gestor, coordenador (opcional)" }
+        ]},
+        { eyebrow: "O problema", h2: "O que o sistema precisa resolver", hint: "A dor é a parte mais importante do briefing.", fields: [
+          { t: "area", name: "problema", label: "Problema a resolver", q: "Que problema o sistema precisa resolver?", req: true, desc: "Descreva a principal dor que te fez buscar um sistema." },
+          { t: "area", name: "processo_atual", label: "Como funciona hoje", q: "Como esse processo funciona hoje?", req: true, desc: "Ex: planilha, papel, WhatsApp, outro sistema, na memória..." },
+          { t: "area", name: "incomodo", label: "O que mais incomoda", q: "O que mais te incomoda no jeito atual?", req: true },
+          { t: "text", name: "sucesso", label: "Como medir sucesso", q: "O que seria um sucesso? Como você vai medir?", req: true, ph: "Ex: economizar 2h por dia, zerar erros..." }
+        ]},
+        { eyebrow: "Quem vai usar", h2: "As pessoas que vão usar", hint: "Quem opera o sistema no dia a dia.", fields: [
+          { t: "single", name: "qtd_usuarios", label: "Quantidade de usuários", q: "Quantas pessoas vão usar o sistema?", req: true, options: [
+            { v: "1 a 5" }, { v: "6 a 20" }, { v: "21 a 50" }, { v: "Mais de 50" }, { v: "Ainda não sei" }
+          ]},
+          { t: "area", name: "perfis", label: "Perfis de usuário", q: "Quais perfis de usuário vão existir?", req: true, desc: "Ex: administrador, vendedor, financeiro, técnico, cliente..." },
+          { t: "single", name: "permissoes", label: "Permissões diferentes", q: "Perfis diferentes terão permissões diferentes?", req: true, options: [
+            { v: "Sim, cada um vê e faz coisas diferentes" }, { v: "Não, todos têm o mesmo acesso" }, { v: "Ainda não sei" }
+          ]},
+          { t: "single", name: "clientes_acessam", label: "Acesso do cliente final", q: "Os clientes finais também vão acessar o sistema?", req: true, options: [
+            { v: "Sim, terão login próprio" }, { v: "Não, só a equipe interna" }, { v: "Talvez no futuro" }
+          ]}
+        ]},
+        { eyebrow: "O que o sistema faz", h2: "As funções do sistema", hint: "Liste tudo que ele precisa fazer, sem se preocupar com termos técnicos.", fields: [
+          { t: "area", name: "funcoes", label: "Principais funções", q: "Descreva as principais funções que o sistema precisa ter.", req: true, desc: "Liste tudo que vier à mente: cadastros, controles, telas, ações..." },
+          { t: "area", name: "dados", label: "Informações gerenciadas", q: "Que tipo de informação será cadastrada e gerenciada?", req: true, desc: "Ex: clientes, produtos, pedidos, contratos, agendamentos..." },
+          { t: "area", name: "relatorios", label: "Relatórios e painéis", q: "Você precisa de relatórios ou painéis? Quais?", req: true, desc: "Ex: vendas por período, desempenho da equipe, financeiro..." },
+          { t: "multi", name: "notificacoes", label: "Notificações", q: "O sistema precisa enviar notificações ou alertas?", req: false, options: ["E-mail", "WhatsApp", "Dentro do sistema", "SMS", "Não precisa"] }
+        ]},
+        { eyebrow: "Acesso e integrações", h2: "Onde roda e com o que conversa", hint: "Detalhes técnicos, do seu jeito.", fields: [
+          { t: "area", name: "integracoes", label: "Integrações", q: "Precisa integrar com outros sistemas ou ferramentas?", req: false, desc: "Ex: gateway de pagamento, ERP, planilhas, WhatsApp, APIs... (opcional)" },
+          { t: "multi", name: "dispositivos", label: "Onde vai rodar", q: "Onde o sistema vai ser usado?", req: true, options: ["Computador (navegador)", "Celular", "Tablet", "Todos"] },
+          { t: "single", name: "offline", label: "Funcionar offline", q: "Precisa funcionar sem internet (offline)?", req: true, options: [
+            { v: "Sim" }, { v: "Não" }, { v: "Não sei" }
+          ]},
+          { t: "text", name: "volume", label: "Volume esperado", q: "Tem ideia do volume de dados ou de acessos esperado?", req: false, ph: "Ex: 500 pedidos/mês, 1000 clientes... (opcional)" }
+        ]},
+        { eyebrow: "Referências e finais", h2: "Referências e considerações", hint: "Para fecharmos o briefing.", fields: [
+          { t: "area", name: "referencias", label: "Sistemas de referência", q: "Existe algum sistema ou app que você usa como referência?", req: false, desc: "Coloque nomes e links, se puder. (opcional)" },
+          { t: "text", name: "substituir", label: "Sistema atual a substituir", q: "Você já tem algum sistema hoje que quer substituir?", req: false, ph: "Qual? (opcional)" },
+          { t: "text", name: "prazo", label: "Prazo desejado", q: "Tem uma data ou prazo em mente?", req: false, ph: "Ex: até o fim do trimestre (opcional)" },
+          { t: "single", name: "urgencia", label: "Urgência", q: "Como está a urgência?", req: false, options: [
+            { v: "Para ontem", hint: "Tem data batendo na porta." }, { v: "Próximas semanas", hint: "Tem prazo, com margem saudável." }, { v: "Sem pressa, quero bem feito", hint: "Prioridade é qualidade." }
+          ]},
+          { t: "area", name: "obs", label: "Observações finais", q: "Algo mais que a gente deveria saber?", req: false, ph: "Fique à vontade, esse espaço é seu." }
         ]}
       ]
     }
