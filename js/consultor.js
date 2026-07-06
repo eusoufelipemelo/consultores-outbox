@@ -1927,29 +1927,26 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
   },
 
-  /* biblioteca: cada briefing pronto vira um cartão estilo crachá com foto real */
+  /* biblioteca: cada briefing pronto vira um cartão estilo crachá (layout da referência Itaú) */
   bibliotecaBriefings() {
+    let n = 0;
     const cards = OB.BRIEFINGS_PRONTOS.map(b => {
       const link = OB.briefingLinkTipo(b.tipo);
-      const cid = 'sw-' + b.tipo;
+      const cid = 'cl-' + b.tipo;
+      const num = String(1001 + (n++) * 137).padStart(9, '0'); // número decorativo estilo crachá
       return `<div class="brief-cell">
         <a class="bcard" href="${link}" target="_blank" rel="noopener" title="Abrir briefing · ${b.nome}">
-          <svg class="bcard__art" viewBox="0 0 210 250" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SWOOSH}"/></clipPath>
-              <linearGradient id="og-${b.tipo}" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="52%" stop-color="rgba(241,85,50,0)"/><stop offset="100%" stop-color="rgba(217,66,31,.72)"/>
-              </linearGradient>
-            </defs>
+          <svg class="bcard__shape" viewBox="0 0 210 340" preserveAspectRatio="none" aria-hidden="true">
+            <defs><clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SHAPE}"/></clipPath></defs>
             <g clip-path="url(#${cid})">
-              <image href="assets/briefings/${b.tipo}.jpg" x="0" y="0" width="210" height="250" preserveAspectRatio="xMidYMid slice"/>
-              <rect x="0" y="0" width="210" height="250" fill="url(#og-${b.tipo})"/>
+              <image href="assets/briefings/${b.tipo}.jpg" x="0" y="0" width="210" height="340" preserveAspectRatio="xMidYMid slice"/>
+              <rect x="0" y="0" width="210" height="340" fill="rgba(241,85,50,.32)"/>
             </g>
           </svg>
           <span class="bcard__hash">#TudoPassa.AVendaNão</span>
           <div class="bcard__foot">
             <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
-            <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span></div>
+            <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span><small>${num}</small></div>
           </div>
         </a>
         <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
@@ -1962,8 +1959,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     </div>`;
   },
 
-  /* curva do crachá (referência Itaú): borda inferior da foto em swoosh (viewBox 210x250) */
-  BCARD_SWOOSH: 'M0 0 H210 V146 C 168 154 150 198 100 198 C 58 198 44 172 0 182 Z',
+  /* formato do bloco laranja (referência Itaú): topo-esquerda + swoosh branco no canto inferior direito (viewBox 210x340) */
+  BCARD_SHAPE: 'M0 0 H150 C150 70 150 120 130 152 C105 188 70 182 40 197 C22 205 10 208 0 210 Z',
 
   projetoCard(s) {
     const cli = OB.clientById(s.clientId);

@@ -1009,17 +1009,17 @@ td .strong { color: var(--text); font-weight: 600; }
   transition: transform .2s var(--ease, ease), box-shadow .2s ease;
 }
 .bcard:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(241,85,50,.22); }
-.bcard__art { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 210 / 250; display: block; background: var(--brand); }
+.bcard__shape { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .bcard__hash {
-  position: absolute; top: 0; right: 8px; height: 58%; z-index: 2;
-  display: flex; align-items: center; justify-content: center;
+  position: absolute; top: 14px; right: 10px; z-index: 2;
   writing-mode: vertical-rl; transform: rotate(180deg);
-  color: #fff; font-weight: 800; font-size: 12px; letter-spacing: .04em;
-  text-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; white-space: nowrap;
+  color: var(--brand); font-weight: 800; font-size: 14px; letter-spacing: .02em;
+  pointer-events: none; white-space: nowrap;
 }
-.bcard__foot { position: absolute; left: 0; right: 0; bottom: 0; height: 27%; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 13px 10px; }
-.bcard__mark { width: 32px; height: 32px; flex: none; border-radius: 8px; }
-.bcard__id { text-align: right; line-height: 1.12; min-width: 0; }
-.bcard__id b { display: block; font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
-.bcard__id span { display: block; font-size: 10.5px; color: var(--text-mut); font-weight: 600; }
-@media (max-width: 520px) { .brief-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; } }
+.bcard__foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 0 14px 14px; }
+.bcard__mark { width: 34px; height: 34px; flex: none; border-radius: 8px; }
+.bcard__id { text-align: right; line-height: 1.16; min-width: 0; }
+.bcard__id b { display: block; font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
+.bcard__id span { display: block; font-size: 10.5px; color: var(--text-soft); font-weight: 600; }
+.bcard__id small { display: block; font-size: 9.5px; color: var(--text-mut); font-weight: 600; letter-spacing: .12em; margin-top: 1px; }
+@media (max-width: 520px) { .brief-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; } .bcard__hash { font-size: 12px; } .bcard__id b { font-size: 15px; } }
