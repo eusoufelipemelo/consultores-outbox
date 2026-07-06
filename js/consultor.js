@@ -1927,16 +1927,25 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
   },
 
-  /* biblioteca: cada briefing pronto vira um cartão estilo crachá (só com o link) */
+  /* biblioteca: cada briefing pronto vira um cartão estilo crachá com foto real */
   bibliotecaBriefings() {
     const cards = OB.BRIEFINGS_PRONTOS.map(b => {
       const link = OB.briefingLinkTipo(b.tipo);
+      const cid = 'sw-' + b.tipo;
       return `<div class="brief-cell">
         <a class="bcard" href="${link}" target="_blank" rel="noopener" title="Abrir briefing · ${b.nome}">
-          <div class="bcard__art">
-            ${this.briefingArte(b.tipo)}
-            <svg class="bcard__wave" viewBox="0 0 210 26" preserveAspectRatio="none" aria-hidden="true"><path d="M0 26 L0 13 C58 -5 122 25 210 5 L210 26 Z" fill="var(--surface)"/></svg>
-          </div>
+          <svg class="bcard__art" viewBox="0 0 210 250" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SWOOSH}"/></clipPath>
+              <linearGradient id="og-${b.tipo}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="52%" stop-color="rgba(241,85,50,0)"/><stop offset="100%" stop-color="rgba(217,66,31,.72)"/>
+              </linearGradient>
+            </defs>
+            <g clip-path="url(#${cid})">
+              <image href="assets/briefings/${b.tipo}.jpg" x="0" y="0" width="210" height="250" preserveAspectRatio="xMidYMid slice"/>
+              <rect x="0" y="0" width="210" height="250" fill="url(#og-${b.tipo})"/>
+            </g>
+          </svg>
           <span class="bcard__hash">#TudoPassa.AVendaNão</span>
           <div class="bcard__foot">
             <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
@@ -1953,21 +1962,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     </div>`;
   },
 
-  /* ilustração (linha branca sobre laranja) que representa cada tipo de briefing */
-  briefingArte(tipo) {
-    const wrap = inner => `<svg class="ill" viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
-    const dot = 'fill="#fff" stroke="none"';
-    const artes = {
-      site: `<rect x="16" y="26" width="88" height="62" rx="7"/><path d="M16 42h88"/><circle cx="27" cy="34" r="2.4" ${dot}/><circle cx="36" cy="34" r="2.4" ${dot}/><circle cx="45" cy="34" r="2.4" ${dot}/><path d="M28 56h30M28 67h48M28 78h38"/>`,
-      landing: `<rect x="31" y="18" width="58" height="84" rx="7"/><path d="M41 33h38M41 43h26"/><rect x="41" y="57" width="38" height="15" rx="7.5" ${dot}/><path d="M41 86h38"/>`,
-      vendas: `<rect x="30" y="17" width="60" height="86" rx="7"/><circle cx="60" cy="46" r="15"/><path d="M60 38v17M55 42h8a3.2 3.2 0 0 1 0 6.4h-6a3.2 3.2 0 0 0 0 6.4h8"/><path d="M40 80h40M46 91h28"/>`,
-      onepage: `<rect x="42" y="14" width="36" height="92" rx="9"/><path d="M54 22h12"/><path d="M50 42h20M50 54h20M50 66h13"/><circle cx="60" cy="96" r="3.6"/>`,
-      identidade: `<circle cx="48" cy="49" r="15"/><circle cx="71" cy="49" r="15"/><circle cx="59" cy="69" r="15"/>`,
-      ecommerce: `<path d="M33 43h54l-4 58H37z"/><path d="M47 43v-6a13 13 0 0 1 26 0v6"/><path d="M50 61c0 6 4.5 10 10 10s10-4 10-10" stroke-width="3.4"/>`,
-      sistemas: `<rect x="17" y="24" width="86" height="62" rx="7"/><path d="M17 39h86"/><circle cx="41" cy="63" r="8.5"/><path d="M41 50v-4M41 80v-4M28 63h-4M58 63h-4M32 54l-3-3M53 72l3 3M53 54l3-3M32 72l-3 3" stroke-width="3.2"/><path d="M66 74V60M78 74V50M90 74v-9" stroke-width="3.8"/>`
-    };
-    return wrap(artes[tipo] || artes.site);
-  },
+  /* curva do crachá (referência Itaú): borda inferior da foto em swoosh (viewBox 210x250) */
+  BCARD_SWOOSH: 'M0 0 H210 V146 C 168 154 150 198 100 198 C 58 198 44 172 0 182 Z',
 
   projetoCard(s) {
     const cli = OB.clientById(s.clientId);
