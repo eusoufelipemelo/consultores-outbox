@@ -1927,24 +1927,46 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
   },
 
-  /* biblioteca: todos os briefings prontos, só com o link (para copiar / abrir) */
+  /* biblioteca: cada briefing pronto vira um cartão estilo crachá (só com o link) */
   bibliotecaBriefings() {
-    const rows = OB.BRIEFINGS_PRONTOS.map(b => {
+    const cards = OB.BRIEFINGS_PRONTOS.map(b => {
       const link = OB.briefingLinkTipo(b.tipo);
-      return `<div class="brief-lib-row">
-        <div class="brief-lib-name">${UI.icon('briefcase',15)} <span>${b.nome}</span></div>
-        <div class="brief-lib-actions">
-          <input class="grow" value="${link}" readonly/>
-          <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
-          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir</a>
-        </div>
+      return `<div class="brief-cell">
+        <a class="bcard" href="${link}" target="_blank" rel="noopener" title="Abrir briefing · ${b.nome}">
+          <div class="bcard__art">
+            ${this.briefingArte(b.tipo)}
+            <svg class="bcard__wave" viewBox="0 0 210 26" preserveAspectRatio="none" aria-hidden="true"><path d="M0 26 L0 13 C58 -5 122 25 210 5 L210 26 Z" fill="var(--surface)"/></svg>
+          </div>
+          <span class="bcard__hash">#TudoPassa.AVendaNão</span>
+          <div class="bcard__foot">
+            <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
+            <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span></div>
+          </div>
+        </a>
+        <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
       </div>`;
     }).join('');
     return `<div class="card" style="margin-bottom:18px">
       <div class="row alc" style="gap:8px;margin-bottom:4px">${UI.icon('briefcase',16)}<b>Biblioteca de briefings</b></div>
-      <p class="mut" style="font-size:12.5px;margin-bottom:14px">Todos os briefings prontos, por serviço. Copie o link e envie ao cliente quando precisar. Para vincular a um projeto e receber as respostas aqui dentro, use o botão <b>Enviar briefing</b> no serviço pago.</p>
-      <div class="brief-lib">${rows}</div>
+      <p class="mut" style="font-size:12.5px;margin-bottom:16px">Todos os briefings prontos. Clique no cartão para abrir ou copie o link para enviar ao cliente. Para receber as respostas aqui dentro, use <b>Enviar briefing</b> no serviço pago.</p>
+      <div class="brief-cards">${cards}</div>
     </div>`;
+  },
+
+  /* ilustração (linha branca sobre laranja) que representa cada tipo de briefing */
+  briefingArte(tipo) {
+    const wrap = inner => `<svg class="ill" viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+    const dot = 'fill="#fff" stroke="none"';
+    const artes = {
+      site: `<rect x="16" y="26" width="88" height="62" rx="7"/><path d="M16 42h88"/><circle cx="27" cy="34" r="2.4" ${dot}/><circle cx="36" cy="34" r="2.4" ${dot}/><circle cx="45" cy="34" r="2.4" ${dot}/><path d="M28 56h30M28 67h48M28 78h38"/>`,
+      landing: `<rect x="31" y="18" width="58" height="84" rx="7"/><path d="M41 33h38M41 43h26"/><rect x="41" y="57" width="38" height="15" rx="7.5" ${dot}/><path d="M41 86h38"/>`,
+      vendas: `<rect x="30" y="17" width="60" height="86" rx="7"/><circle cx="60" cy="46" r="15"/><path d="M60 38v17M55 42h8a3.2 3.2 0 0 1 0 6.4h-6a3.2 3.2 0 0 0 0 6.4h8"/><path d="M40 80h40M46 91h28"/>`,
+      onepage: `<rect x="42" y="14" width="36" height="92" rx="9"/><path d="M54 22h12"/><path d="M50 42h20M50 54h20M50 66h13"/><circle cx="60" cy="96" r="3.6"/>`,
+      identidade: `<circle cx="48" cy="49" r="15"/><circle cx="71" cy="49" r="15"/><circle cx="59" cy="69" r="15"/>`,
+      ecommerce: `<path d="M33 43h54l-4 58H37z"/><path d="M47 43v-6a13 13 0 0 1 26 0v6"/><path d="M50 61c0 6 4.5 10 10 10s10-4 10-10" stroke-width="3.4"/>`,
+      sistemas: `<rect x="17" y="24" width="86" height="62" rx="7"/><path d="M17 39h86"/><circle cx="41" cy="63" r="8.5"/><path d="M41 50v-4M41 80v-4M28 63h-4M58 63h-4M32 54l-3-3M53 72l3 3M53 54l3-3M32 72l-3 3" stroke-width="3.2"/><path d="M66 74V60M78 74V50M90 74v-9" stroke-width="3.8"/>`
+    };
+    return wrap(artes[tipo] || artes.site);
   },
 
   projetoCard(s) {

@@ -997,15 +997,31 @@ td .strong { color: var(--text); font-weight: 600; }
   .tl-step { width: 72px; }
 }
 
-/* Biblioteca de briefings (links prontos por serviço) */
-.brief-lib { display: flex; flex-direction: column; gap: 10px; }
-.brief-lib-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); flex-wrap: wrap; }
-.brief-lib-name { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; min-width: 150px; }
-.brief-lib-name svg { color: var(--brand); }
-.brief-lib-actions { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-.brief-lib-actions input { flex: 1; min-width: 120px; font-size: 12.5px; color: var(--text-mut); }
-.brief-lib-actions .btn { white-space: nowrap; }
-@media (max-width: 620px) {
-  .brief-lib-actions { flex-basis: 100%; flex-wrap: wrap; }
-  .brief-lib-actions input { flex-basis: 100%; }
+/* Biblioteca de briefings — cartões estilo crachá */
+.brief-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 20px; }
+.brief-cell { display: flex; flex-direction: column; gap: 9px; }
+.brief-cell .btn { width: 100%; justify-content: center; }
+.bcard {
+  position: relative; display: block; text-decoration: none;
+  aspect-ratio: 210 / 340; border-radius: 18px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(10,12,15,.08);
+  transition: transform .2s var(--ease, ease), box-shadow .2s ease;
 }
+.bcard:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(241,85,50,.22); }
+.bcard__art { position: absolute; top: 0; left: 0; right: 0; height: 72%; background: var(--brand); display: grid; place-items: center; }
+.bcard__art .ill { width: 56%; height: 56%; transform: translateX(-6%); filter: drop-shadow(0 2px 6px rgba(0,0,0,.14)); }
+.bcard__wave { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 26px; display: block; }
+.bcard__hash {
+  position: absolute; top: 0; right: 7px; height: 72%;
+  display: flex; align-items: center; justify-content: center;
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  color: #fff; font-weight: 800; font-size: 12px; letter-spacing: .04em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.16); pointer-events: none; white-space: nowrap;
+}
+.bcard__foot { position: absolute; left: 0; right: 0; bottom: 0; height: 28%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 13px 8px; }
+.bcard__mark { width: 32px; height: 32px; flex: none; border-radius: 8px; }
+.bcard__id { text-align: right; line-height: 1.12; min-width: 0; }
+.bcard__id b { display: block; font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
+.bcard__id span { display: block; font-size: 10.5px; color: var(--text-mut); font-weight: 600; }
+@media (max-width: 520px) { .brief-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; } }
