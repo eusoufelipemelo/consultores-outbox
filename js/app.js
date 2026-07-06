@@ -221,7 +221,7 @@ const App = {
           </div>
           <div class="brand-desc">Soluções Digitais</div>
           <nav class="nav" id="nav">
-            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}</button>`).join('')}
+            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}${n.id === 'projetos' ? '<span class="badge hidden" id="proj-badge"></span>' : ''}</button>`).join('')}
           </nav>
           ${!isAdmin ? `<a class="side-whats" href="https://chat.whatsapp.com/Bv5EM9xjqNkLiQiP3cUfKd" target="_blank" rel="noopener" title="Entrar no grupo de consultores da OutBox no WhatsApp">
             <span class="wa-ico"><svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M16.003 5.333c-5.888 0-10.667 4.779-10.667 10.667 0 1.88.494 3.72 1.432 5.341L5.333 26.667l5.464-1.433a10.63 10.63 0 0 0 5.203 1.325h.004c5.884 0 10.663-4.779 10.666-10.665a10.6 10.6 0 0 0-3.124-7.545 10.6 10.6 0 0 0-7.543-3.021zm0 19.2h-.003a8.85 8.85 0 0 1-4.51-1.235l-.323-.192-3.351.879.894-3.266-.21-.335a8.83 8.83 0 0 1-1.354-4.716c.002-4.889 3.982-8.868 8.874-8.868a8.81 8.81 0 0 1 6.27 2.599 8.82 8.82 0 0 1 2.597 6.276c-.002 4.889-3.982 8.868-8.874 8.868zm4.867-6.641c-.267-.134-1.578-.779-1.823-.868-.245-.089-.423-.134-.601.134-.178.267-.69.868-.846 1.046-.156.178-.311.2-.578.067-.267-.134-1.126-.415-2.145-1.324-.793-.707-1.328-1.58-1.484-1.847-.156-.267-.017-.411.117-.545.12-.12.267-.311.401-.467.134-.156.178-.267.267-.445.089-.178.045-.334-.022-.467-.067-.134-.601-1.449-.824-1.983-.217-.521-.437-.45-.601-.458l-.512-.009a.98.98 0 0 0-.712.334c-.245.267-.935.913-.935 2.226 0 1.313.957 2.582 1.09 2.76.134.178 1.884 2.876 4.564 4.032.638.276 1.135.44 1.523.563.64.204 1.223.175 1.683.106.514-.077 1.578-.645 1.801-1.269.223-.623.223-1.157.156-1.269-.067-.111-.245-.178-.512-.311z"/></svg></span>
@@ -280,6 +280,8 @@ const App = {
 
     this.renderAviso();
     this.subscribeAviso();
+    this.refreshProjetosBadge();
+    this.subscribeProjetos();
     // presença (quem está logado) + lembretes de follow-up
     OB.pingPresenca();
     if (this._presTimer) clearInterval(this._presTimer);
@@ -344,6 +346,53 @@ const App = {
     if (this._avisoChannel) { try { SB.removeChannel(this._avisoChannel); } catch (e) {} this._avisoChannel = null; }
   },
 
+  /* ---------- badge de projetos (briefings/entregas que pedem atenção) ---------- */
+  refreshProjetosBadge() {
+    const u = OB.session(); if (!u) return;
+    const badge = document.getElementById('proj-badge'); if (!badge) return;
+    let n = 0;
+    if (u.role === 'admin') n = OB.briefingsPendentesAdmin().length; // briefings recebidos a iniciar
+    else n = OB.projetosDe(u.id).filter(p => p.status === 'briefing_recebido' || p.status === 'entregue').length;
+    badge.textContent = n; badge.classList.toggle('hidden', n === 0);
+  },
+
+  /* Realtime dos projetos: atualiza o cache, o badge, a tela e avisa por toast */
+  _projChannel: null,
+  subscribeProjetos() {
+    if (typeof SB === 'undefined' || !SB.channel) return;
+    if (this._projChannel) { try { SB.removeChannel(this._projChannel); } catch (e) {} this._projChannel = null; }
+    this._projChannel = SB.channel('projetos-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projetos' }, (payload) => {
+        const u = OB.session(); if (!u) return;
+        const row = payload.new && payload.new.id ? payload.new : payload.old;
+        if (!row) return;
+        const proj = payload.new && payload.new.id ? OB._prIn(payload.new) : null;
+        const arr = OB.db.projetos || (OB.db.projetos = []);
+        if (payload.eventType === 'DELETE') {
+          OB.db.projetos = arr.filter(p => p.id !== row.id);
+        } else if (proj) {
+          const i = arr.findIndex(p => p.id === proj.id);
+          const antes = i >= 0 ? arr[i].status : null;
+          if (i >= 0) arr[i] = proj; else arr.push(proj);
+          // avisos por mudança de etapa
+          if (antes !== proj.status) {
+            if (u.role === 'admin' && proj.status === 'briefing_recebido') {
+              UI.toast('Novo briefing recebido', 'Um cliente preencheu o briefing. Abra Projetos para iniciar.', 'info');
+            } else if (u.role !== 'admin' && proj.consultorId === u.id) {
+              const et = OB.ETAPAS_PROJETO.find(e => e.id === proj.status);
+              if (et) UI.toast('Atualização de projeto', 'Seu projeto avançou para: ' + et.nome + '.', 'ok');
+            }
+          }
+        }
+        this.refreshProjetosBadge();
+        if (this.current === 'projetos') this.mod().render('projetos');
+      })
+      .subscribe();
+  },
+  unsubscribeProjetos() {
+    if (this._projChannel) { try { SB.removeChannel(this._projChannel); } catch (e) {} this._projChannel = null; }
+  },
+
   drawer(open) {
     document.getElementById('sidebar').classList.toggle('open', open);
     document.getElementById('scrim').classList.toggle('show', open);
@@ -364,6 +413,7 @@ const App = {
     document.getElementById('page-sub').textContent = t[1];
     this.mod().render(viewId);
     this.drawer(false);
+    this.refreshProjetosBadge();
     if (!OB.session().role || OB.session().role === 'consultor') this.refreshCommission();
     this.animateBars();
     document.getElementById('main-view').scrollTop = 0;
@@ -436,6 +486,7 @@ const App = {
     UI.confirm('Sair da conta', 'Deseja realmente sair?', async () => {
       try {
         this.unsubscribeAviso();
+        this.unsubscribeProjetos();
         if (this._presTimer) { clearInterval(this._presTimer); this._presTimer = null; }
         if (this._fuTimer) { clearInterval(this._fuTimer); this._fuTimer = null; }
         await SB.auth.signOut();

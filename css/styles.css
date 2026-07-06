@@ -968,3 +968,31 @@ td .strong { color: var(--text); font-weight: 600; }
 .mapa-mini svg { width: 100%; height: auto; }
 .mapa-mini path { stroke: var(--surface); stroke-width: 1; transition: filter .12s; }
 .mapa-mini:hover path { filter: saturate(1.05); }
+
+/* ============================================================
+   Projetos / Briefing / Timeline de entrega
+   ============================================================ */
+.proj-card { margin-bottom: 12px; }
+.proj-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.proj-acoes .btn { padding: 8px 12px; font-size: 12.5px; }
+.proj-brief-box { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.proj-brief-box b { font-size: 12.5px; display: flex; align-items: center; gap: 6px; color: var(--brand); }
+.proj-brief-box p { font-size: 13px; color: var(--text-soft); margin-top: 6px; line-height: 1.5; white-space: pre-wrap; }
+
+/* timeline horizontal (6 etapas) */
+.tl { display: flex; align-items: flex-start; }
+.tl-step { display: flex; flex-direction: column; align-items: center; text-align: center; flex: none; width: 88px; }
+.tl-line { flex: 1; height: 2px; background: var(--border); margin-top: 13px; min-width: 8px; }
+.tl-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800;
+  background: var(--surface-3); color: var(--text-mut); border: 2px solid var(--surface-3); }
+.tl-step.done .tl-dot { background: var(--brand); color: #fff; border-color: var(--brand); }
+.tl-step.now .tl-dot { background: var(--surface); color: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+.tl-lbl { font-size: 10.5px; font-weight: 700; margin-top: 6px; line-height: 1.2; color: var(--text-soft); }
+.tl-step.todo .tl-lbl { color: var(--text-mut); font-weight: 600; }
+.tl-step.now .tl-lbl { color: var(--brand); }
+.tl-date { font-size: 9.5px; color: var(--text-mut); margin-top: 2px; }
+/* mobile: timeline rola horizontalmente */
+@media (max-width: 620px) {
+  .tl { overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+  .tl-step { width: 72px; }
+}

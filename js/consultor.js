@@ -7,6 +7,7 @@ const Consultor = {
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
+    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
@@ -22,6 +23,7 @@ const Consultor = {
     clientes:   ['Meus Clientes', 'Cadastre e gerencie seus clientes'],
     orcamentos: ['Orçamentos', 'Crie propostas e acompanhe os aceites'],
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
+    projetos:   ['Projetos', 'Envie o briefing e acompanhe a entrega de cada serviço vendido'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
     ebooks:     ['E-Books', 'Materiais exclusivos para baixar, estudar e compartilhar conhecimento'],
@@ -1874,6 +1876,236 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             </div>
           </div>`).join('')}
       </div>`;
+  },
+
+  /* ====================== PROJETOS / BRIEFING / ENTREGA ====================== */
+  /* timeline horizontal das 6 etapas */
+  timelineHTML(proj) {
+    const atual = OB.etapaIndex(proj.status);
+    return `<div class="tl">
+      ${OB.ETAPAS_PROJETO.map((e, i) => {
+        const feito = i <= atual;
+        const data = proj[e.campo] ? OB.dataBR(proj[e.campo]) : '';
+        const cls = i < atual ? 'done' : (i === atual ? 'now' : 'todo');
+        return `<div class="tl-step ${cls}">
+          <div class="tl-dot">${feito ? UI.icon(i === atual ? e.icon : 'check', 13) : (i + 1)}</div>
+          <div class="tl-lbl">${e.nome}</div>
+          <div class="tl-date">${data || '&nbsp;'}</div>
+        </div>`;
+      }).join('<div class="tl-line"></div>')}
+    </div>`;
+  },
+
+  view_projetos() {
+    const u = this.u();
+    const v = document.getElementById('main-view');
+    // serviços vendidos e pagos = entregáveis (1 venda aprovada e recebida = 1 projeto)
+    const vendas = OB.salesOf(u.id).filter(s => s.statusProposta === 'aprovada').sort((a, b) => new Date(b.data) - new Date(a.data));
+    const pagas = vendas.filter(s => s.statusPagamento === 'recebido');
+    const aguardando = vendas.filter(s => s.statusPagamento !== 'recebido');
+    const projs = OB.projetosDe(u.id);
+    const emAndamento = projs.filter(p => p.status !== 'aprovado').length;
+    const concluidos = projs.filter(p => p.status === 'aprovado').length;
+
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${this.kpi('rocket', emAndamento, 'Projetos em andamento', 'Do briefing à entrega')}
+        ${this.kpi('check', concluidos, 'Projetos concluídos', 'Aprovados pelo cliente')}
+        ${this.kpi('clock', aguardando.length, 'Aguardando pagamento', 'Briefing libera após o pagamento')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing. O cliente preenche, a OutBox produz e você acompanha cada etapa aqui, podendo emitir relatórios para o seu cliente.</div></div>
+      ${pagas.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagas.map(s => this.projetoCard(s)).join('')}` : ''}
+      ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}
+      ${!vendas.length ? this.empty('briefcase', 'Nenhum projeto ainda', 'Lance uma venda aprovada. Quando o pagamento for confirmado, você envia o briefing por aqui.') : ''}`;
+
+    v.querySelectorAll('[data-brief]').forEach(b => b.onclick = () => this.enviarBriefing(b.dataset.brief));
+    v.querySelectorAll('[data-brief-recebido]').forEach(b => b.onclick = () => this.marcarBriefingRecebido(b.dataset.briefRecebido));
+    v.querySelectorAll('[data-relatorio]').forEach(b => b.onclick = () => this.emitirRelatorio(b.dataset.relatorio));
+    v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
+    v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
+  },
+
+  projetoCard(s) {
+    const cli = OB.clientById(s.clientId);
+    const proj = OB.projetoDaVenda(s.id);
+    const pago = s.statusPagamento === 'recebido';
+    const servicos = OB.produtosNomes(s);
+    let corpo = '';
+    if (!pago) {
+      corpo = `<div class="hint" style="margin-top:10px">${UI.icon('lock',13)} O envio do briefing libera assim que o admin confirmar o pagamento desta venda.</div>`;
+    } else if (!proj) {
+      corpo = `<div class="row between alc" style="margin-top:12px;flex-wrap:wrap;gap:10px">
+        <span class="mut" style="font-size:12.5px">Pagamento confirmado. Envie o briefing ao cliente para começar.</span>
+        <button class="btn brand" data-brief="${s.id}">${UI.icon('send',15)} Enviar briefing</button>
+      </div>`;
+    } else {
+      corpo = `<div style="margin-top:14px">${this.timelineHTML(proj)}</div>${this.projetoAcoesHTML(proj)}`;
+    }
+    return `<div class="card proj-card">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
+        <div class="row alc" style="gap:10px;min-width:0">
+          <span class="tr-ic on">${UI.icon('briefcase',18)}</span>
+          <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>
+            <div class="mut" style="font-size:12.5px">${servicos} · ${OB.money(s.valor, s.moeda)}</div></div>
+        </div>
+        ${proj ? `<span class="chip ${proj.status === 'aprovado' ? 'green' : 'brand'} nowrap">${(OB.ETAPAS_PROJETO.find(e => e.id === proj.status) || {}).nome || ''}</span>` : (pago ? '<span class="chip warn nowrap">Sem briefing</span>' : '<span class="chip gray nowrap">Aguardando pagamento</span>')}
+      </div>
+      ${corpo}
+    </div>`;
+  },
+
+  projetoAcoesHTML(proj) {
+    const respostas = proj.briefingRespostas ? `<div class="proj-brief-box"><b>${UI.icon('docs',13)} Briefing do cliente</b><p>${(proj.briefingRespostas || '').replace(/</g, '&lt;')}</p></div>` : '';
+    const linhas = [];
+    if (proj.status === 'briefing_enviado') {
+      linhas.push(`<span class="mut" style="font-size:12.5px">${UI.icon('clock',12)} Aguardando o cliente preencher o briefing.</span>`);
+      linhas.push(`<button class="btn ghost sm" data-brief="${proj.saleId}">${UI.icon('send',14)} Reenviar link</button>`);
+      linhas.push(`<button class="btn ghost sm" data-brief-recebido="${proj.id}">${UI.icon('check',14)} Registrar briefing recebido</button>`);
+    } else if (proj.status === 'briefing_recebido') {
+      linhas.push(`<span class="mut" style="font-size:12.5px">${UI.icon('check',12)} Briefing recebido. A OutBox vai analisar e iniciar a produção.</span>`);
+    } else if (proj.status === 'entregue') {
+      linhas.push(`<button class="btn green sm" data-share-final="${proj.id}">${UI.icon('whats',14)} Enviar projeto ao cliente</button>`);
+      linhas.push(`<button class="btn brand sm" data-aprovar-proj="${proj.id}">${UI.icon('check',14)} Cliente aprovou</button>`);
+    } else if (proj.status === 'aprovado') {
+      linhas.push(`<span class="chip green">${UI.icon('prize',13)} Projeto aprovado e concluído</span>`);
+    }
+    // relatório sempre disponível a partir do briefing recebido
+    if (OB.etapaIndex(proj.status) >= 1) linhas.push(`<button class="btn ghost sm" data-relatorio="${proj.id}">${UI.icon('receipt',14)} Emitir relatório</button>`);
+    if (proj.linkFinal && (proj.status === 'entregue' || proj.status === 'aprovado')) {
+      linhas.unshift(`<a class="btn ghost sm" href="${proj.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
+    }
+    return `${respostas}<div class="proj-acoes">${linhas.join('')}</div>`;
+  },
+
+  enviarBriefing(saleId) {
+    const s = OB.salesOf(this.u().id).find(x => x.id === saleId); if (!s) return;
+    if (s.statusPagamento !== 'recebido') return UI.toast('Ainda não liberado', 'O briefing libera após a confirmação do pagamento.', 'err');
+    const cli = OB.clientById(s.clientId);
+    const prods = OB.produtosDaVenda(s);
+    const links = prods.map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, link: OB.briefingLink(id) }));
+    const primeiro = (cli && cli.nome) ? cli.nome.split(' ')[0] : '';
+    const msg = `Olá${primeiro ? ' ' + primeiro : ''}! Que ótimo dar início ao seu projeto com a OutBox 🎉 Para começarmos, preencha o briefing (leva poucos minutos): ${links.map(l => l.link).join(' ')}`;
+    const tel = cli && cli.telefone ? cli.telefone.replace(/\D/g, '') : '';
+    const waTel = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+    UI.modal({
+      title: 'Enviar briefing ao cliente',
+      sub: cli ? cli.nome : '',
+      body: `
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Envie o link do briefing pelo WhatsApp. Assim que o cliente preencher, o projeto entra na esteira de entrega e a OutBox é avisada.</div></div>
+        ${links.map(l => `<div class="field"><label>${l.nome}</label><div class="row" style="gap:8px"><input class="grow" value="${l.link}" readonly/><button type="button" class="btn ghost" data-copy="${l.link}">${UI.icon('docs',14)} Copiar</button></div></div>`).join('')}
+        <div class="field"><label>Mensagem</label><textarea id="bf-msg" style="min-height:96px">${msg}</textarea></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn green" id="bf-wa">${UI.icon('whats',16)} Enviar no WhatsApp</button>`
+    });
+    document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => UI.toast('Link copiado', '', 'ok')));
+    const registrar = () => {
+      let proj = OB.projetoDaVenda(s.id);
+      if (!proj) {
+        proj = { id: OB.uid(), saleId: s.id, consultorId: this.u().id, clientId: s.clientId, produtos: prods, status: 'briefing_enviado', briefingLink: links.map(l => l.link).join(' '), briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
+        OB.addProjeto(proj);
+      } else if (proj.status === 'briefing_enviado') {
+        OB.setEtapaProjeto(proj, 'briefing_enviado');
+      }
+    };
+    document.getElementById('bf-wa').onclick = () => {
+      const txt = encodeURIComponent(document.getElementById('bf-msg').value);
+      window.open(waTel ? `https://wa.me/${waTel}?text=${txt}` : `https://wa.me/?text=${txt}`, '_blank');
+      registrar();
+      UI.closeModal();
+      UI.toast('Briefing enviado', 'O projeto entrou na esteira de entrega.', 'ok');
+      App.refreshProjetosBadge();
+      this.render('projetos');
+    };
+  },
+
+  marcarBriefingRecebido(projId) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    UI.modal({
+      title: 'Registrar briefing recebido',
+      sub: 'Use quando o cliente já preencheu (por ora, manual)',
+      body: `
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Quando o app de briefing estiver publicado e conectado, isto acontece sozinho. Por enquanto, cole aqui um resumo do que o cliente respondeu (opcional) e confirme.</div></div>
+        <div class="field"><label>Resumo do briefing (opcional)</label><textarea id="br-resp" style="min-height:120px" placeholder="Cole ou resuma as respostas do cliente..."></textarea></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="br-ok">${UI.icon('check',16)} Confirmar recebimento</button>`
+    });
+    document.getElementById('br-ok').onclick = () => {
+      proj.briefingRespostas = document.getElementById('br-resp').value.trim();
+      OB.setEtapaProjeto(proj, 'briefing_recebido');
+      UI.closeModal();
+      UI.toast('Briefing recebido!', 'A OutBox foi avisada para iniciar a produção.', 'ok');
+      App.refreshProjetosBadge();
+      this.render('projetos');
+    };
+  },
+
+  aprovarProjeto(projId) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    UI.confirm('Confirmar aprovação', 'O cliente aprovou o projeto final? Isso encerra a entrega.', () => {
+      OB.setEtapaProjeto(proj, 'aprovado');
+      UI.toast('Projeto aprovado! 🎉', 'Entrega concluída.', 'ok');
+      App.refreshProjetosBadge();
+      this.render('projetos');
+    }, 'Sim, aprovado');
+  },
+
+  compartilharLinkFinal(projId) {
+    const proj = OB.projetoById(projId); if (!proj || !proj.linkFinal) return UI.toast('Sem link', 'O projeto final ainda não foi entregue.', 'err');
+    const cli = OB.clientById(proj.clientId);
+    const primeiro = (cli && cli.nome) ? cli.nome.split(' ')[0] : '';
+    const msg = `Olá${primeiro ? ' ' + primeiro : ''}! Seu projeto está pronto 🎉 Confira aqui: ${proj.linkFinal} . Qualquer ajuste, me avise. Se estiver tudo certo, é só confirmar a aprovação!`;
+    const tel = cli && cli.telefone ? cli.telefone.replace(/\D/g, '') : '';
+    const waTel = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+    window.open(waTel ? `https://wa.me/${waTel}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  },
+
+  emitirRelatorio(projId) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    const s = OB.salesOf(this.u().id).find(x => x.id === proj.saleId);
+    const html = this.buildRelatorioHTML(proj, s);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) { URL.revokeObjectURL(url); return UI.toast('Permita pop-ups', 'Libere pop-ups para abrir o relatório.', 'err'); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+
+  buildRelatorioHTML(proj, s) {
+    const u = this.u(); const cli = OB.clientById(proj.clientId);
+    const servicos = s ? OB.produtosNomes(s) : (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + ');
+    const atual = OB.etapaIndex(proj.status);
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Relatório do Projeto · ${cli ? cli.nome : ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>@page{margin:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;color:#0A0A0A;background:#F5F7F9;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{max-width:820px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.cover{background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:40px 48px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.brand b{font-size:22px;font-weight:800}
+.cover h1{font-size:28px;font-weight:800;letter-spacing:-.02em}.cover p{color:rgba(255,255,255,.9);margin-top:4px}
+.body{padding:36px 48px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:26px;font-size:14px}.lbl{color:#8a96a3;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.status{display:inline-block;background:#fbe9e4;color:#c0371c;font-weight:800;font-size:13px;padding:8px 16px;border-radius:999px;margin-bottom:22px}
+.tl2{list-style:none}.tl2 li{position:relative;padding:0 0 20px 34px;border-left:2px solid #e6eaef;margin-left:10px}.tl2 li:last-child{border-left-color:transparent}
+.tl2 .d{position:absolute;left:-11px;top:0;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;background:#e6eaef;color:#8a96a3}
+.tl2 li.ok .d{background:#F15532;color:#fff}.tl2 li.ok b{color:#0A0A0A}.tl2 b{font-size:14px;display:block;color:#8a96a3}.tl2 span{font-size:12px;color:#8a96a3}
+.note{margin-top:24px;padding:16px 18px;background:#F5F7F9;border:1px solid #e6eaef;border-radius:12px;font-size:13px;color:#46505c}
+.foot{border-top:1px solid #e6eaef;padding:22px 48px;color:#8a96a3;font-size:13px}.foot b{color:#0A0A0A}
+.ph{position:fixed;bottom:16px;right:16px;background:#F15532;color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer;border:none}@media print{.ph{display:none}.page{box-shadow:none}body{background:#fff}}</style></head>
+<body><div class="page">
+  <div class="cover"><div class="brand">${mark}<b>OutBox</b></div><h1>Relatório do Projeto</h1><p>Acompanhamento preparado por ${u.nome || ''} ${u.sobrenome || ''} · Consultor OutBox Soluções Digitais</p></div>
+  <div class="body">
+    <div class="grid">
+      <div><div class="lbl">Cliente</div>${cli ? cli.nome : '-'}</div>
+      <div><div class="lbl">Data do relatório</div>${new Date().toLocaleDateString('pt-BR')}</div>
+      <div><div class="lbl">Serviço</div>${servicos}</div>
+      <div><div class="lbl">Etapa atual</div>${(OB.ETAPAS_PROJETO[atual] || {}).nome || '-'}</div>
+    </div>
+    <div class="status">Status: ${(OB.ETAPAS_PROJETO[atual] || {}).nome || '-'}</div>
+    <ul class="tl2">
+      ${OB.ETAPAS_PROJETO.map((e, i) => `<li class="${i <= atual ? 'ok' : ''}"><span class="d">${i <= atual ? '&#10003;' : (i + 1)}</span><b>${e.nome}</b><span>${proj[e.campo] ? OB.dataBR(proj[e.campo]) : (i <= atual ? '' : 'a fazer')} · ${e.quem}</span></li>`).join('')}
+    </ul>
+    ${proj.linkFinal ? `<div class="note"><b style="color:#0A0A0A">Projeto entregue:</b> <a href="${proj.linkFinal}" style="color:#F15532">${proj.linkFinal}</a></div>` : ''}
+    <div class="note">Este relatório reflete o andamento do seu projeto na data acima. A OutBox mantém você informado a cada etapa.</div>
+  </div>
+  <div class="foot"><div>OutBox Soluções Digitais · Relatório de acompanhamento<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div></div>
+</div><button class="ph" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
 
   /* ====================== AJUDA / GUIA ====================== */

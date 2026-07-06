@@ -9,6 +9,7 @@ const Admin = {
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
+    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
@@ -19,6 +20,7 @@ const Admin = {
     consultores: ['Consultores', 'Todos os consultores e seus números'],
     mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
+    projetos:    ['Projetos & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']
@@ -595,6 +597,96 @@ const Admin = {
     });
 
     painelEstados();
+  },
+
+  /* ====================== PROJETOS & ENTREGAS (admin) ====================== */
+  _prodNomes(ids) { return (ids || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + '); },
+
+  view_projetos() {
+    const v = document.getElementById('main-view');
+    const projs = OB.projetos().slice().sort((a, b) => OB.etapaIndex(a.status) - OB.etapaIndex(b.status) || new Date(b.criadoEm) - new Date(a.criadoEm));
+    const novos = projs.filter(p => p.status === 'briefing_recebido');
+    const producao = projs.filter(p => p.status === 'em_producao' || p.status === 'em_revisao');
+    const entregues = projs.filter(p => p.status === 'entregue' || p.status === 'aprovado');
+
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('send', novos.length, 'Briefings a iniciar', 'Recebidos, aguardando você')}
+        ${Consultor.kpi('rocket', producao.length, 'Em produção', 'Trabalhos em andamento')}
+        ${Consultor.kpi('check', entregues.length, 'Entregues', 'Enviados ao cliente')}
+      </div>
+      ${novos.length ? `<div class="notice" style="margin-bottom:16px;border-color:rgba(241,85,50,.3);background:var(--brand-soft)">${UI.icon('bell',16)}<div><b>${novos.length} briefing(s) recebido(s)</b> aguardando leitura. Analise e inicie a produção.</div></div>` : ''}
+      ${projs.length ? `
+        ${novos.length ? `<div class="nav-label" style="padding-left:0">Briefings recebidos, para iniciar</div>${novos.map(p => this.adminProjetoCard(p)).join('')}` : ''}
+        ${producao.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Em produção</div>${producao.map(p => this.adminProjetoCard(p)).join('')}` : ''}
+        ${entregues.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Entregues / concluídos</div>${entregues.map(p => this.adminProjetoCard(p)).join('')}` : ''}
+        ${projs.filter(p => p.status === 'briefing_enviado').length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Aguardando o cliente preencher</div>${projs.filter(p => p.status === 'briefing_enviado').map(p => this.adminProjetoCard(p)).join('')}` : ''}
+      ` : Consultor.empty('briefcase', 'Nenhum projeto ainda', 'Quando um consultor enviar um briefing, o projeto aparece aqui.')}`;
+
+    v.querySelectorAll('[data-iniciar]').forEach(b => b.onclick = () => this.iniciarProducao(b.dataset.iniciar));
+    v.querySelectorAll('[data-revisao]').forEach(b => b.onclick = () => this.avancarProjeto(b.dataset.revisao, 'em_revisao'));
+    v.querySelectorAll('[data-entregar]').forEach(b => b.onclick = () => this.entregarProjeto(b.dataset.entregar));
+    v.querySelectorAll('[data-concluir]').forEach(b => b.onclick = () => this.avancarProjeto(b.dataset.concluir, 'aprovado'));
+    App.refreshProjetosBadge();
+  },
+
+  adminProjetoCard(p) {
+    const cons = OB.userById(p.consultorId);
+    const cli = OB.clientById(p.clientId);
+    const et = OB.ETAPAS_PROJETO.find(e => e.id === p.status) || {};
+    const respostas = p.briefingRespostas ? `<div class="proj-brief-box"><b>${UI.icon('docs',13)} Briefing do cliente</b><p>${(p.briefingRespostas).replace(/</g, '&lt;')}</p></div>` : (p.status === 'briefing_recebido' ? `<div class="hint" style="margin-top:8px">${UI.icon('info',12)} O consultor não anexou um resumo. Alinhe o briefing com ele${cons ? ' (' + cons.nome + ')' : ''}.</div>` : '');
+    const acoes = [];
+    if (p.status === 'briefing_recebido') acoes.push(`<button class="btn brand sm" data-iniciar="${p.id}">${UI.icon('rocket',14)} Iniciar produção</button>`);
+    else if (p.status === 'em_producao') acoes.push(`<button class="btn ghost sm" data-revisao="${p.id}">${UI.icon('eye',14)} Enviar para revisão</button>`, `<button class="btn brand sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar (link)</button>`);
+    else if (p.status === 'em_revisao') acoes.push(`<button class="btn brand sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar projeto (link)</button>`);
+    else if (p.status === 'entregue') { if (p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`); acoes.push(`<button class="btn ghost sm" data-concluir="${p.id}">${UI.icon('check',14)} Marcar aprovado</button>`); }
+    else if (p.status === 'aprovado' && p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
+    return `<div class="card proj-card">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
+        <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>
+          <div class="mut" style="font-size:12.5px">${this._prodNomes(p.produtos)} · Consultor: ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</div></div>
+        <span class="chip ${p.status === 'aprovado' ? 'green' : p.status === 'briefing_recebido' ? 'warn' : 'brand'} nowrap">${et.nome || ''}</span>
+      </div>
+      <div style="margin-top:14px">${Consultor.timelineHTML(p)}</div>
+      ${respostas}
+      <div class="proj-acoes">${acoes.join('')}</div>
+    </div>`;
+  },
+
+  iniciarProducao(projId) {
+    const p = OB.projetoById(projId); if (!p) return;
+    OB.setEtapaProjeto(p, 'em_producao');
+    UI.toast('Produção iniciada', 'O consultor foi avisado. Bom trabalho!', 'ok');
+    App.refreshProjetosBadge();
+    this.render('projetos');
+  },
+  avancarProjeto(projId, status) {
+    const p = OB.projetoById(projId); if (!p) return;
+    OB.setEtapaProjeto(p, status);
+    UI.toast('Projeto atualizado', 'Etapa: ' + ((OB.ETAPAS_PROJETO.find(e => e.id === status) || {}).nome || status), 'ok');
+    App.refreshProjetosBadge();
+    this.render('projetos');
+  },
+  entregarProjeto(projId) {
+    const p = OB.projetoById(projId); if (!p) return;
+    UI.modal({
+      title: 'Entregar projeto',
+      sub: 'Cole o link do projeto pronto',
+      body: `
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Cole o link do projeto finalizado (site publicado, pasta do Drive, protótipo, etc.). O consultor vai compartilhar com o cliente para a aprovação final.</div></div>
+        <div class="field"><label>Link do projeto <span class="req">*</span></label><input id="pj-link" type="url" value="${p.linkFinal || ''}" placeholder="https://..."/><div class="err">Informe o link</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="pj-ok">${UI.icon('external',16)} Entregar</button>`
+    });
+    document.getElementById('pj-ok').onclick = () => {
+      const link = (document.getElementById('pj-link').value || '').trim();
+      if (!link) { document.getElementById('pj-link').closest('.field').classList.add('has-error'); return; }
+      p.linkFinal = link;
+      OB.setEtapaProjeto(p, 'entregue');
+      UI.closeModal();
+      UI.toast('Projeto entregue!', 'O consultor pode compartilhar com o cliente.', 'ok');
+      App.refreshProjetosBadge();
+      this.render('projetos');
+    };
   },
 
   /* ====================== VENDAS ====================== */

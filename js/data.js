@@ -154,8 +154,32 @@ const OB = {
     { id: 'critico', nome: 'Urgente (vermelho)',  icon: 'shield' }
   ],
 
+  /* ---------- Briefings por produto (link do formulário) ----------
+     ATENÇÃO: os links abaixo são localhost (só abrem no seu computador).
+     Troque pela URL publicada do app de briefing quando estiver no ar.
+     Produtos sem link específico caem no HUB (formulário geral). */
+  BRIEFING_HUB: 'http://localhost:4744/',
+  BRIEFINGS: {
+    institucional: 'http://localhost:4744/?p=site',
+    'institucional-blog': 'http://localhost:4744/?p=site',
+    lp: 'http://localhost:4744/?p=landing',
+    onepage: 'http://localhost:4744/?p=onepage'
+  },
+  briefingLink(produtoId) { return this.BRIEFINGS[produtoId] || this.BRIEFING_HUB; },
+
+  /* etapas da timeline de entrega (ordem = progresso do projeto) */
+  ETAPAS_PROJETO: [
+    { id: 'briefing_enviado',  nome: 'Briefing enviado',   icon: 'share',    campo: 'briefingEnviadoEm',  quem: 'Consultor enviou o formulário ao cliente' },
+    { id: 'briefing_recebido', nome: 'Briefing recebido',  icon: 'check',    campo: 'briefingRecebidoEm', quem: 'Cliente preencheu e enviou o briefing' },
+    { id: 'em_producao',       nome: 'Em produção',        icon: 'edit',     campo: 'emProducaoEm',       quem: 'OutBox iniciou os trabalhos' },
+    { id: 'em_revisao',        nome: 'Em revisão',         icon: 'eye',      campo: 'emRevisaoEm',        quem: 'Projeto em ajustes finais' },
+    { id: 'entregue',          nome: 'Entregue',           icon: 'external', campo: 'entregueEm',         quem: 'Link do projeto disponível' },
+    { id: 'aprovado',          nome: 'Aprovado',           icon: 'prize',    campo: 'aprovadoEm',         quem: 'Cliente aprovou o projeto final' }
+  ],
+  etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
+
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -181,6 +205,9 @@ const OB = {
   _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, servico: r.servico, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), moeda: r.moeda || 'BRL', obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em, followupEm: r.followup_em || null }; },
   _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, servico: l.servico || null, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, moeda: l.moeda || 'BRL', obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm, followup_em: l.followupEm || null }; },
 
+  _prIn(r) { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods)) prods = []; return { id: r.id, saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, produtos: prods, status: r.status || 'briefing_enviado', briefingLink: r.briefing_link || '', briefingRespostas: r.briefing_respostas || '', linkFinal: r.link_final || '', obs: r.obs || '', briefingEnviadoEm: r.briefing_enviado_em, briefingRecebidoEm: r.briefing_recebido_em, emProducaoEm: r.em_producao_em, emRevisaoEm: r.em_revisao_em, entregueEm: r.entregue_em, aprovadoEm: r.aprovado_em, criadoEm: r.criado_em, atualizadoEm: r.atualizado_em }; },
+  _prOut(p) { return { id: p.id, sale_id: p.saleId || null, consultor_id: p.consultorId, client_id: p.clientId || null, produtos: JSON.stringify(p.produtos || []), status: p.status || 'briefing_enviado', briefing_link: p.briefingLink || null, briefing_respostas: p.briefingRespostas || null, link_final: p.linkFinal || null, obs: p.obs || null, briefing_enviado_em: p.briefingEnviadoEm || null, briefing_recebido_em: p.briefingRecebidoEm || null, em_producao_em: p.emProducaoEm || null, em_revisao_em: p.emRevisaoEm || null, entregue_em: p.entregueEm || null, aprovado_em: p.aprovadoEm || null, atualizado_em: new Date().toISOString() }; },
+
   _rIn(r)  { return { id: r.id, tipo: r.tipo, modo: r.modo, premioId: r.premio_id, premioNome: r.premio_nome, consultorId: r.consultor_id, consultorNome: r.consultor_nome, valor: Number(r.valor), detalhe: r.detalhe, pix: r.pix, status: r.status, criadoEm: r.criado_em, vendaIds: r.venda_ids, pagoEm: r.pago_em, comprovante: r.comprovante }; },
   _rOut(r) { return { id: r.id, tipo: r.tipo, modo: r.modo, premio_id: r.premioId, premio_nome: r.premioNome, consultor_id: r.consultorId, consultor_nome: r.consultorNome, valor: r.valor, detalhe: r.detalhe, pix: r.pix, status: r.status, criado_em: r.criadoEm, venda_ids: r.vendaIds || null, pago_em: r.pagoEm || null, comprovante: r.comprovante || null }; },
 
@@ -193,7 +220,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -202,7 +229,8 @@ const OB = {
       SB.from('leads').select('*'),
       SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle(),
       SB.from('training_progress').select('*'),
-      SB.rpc('ranking_treinamentos')
+      SB.rpc('ranking_treinamentos'),
+      SB.from('projetos').select('*')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -227,9 +255,10 @@ const OB = {
     this.db.treinos = {};
     this.db.treinosAll.filter(r => r.consultorId === user.id).forEach(r => { this.db.treinos[r.treinoId] = { melhorNota: r.melhorNota, tentativas: r.tentativas, concluido: r.concluido }; });
     this.db.ranking = (rk && rk.data) ? rk.data : [];
+    this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -401,6 +430,24 @@ const OB = {
   /* admin confirma/desfaz o recebimento do pagamento do cliente (libera comissão).
      A RLS permite o admin gravar (policies sales_insert_admin/is_admin). */
   setPagamento(saleId, status) { const s = this.db.sales.find(x => x.id === saleId); if (!s) return null; s.statusPagamento = status; this.updateSale(s); return s; },
+
+  /* ---------- projetos / briefings / entrega ---------- */
+  projetos() { return this.db.projetos || []; },
+  projetosDe(consultorId) { return (this.db.projetos || []).filter(p => p.consultorId === consultorId); },
+  projetoDaVenda(saleId) { return (this.db.projetos || []).find(p => p.saleId === saleId) || null; },
+  projetoById(id) { return (this.db.projetos || []).find(p => p.id === id) || null; },
+  addProjeto(p) { this.db.projetos.push(p); this._save('projetos', this._prOut(p)); return p; },
+  updateProjeto(p) { const i = this.db.projetos.findIndex(x => x.id === p.id); if (i >= 0) this.db.projetos[i] = p; else this.db.projetos.push(p); this._save('projetos', this._prOut(p)); return p; },
+  /* move o projeto para uma etapa, carimbando a data (não regride datas já existentes) */
+  setEtapaProjeto(p, status) {
+    const idx = this.etapaIndex(status);
+    p.status = status;
+    const campo = (this.ETAPAS_PROJETO[idx] || {}).campo;
+    if (campo && !p[campo]) p[campo] = new Date().toISOString();
+    return this.updateProjeto(p);
+  },
+  /* briefings recebidos que ainda não entraram em produção (alerta do admin) */
+  briefingsPendentesAdmin() { return (this.db.projetos || []).filter(p => p.status === 'briefing_recebido'); },
 
   /* ---------- aviso/comunicado ---------- */
   getAviso() { return this.db.aviso || { id: this.AVISO_ID, texto: '', tipo: 'info', ativo: false, inicio: null, fim: null }; },
