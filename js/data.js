@@ -158,14 +158,16 @@ const OB = {
      ATENÇÃO: os links abaixo são localhost (só abrem no seu computador).
      Troque pela URL publicada do app de briefing quando estiver no ar.
      Produtos sem link específico caem no HUB (formulário geral). */
-  BRIEFING_HUB: 'http://localhost:4744/',
-  BRIEFINGS: {
-    institucional: 'http://localhost:4744/?p=site',
-    'institucional-blog': 'http://localhost:4744/?p=site',
-    lp: 'http://localhost:4744/?p=landing',
-    onepage: 'http://localhost:4744/?p=onepage'
+  /* App de briefing publicado (dentro do próprio sistema). Cada serviço tem seu formulário (?p=...);
+     quando enviado por um projeto, o link leva pid+token e o preenchimento volta sozinho para a tabela projetos. */
+  BRIEFING_BASE: 'https://consultores.outboxgroup.com.br/briefing/',
+  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', identidade: 'site', ecommerce: 'site', sistemas: 'site' },
+  briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
+  briefingLink(produtoId, pid, token) {
+    let url = this.BRIEFING_BASE + '?p=' + this.briefingTipo(produtoId);
+    if (pid && token) url += '&pid=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token);
+    return url;
   },
-  briefingLink(produtoId) { return this.BRIEFINGS[produtoId] || this.BRIEFING_HUB; },
 
   /* etapas da timeline de entrega (ordem = progresso do projeto) */
   ETAPAS_PROJETO: [
@@ -205,8 +207,8 @@ const OB = {
   _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, servico: r.servico, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), moeda: r.moeda || 'BRL', obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em, followupEm: r.followup_em || null }; },
   _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, servico: l.servico || null, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, moeda: l.moeda || 'BRL', obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm, followup_em: l.followupEm || null }; },
 
-  _prIn(r) { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods)) prods = []; return { id: r.id, saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, produtos: prods, status: r.status || 'briefing_enviado', briefingLink: r.briefing_link || '', briefingRespostas: r.briefing_respostas || '', linkFinal: r.link_final || '', obs: r.obs || '', briefingEnviadoEm: r.briefing_enviado_em, briefingRecebidoEm: r.briefing_recebido_em, emProducaoEm: r.em_producao_em, emRevisaoEm: r.em_revisao_em, entregueEm: r.entregue_em, aprovadoEm: r.aprovado_em, criadoEm: r.criado_em, atualizadoEm: r.atualizado_em }; },
-  _prOut(p) { return { id: p.id, sale_id: p.saleId || null, consultor_id: p.consultorId, client_id: p.clientId || null, produtos: JSON.stringify(p.produtos || []), status: p.status || 'briefing_enviado', briefing_link: p.briefingLink || null, briefing_respostas: p.briefingRespostas || null, link_final: p.linkFinal || null, obs: p.obs || null, briefing_enviado_em: p.briefingEnviadoEm || null, briefing_recebido_em: p.briefingRecebidoEm || null, em_producao_em: p.emProducaoEm || null, em_revisao_em: p.emRevisaoEm || null, entregue_em: p.entregueEm || null, aprovado_em: p.aprovadoEm || null, atualizado_em: new Date().toISOString() }; },
+  _prIn(r) { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods)) prods = []; return { id: r.id, saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, produtos: prods, status: r.status || 'briefing_enviado', briefingLink: r.briefing_link || '', briefingToken: r.briefing_token || '', briefingRespostas: r.briefing_respostas || '', linkFinal: r.link_final || '', obs: r.obs || '', briefingEnviadoEm: r.briefing_enviado_em, briefingRecebidoEm: r.briefing_recebido_em, emProducaoEm: r.em_producao_em, emRevisaoEm: r.em_revisao_em, entregueEm: r.entregue_em, aprovadoEm: r.aprovado_em, criadoEm: r.criado_em, atualizadoEm: r.atualizado_em }; },
+  _prOut(p) { return { id: p.id, sale_id: p.saleId || null, consultor_id: p.consultorId, client_id: p.clientId || null, produtos: JSON.stringify(p.produtos || []), status: p.status || 'briefing_enviado', briefing_link: p.briefingLink || null, briefing_token: p.briefingToken || null, briefing_respostas: p.briefingRespostas || null, link_final: p.linkFinal || null, obs: p.obs || null, briefing_enviado_em: p.briefingEnviadoEm || null, briefing_recebido_em: p.briefingRecebidoEm || null, em_producao_em: p.emProducaoEm || null, em_revisao_em: p.emRevisaoEm || null, entregue_em: p.entregueEm || null, aprovado_em: p.aprovadoEm || null, atualizado_em: new Date().toISOString() }; },
 
   _rIn(r)  { return { id: r.id, tipo: r.tipo, modo: r.modo, premioId: r.premio_id, premioNome: r.premio_nome, consultorId: r.consultor_id, consultorNome: r.consultor_nome, valor: Number(r.valor), detalhe: r.detalhe, pix: r.pix, status: r.status, criadoEm: r.criado_em, vendaIds: r.venda_ids, pagoEm: r.pago_em, comprovante: r.comprovante }; },
   _rOut(r) { return { id: r.id, tipo: r.tipo, modo: r.modo, premio_id: r.premioId, premio_nome: r.premioNome, consultor_id: r.consultorId, consultor_nome: r.consultorNome, valor: r.valor, detalhe: r.detalhe, pix: r.pix, status: r.status, criado_em: r.criadoEm, venda_ids: r.vendaIds || null, pago_em: r.pagoEm || null, comprovante: r.comprovante || null }; },

@@ -1982,7 +1982,11 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     if (s.statusPagamento !== 'recebido') return UI.toast('Ainda não liberado', 'O briefing libera após a confirmação do pagamento.', 'err');
     const cli = OB.clientById(s.clientId);
     const prods = OB.produtosDaVenda(s);
-    const links = prods.map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, link: OB.briefingLink(id) }));
+    // o link carrega o id do projeto + token: quando o cliente preenche, o briefing volta sozinho para a esteira
+    const proj0 = OB.projetoDaVenda(s.id);
+    const pid = proj0 ? proj0.id : OB.uid();
+    const token = (proj0 && proj0.briefingToken) ? proj0.briefingToken : OB.uid().replace(/-/g, '');
+    const links = prods.map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, link: OB.briefingLink(id, pid, token) }));
     const primeiro = (cli && cli.nome) ? cli.nome.split(' ')[0] : '';
     const msg = `Olá${primeiro ? ' ' + primeiro : ''}! Que ótimo dar início ao seu projeto com a OutBox 🎉 Para começarmos, preencha o briefing (leva poucos minutos): ${links.map(l => l.link).join(' ')}`;
     const tel = cli && cli.telefone ? cli.telefone.replace(/\D/g, '') : '';
@@ -1991,7 +1995,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       title: 'Enviar briefing ao cliente',
       sub: cli ? cli.nome : '',
       body: `
-        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Envie o link do briefing pelo WhatsApp. Assim que o cliente preencher, o projeto entra na esteira de entrega e a OutBox é avisada.</div></div>
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Envie o link pelo WhatsApp. O cliente preenche online e o briefing <b>volta automaticamente</b> para esta esteira, avisando a OutBox para iniciar a produção.</div></div>
         ${links.map(l => `<div class="field"><label>${l.nome}</label><div class="row" style="gap:8px"><input class="grow" value="${l.link}" readonly/><button type="button" class="btn ghost" data-copy="${l.link}">${UI.icon('docs',14)} Copiar</button></div></div>`).join('')}
         <div class="field"><label>Mensagem</label><textarea id="bf-msg" style="min-height:96px">${msg}</textarea></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn green" id="bf-wa">${UI.icon('whats',16)} Enviar no WhatsApp</button>`
@@ -2000,10 +2004,11 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const registrar = () => {
       let proj = OB.projetoDaVenda(s.id);
       if (!proj) {
-        proj = { id: OB.uid(), saleId: s.id, consultorId: this.u().id, clientId: s.clientId, produtos: prods, status: 'briefing_enviado', briefingLink: links.map(l => l.link).join(' '), briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
+        proj = { id: pid, saleId: s.id, consultorId: this.u().id, clientId: s.clientId, produtos: prods, status: 'briefing_enviado', briefingToken: token, briefingLink: links.map(l => l.link).join(' '), briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
         OB.addProjeto(proj);
-      } else if (proj.status === 'briefing_enviado') {
-        OB.setEtapaProjeto(proj, 'briefing_enviado');
+      } else {
+        if (!proj.briefingToken) { proj.briefingToken = token; OB.updateProjeto(proj); }
+        if (proj.status === 'briefing_enviado') OB.setEtapaProjeto(proj, 'briefing_enviado');
       }
     };
     document.getElementById('bf-wa').onclick = () => {
@@ -2023,7 +2028,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       title: 'Registrar briefing recebido',
       sub: 'Use quando o cliente já preencheu (por ora, manual)',
       body: `
-        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Quando o app de briefing estiver publicado e conectado, isto acontece sozinho. Por enquanto, cole aqui um resumo do que o cliente respondeu (opcional) e confirme.</div></div>
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Normalmente isto é <b>automático</b>: quando o cliente preenche o briefing online, ele já cai aqui sozinho. Use este atalho só se o cliente respondeu por fora (WhatsApp, ligação): cole um resumo e confirme.</div></div>
         <div class="field"><label>Resumo do briefing (opcional)</label><textarea id="br-resp" style="min-height:120px" placeholder="Cole ou resuma as respostas do cliente..."></textarea></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="br-ok">${UI.icon('check',16)} Confirmar recebimento</button>`
     });
