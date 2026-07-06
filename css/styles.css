@@ -962,3 +962,9 @@ td .strong { color: var(--text); font-weight: 600; }
 .mapa-estado-stats > div { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
 .mapa-estado-stats span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mut); font-weight: 700; }
 .mapa-estado-stats b { font-size: 15px; }
+
+/* mini-mapa no Painel Geral */
+.mapa-mini { max-width: 460px; margin: 0 auto; cursor: pointer; }
+.mapa-mini svg { width: 100%; height: auto; }
+.mapa-mini path { stroke: var(--surface); stroke-width: 1; transition: filter .12s; }
+.mapa-mini:hover path { filter: saturate(1.05); }

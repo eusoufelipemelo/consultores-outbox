@@ -94,11 +94,14 @@ const Admin = {
         </div>
       </div>
 
+      ${this.mapaResumoHTML()}
+
       <div class="card">
         <div class="card-head"><h3>Solicitações pendentes</h3>${pend.length?`<span class="chip warn">${pend.length} aguardando</span>`:'<span class="chip green">tudo em dia</span>'}</div>
         ${this.reqTable(pend, true)}
       </div>`;
 
+    this.paintPainelMapa();
     setTimeout(() => {
       const labels = Consultor.last6Labels();
       const pagas = [], pend2 = [];
@@ -391,6 +394,50 @@ const Admin = {
   UF_NOMES: { AC:'Acre', AL:'Alagoas', AP:'Amapá', AM:'Amazonas', BA:'Bahia', CE:'Ceará', DF:'Distrito Federal', ES:'Espírito Santo', GO:'Goiás', MA:'Maranhão', MT:'Mato Grosso', MS:'Mato Grosso do Sul', MG:'Minas Gerais', PA:'Pará', PB:'Paraíba', PR:'Paraná', PE:'Pernambuco', PI:'Piauí', RJ:'Rio de Janeiro', RN:'Rio Grande do Norte', RS:'Rio Grande do Sul', RO:'Rondônia', RR:'Roraima', SC:'Santa Catarina', SP:'São Paulo', SE:'Sergipe', TO:'Tocantins' },
   REGIOES: ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'],
   UF_REGIAO: { AC:'Norte', AM:'Norte', AP:'Norte', PA:'Norte', RO:'Norte', RR:'Norte', TO:'Norte', MA:'Nordeste', PI:'Nordeste', CE:'Nordeste', RN:'Nordeste', PB:'Nordeste', PE:'Nordeste', AL:'Nordeste', SE:'Nordeste', BA:'Nordeste', MT:'Centro-Oeste', MS:'Centro-Oeste', GO:'Centro-Oeste', DF:'Centro-Oeste', MG:'Sudeste', ES:'Sudeste', RJ:'Sudeste', SP:'Sudeste', PR:'Sul', SC:'Sul', RS:'Sul' },
+
+  /* dados agregados por estado (reuso: mapa completo + resumo do painel) */
+  _mapaDados() {
+    const cons = this.consultores();
+    const ehBR = c => (c.pais || 'Brasil') === 'Brasil';
+    const porUF = {}; const exterior = []; const semUF = [];
+    cons.forEach(c => {
+      const uf = (c.uf || '').toUpperCase();
+      if (!ehBR(c)) exterior.push(c);
+      else if (this.UF_NOMES[uf]) (porUF[uf] = porUF[uf] || []).push(c);
+      else semUF.push(c);
+    });
+    const vendidoDe = id => OB.salesOf(id).filter(s => s.statusProposta === 'aprovada').reduce((t, s) => t + (s.valor || 0), 0);
+    const statUF = {};
+    Object.keys(porUF).forEach(uf => { const a = porUF[uf]; statUF[uf] = { n: a.length, vol: a.reduce((t, c) => t + vendidoDe(c.id), 0), clientes: a.reduce((t, c) => t + OB.clientsOf(c.id).length, 0) }; });
+    const reg = {}; this.REGIOES.forEach(r => reg[r] = { n: 0, vol: 0 });
+    Object.keys(statUF).forEach(uf => { const r = this.UF_REGIAO[uf]; if (r) { reg[r].n += statUF[uf].n; reg[r].vol += statUF[uf].vol; } });
+    return { cons, porUF, exterior, semUF, vendidoDe, statUF, reg };
+  },
+
+  /* card compacto do mapa para o Painel Geral (resumo por região + mini-mapa por vendas) */
+  mapaResumoHTML() {
+    const { reg } = this._mapaDados();
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="card-head"><h3>Mapa da rede</h3><button class="btn ghost sm" id="ir-mapa">${UI.icon('map',14)} Ver mapa completo</button></div>
+      <div class="mapa-regioes" style="margin:8px 0 14px">
+        ${this.REGIOES.map(r => `<div class="mapa-reg"><span>${r}</span><b>${reg[r].n}</b><small>${reg[r].vol ? OB.brl(reg[r].vol) : '—'}</small></div>`).join('')}
+      </div>
+      <div class="mapa-svg mapa-mini" id="painel-mapa" title="Abrir o mapa completo">${MAPA_BR}</div>
+      <div class="hint" style="text-align:center;margin-top:10px">Intensidade da cor por vendas aprovadas em cada estado. Clique para abrir o mapa completo.</div>
+    </div>`;
+  },
+  paintPainelMapa() {
+    const box = document.getElementById('painel-mapa'); if (!box) return;
+    const { statUF } = this._mapaDados();
+    const maxVol = Math.max(1, ...Object.keys(statUF).map(u => statUF[u].vol));
+    box.querySelectorAll('path[data-uf]').forEach(p => {
+      const s = statUF[p.dataset.uf];
+      const alpha = s && s.vol ? (0.28 + 0.72 * (s.vol / maxVol)) : (s ? 0.22 : 0);
+      p.style.fill = s ? `rgba(241,85,50,${alpha.toFixed(2)})` : 'var(--surface-3)';
+    });
+    box.onclick = () => App.go('mapa');
+    const btn = document.getElementById('ir-mapa'); if (btn) btn.onclick = (e) => { e.stopPropagation(); App.go('mapa'); };
+  },
 
   view_mapa() {
     const v = document.getElementById('main-view');
