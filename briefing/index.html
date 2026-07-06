@@ -472,6 +472,11 @@ button { font-family: var(--body); cursor: pointer; }
         <h3>OnePage</h3>
         <div class="hub-actions"><a class="btn btn--accent" href="?p=onepage">Abrir</a><button type="button" class="btn btn--outline-w hub-copy">Copiar link</button></div>
       </div>
+      <div class="hub-card" data-p="identidade">
+        <span class="ptype__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2a10 10 0 1 0 0 20 2.5 2.5 0 0 0 2-4 2.5 2.5 0 0 1 2-4h1a3 3 0 0 0 3-3 10 10 0 0 0-8-9z"/></svg></span>
+        <h3>Identidade Visual</h3>
+        <div class="hub-actions"><a class="btn btn--accent" href="?p=identidade">Abrir</a><button type="button" class="btn btn--outline-w hub-copy">Copiar link</button></div>
+      </div>
     </div>
   </div>
   <div class="gate__foot">Desenvolvido por: <a href="https://www.outboxgroup.com.br" target="_blank" rel="noopener">OutBox Group</a></div>
@@ -979,9 +984,103 @@ button { font-family: var(--body); cursor: pointer; }
       sub: "Este briefing é a base do onepage que vamos criar para apresentar seu negócio em uma página única e fluida. Quanto mais detalhe você trouxer, mais certeiro será o resultado. Responda com calma e sinceridade: não existem respostas erradas."
     }
   };
+
+  /* ====== Briefings "custom" (fluxo próprio, gerado por dados) ====== */
+  const CHK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const ADJETIVOS = ["Acadêmica","Acessível","Agressiva","Analítica","Antiga","Arrogante","Arrojada","Artística","Atrevida","Atual","Aventureira","Básica","Calma","Casual","Científica","Complexa","Comum","Confiável","Convencional","Cotidiana","Criativa","Curiosa","Da Massa","Deslumbrante","Determinada","Diferente","Disciplinada","Divertida","Emocional","Energética","Enigmática","Esperta","Estável","Exclusiva","Extrovertida","Formal","Futurista","Grande","Grosseira","Idealista","Industrial","Inocente","Intuitiva","Irreverente","Líder","Livre","Madura","Mente Aberta","Moderna","Modesta","Multifacetada","Nostálgica","Ousada","Padronizada","Pequena","Persistente","Pessimista","Previsível","Profissional","Promissora","Racional","Radical","Rebelde","Refinada","Relaxada","Reservada","Respeitadora","Rigorosa","Romântica","Rústica","Sábia","Sensível","Séria","Simples","Sóbria","Sonhadora","Sutil","Técnica","Tradicional","Tranquila"];
+  const ATRIB_VISUAIS = ["Séria","Extrovertida","Conservadora","Alegre","Aconchegante","Delicada","Moderna","Orgânica","Sofisticada","Elegante","Vibrante","Tradicional","Retrô","Digital","Pesada","Leve","Rústica","Discreta","Extravagante","Nobre","Popular","Romântica","Formal","Ousada","Humana","Rebelde","Irreverente"];
+
+  const CUSTOM = {
+    identidade: {
+      label: "Identidade Visual", fala: "sua marca", tag: "Briefing · Identidade Visual",
+      title: "Sua identidade visual começa <em>aqui.</em>",
+      sub: "Este briefing é a base da marca e do logotipo que vamos criar para o seu negócio. É a etapa mais importante do projeto: responda com calma e sinceridade, não existem respostas erradas.",
+      steps: [
+        { eyebrow: "Sobre você", h2: "Primeiro, quem é você?", hint: "Seus dados de contato e o nome da marca que vamos desenvolver.", fields: [
+          { t: "text", name: "nome", label: "Nome completo", q: "Nome completo", req: true, ph: "Como você se chama?" },
+          { t: "email", name: "email", label: "E-mail de contato", q: "E-mail de contato", req: true, ph: "voce@email.com" },
+          { t: "text", name: "marca", label: "Nome da marca", q: "Nome da marca que será desenvolvida", req: true, desc: "Deixe aqui o máximo de sugestões caso sua marca ainda não tenha um nome.", ph: "Nome da marca (ou sugestões)" }
+        ]},
+        { eyebrow: "Sobre você", h2: "Um pouco mais sobre você", hint: "Duas perguntas rápidas para te conhecermos melhor.", fields: [
+          { t: "area", name: "nome_significado", label: "Significado do nome", q: "Por que sua empresa tem esse nome? O que significa pra você?", req: true, desc: "Caso não tenha um nome, diga o que seu projeto significa para você." },
+          { t: "text", name: "carro", label: "Carro dos sonhos", q: "Se dinheiro não fosse o problema, qual seria o carro dos seus sonhos?", req: true, ph: "Ex: um clássico, um esportivo, um utilitário..." }
+        ]},
+        { eyebrow: "Sobre a empresa", h2: "Sobre a sua empresa", hint: "Conte com detalhes sobre o seu negócio: é a base de toda a identidade.", fields: [
+          { t: "area", name: "empresa_sobre", label: "Sobre a empresa", q: "Defina resumidamente do que se trata a sua empresa.", req: true, desc: "Defina seu projeto caso ainda não tenha a empresa." },
+          { t: "text", name: "empresa_tempo", label: "Tempo de existência", q: "Há quanto tempo sua empresa existe?", req: true, ph: "Ex: 3 anos, ainda vai abrir..." },
+          { t: "area", name: "empresa_oferta", label: "Produtos e serviços", q: "Quais produtos ou serviços sua empresa oferece?", req: true },
+          { t: "area", name: "empresa_especial", label: "O que a torna especial", q: "O que faz a sua empresa ser especial?", req: true },
+          { t: "text", name: "slogan", label: "Slogan", q: "Sua empresa tem algum slogan? Se sim, qual é?", req: true, ph: "Deixe em branco se não tiver" },
+          { t: "area", name: "concorrentes", label: "Concorrentes", q: "Sua empresa tem concorrentes? Quais são os principais? Liste 3 concorrentes (isso é importante).", req: true, desc: "Coloque nomes e links se puder." },
+          { t: "area", name: "concorrentes_dif", label: "O que os concorrentes têm", q: "Seus concorrentes oferecem algo que sua empresa não oferece?", req: true }
+        ]},
+        { eyebrow: "Público-alvo", h2: "Para quem é a sua marca?", hint: "Quem é o cliente ideal que a identidade precisa encantar.", fields: [
+          { t: "text", name: "publico_classe", label: "Classe social", q: "Qual a classe social do seu público-alvo?", req: true, ph: "Ex: classe A, B, C, mista..." },
+          { t: "text", name: "publico_faixa", label: "Faixa etária", q: "Qual a faixa etária?", req: true, ph: "Ex: 25 a 45 anos" },
+          { t: "single", name: "publico_genero", label: "Gênero", q: "Gênero predominante do público", req: true, options: [
+            { v: "Feminino" }, { v: "Masculino" }, { v: "Feminino predominante, pouco masculino" }, { v: "Masculino predominante, pouco feminino" }, { v: "Ambos os gêneros" }
+          ]},
+          { t: "area", name: "publico_descricao", label: "Como querem ser vistos", q: "Como você gostaria que os clientes descrevessem sua empresa?", req: true },
+          { t: "area", name: "publico_locais", label: "Onde o logo aparecerá", q: "Quais os locais você acredita que seu cliente mais verá o logotipo da sua empresa? Acrescente por ordem de importância.", req: true }
+        ]},
+        { eyebrow: "Personalidade da marca", h2: "A personalidade da sua marca", hint: "É aqui que a identidade ganha alma. Escolha quantas palavras quiser.", fields: [
+          { t: "multi", name: "marca_seria", label: "Como a marca seria", q: "Se sua empresa fosse uma pessoa, como ela seria? Escolha quantas opções julgar necessário.", req: true, options: ADJETIVOS },
+          { t: "text", name: "marca_top3", label: "3 palavras mais fortes", q: "Dessas palavras que você escolheu, cite [b]3[/b] que você considera mais forte.", req: true, ph: "Ex: Confiável, Moderna, Sofisticada" },
+          { t: "multi", name: "marca_nao_seria", label: "Como a marca NÃO seria", q: "Se sua empresa fosse uma pessoa, como ela [b]NÃO[/b] seria.", req: true, options: ADJETIVOS },
+          { t: "text", name: "marca_caracteristicas", label: "Características extras", q: "Se necessário, adicione mais algumas características.", req: false, ph: "Opcional" },
+          { t: "text", name: "cor_nao", label: "Cor que NÃO quer", q: "Qual cor você [b][i]NÃO QUER[/i][/b] na sua marca?", req: true },
+          { t: "text", name: "cor_sugestao", label: "Sugestão de cor", q: "Você tem alguma [b][i]sugestão[/i][/b] de cor para sua marca?", req: true },
+          { t: "multi", name: "atributos_visuais", label: "Atributos visuais", q: "Pensando apenas em aspectos visuais, selecione alguns atributos que têm relação com a sua marca.", req: true, options: ATRIB_VISUAIS }
+        ]},
+        { eyebrow: "Finais", h2: "Para fechar", hint: "Últimos detalhes e o que mais você quiser compartilhar.", fields: [
+          { t: "area", name: "historia", label: "História da marca", q: "Sua empresa ou algum produto que você comercializa possui uma história? Conte resumidamente.", req: true },
+          { t: "area", name: "consideracoes", label: "Considerações finais", q: "Fique à vontade para dizer mais sobre a sua empresa ou dar considerações finais.", req: true }
+        ]}
+      ]
+    }
+  };
+
+  function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function _rich(s) { return _esc(s).replace(/\[b\]/g, "<b>").replace(/\[\/b\]/g, "</b>").replace(/\[i\]/g, "<em>").replace(/\[\/i\]/g, "</em>"); }
+  function buildCustomField(f) {
+    const req = f.req ? ' <span class="req">*</span>' : "";
+    const desc = f.desc ? `<p class="field__desc">${_rich(f.desc)}</p>` : "";
+    const errText = f.req ? '<p class="field__error">Este campo é obrigatório.</p>' : "";
+    if (f.t === "text" || f.t === "email") {
+      return `<div class="field reveal"><label for="f_${f.name}">${_rich(f.q)}${req}</label>${desc}<input class="input" id="f_${f.name}" name="${f.name}" type="${f.t === "email" ? "email" : "text"}" placeholder="${_esc(f.ph || "")}"${f.req ? " required" : ""} data-label="${_esc(f.label)}" />${f.req ? '<p class="field__error">' + (f.t === "email" ? "Digite um e-mail válido." : "Este campo é obrigatório.") + "</p>" : ""}</div>`;
+    }
+    if (f.t === "area") {
+      return `<div class="field reveal"><label for="f_${f.name}">${_rich(f.q)}${req}</label>${desc}<textarea class="textarea" id="f_${f.name}" name="${f.name}" placeholder="${_esc(f.ph || "")}"${f.req ? " required" : ""} data-label="${_esc(f.label)}"></textarea>${errText}</div>`;
+    }
+    if (f.t === "single") {
+      const opts = f.options.map(o => `<button type="button" class="opt" data-value="${_esc(o.v)}"><span class="opt__dot"></span><span>${_esc(o.v)}${o.hint ? `<small>${_esc(o.hint)}</small>` : ""}</span></button>`).join("");
+      return `<div class="field reveal" data-name="${f.name}" data-label="${_esc(f.label)}"><span class="flabel">${_rich(f.q)}${req}</span>${desc}<div class="opts">${opts}</div>${f.req ? '<p class="field__error">Escolha uma opção.</p>' : ""}</div>`;
+    }
+    if (f.t === "multi") {
+      const opts = f.options.map(o => `<button type="button" class="chip" data-value="${_esc(o)}">${_esc(o)} ${CHK}</button>`).join("");
+      return `<div class="field reveal" data-name="${f.name}" data-label="${_esc(f.label)}" data-multi><span class="flabel">${_rich(f.q)}${req}</span>${desc}<div class="chips">${opts}</div>${f.req ? '<p class="field__error">Marque pelo menos uma opção.</p>' : ""}</div>`;
+    }
+    return "";
+  }
+  function renderCustom(def) {
+    const form = document.getElementById("form");
+    const reviewStep = form.querySelector('.step[data-step="12"]');
+    Array.from(form.querySelectorAll(".step")).forEach(s => { if (s !== reviewStep) s.remove(); });
+    const html = def.steps.map((st, i) => {
+      const fields = st.fields.map(buildCustomField).join("");
+      return `<section class="step" data-step="${i + 1}" data-group="${_esc(st.eyebrow)}"><div class="reveal"><span class="eyebrow">${_esc(st.eyebrow)}</span><h2>${_rich(st.h2)}</h2>${st.hint ? `<p class="step__hint">${_rich(st.hint)}</p>` : ""}</div>${fields}</section>`;
+    }).join("");
+    reviewStep.insertAdjacentHTML("beforebegin", html);
+    reviewStep.dataset.step = def.steps.length + 1;
+    return def.steps.map((st, i) => ({ title: st.eyebrow, step: i + 1, items: st.fields.map(f => (f.t === "single" || f.t === "multi") ? "@" + f.name : f.name) }));
+  }
+
   const presetKey = new URLSearchParams(location.search).get("p");
-  const PRESET = PTYPES[presetKey] || null;
+  const CUSTOM_DEF = CUSTOM[presetKey] || null;
+  const isCustom = !!CUSTOM_DEF;
+  const PRESET = PTYPES[presetKey] || (CUSTOM_DEF ? { label: CUSTOM_DEF.label, fala: CUSTOM_DEF.fala, tag: CUSTOM_DEF.tag, title: CUSTOM_DEF.title, sub: CUSTOM_DEF.sub } : null);
   const STORE_KEY = "outbox-briefing-v2-" + (presetKey || "none");
+  const CUSTOM_GROUPS = isCustom ? renderCustom(CUSTOM_DEF) : null;
 
   const steps = $$(".step");
   const flow = steps.map(s => +s.dataset.step);
@@ -1077,7 +1176,7 @@ button { font-family: var(--body); cursor: pointer; }
     $(".ref-input", row).addEventListener("input", persist);
     $(".ref-input", row).focus();
   }
-  $("#addRef").addEventListener("click", addRefRow);
+  { const _ar = $("#addRef"); if (_ar) _ar.addEventListener("click", addRefRow); }
 
   /* ---------- validation ---------- */
   function validateStep(n) {
@@ -1105,7 +1204,7 @@ button { font-family: var(--body); cursor: pointer; }
     });
 
     // refs special (step 8)
-    if (n === 8 && refValues().length < 3) {
+    if (!isCustom && n === 8 && refValues().length < 3) {
       const field = $("#refsField");
       field.classList.add("error"); firstBad = firstBad || field;
     }
@@ -1178,7 +1277,7 @@ button { font-family: var(--body); cursor: pointer; }
   }));
 
   /* ---------- review ---------- */
-  const GROUPS = [
+  const GROUPS = isCustom ? CUSTOM_GROUPS : [
     { title: "Sobre você", step: 1, items: ["nome", "email", "whatsapp", "empresa", "instagram"] },
     { title: "O projeto", step: 3, items: ["@ptype", "projnome", "@dominio", "dominiourl", "descricao"] },
     { title: "Objetivo", step: 4, items: ["@objetivo", "objetivooutro", "cta", "sucesso"] },
