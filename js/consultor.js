@@ -1915,6 +1915,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       </div>
       <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing. O cliente preenche, a OutBox produz e você acompanha cada etapa aqui, podendo emitir relatórios para o seu cliente.</div></div>
       ${this.bibliotecaBriefings()}
+      ${this.portfolioSection()}
       ${pagas.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagas.map(s => this.projetoCard(s)).join('')}` : ''}
       ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}
       ${!vendas.length ? this.empty('briefcase', 'Nenhum projeto ainda', 'Lance uma venda aprovada. Quando o pagamento for confirmado, você envia o briefing por aqui.') : ''}`;
@@ -1929,11 +1930,9 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   /* biblioteca: cada briefing pronto vira um cartão estilo crachá (layout da referência Itaú) */
   bibliotecaBriefings() {
-    let n = 0;
     const cards = OB.BRIEFINGS_PRONTOS.map(b => {
       const link = OB.briefingLinkTipo(b.tipo);
       const cid = 'cl-' + b.tipo;
-      const num = String(1001 + (n++) * 137).padStart(9, '0'); // número decorativo estilo crachá
       return `<div class="brief-cell">
         <a class="bcard" href="${link}" target="_blank" rel="noopener" title="Abrir briefing · ${b.nome}">
           <svg class="bcard__shape" viewBox="0 0 210 340" preserveAspectRatio="none" aria-hidden="true">
@@ -1945,7 +1944,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           <span class="bcard__hash">#TudoPassa.AVendaNão</span>
           <div class="bcard__foot">
             <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
-            <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span><small>${num}</small></div>
+            <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span></div>
           </div>
         </a>
         <div class="brief-cell-actions">
@@ -1963,6 +1962,34 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   /* formato do bloco laranja (referência Itaú): topo-esquerda + swoosh branco no canto inferior direito (viewBox 210x340) */
   BCARD_SHAPE: 'M0 0 H150 C150 70 150 120 130 152 C105 188 70 182 40 197 C22 205 10 208 0 210 Z',
+
+  /* portfólio de entregas: cases já entregues pela OutBox (prova social). Populado quando o usuário enviar links + imagens. */
+  portfolioSection() {
+    const itens = OB.PORTFOLIO || [];
+    const body = itens.length
+      ? `<div class="brief-cards">${itens.map(p => {
+          const cid = 'pf-' + (p.id || p.tipo || Math.random().toString(36).slice(2));
+          return `<div class="brief-cell">
+            <a class="bcard" href="${p.link}" target="_blank" rel="noopener" title="Abrir projeto · ${p.nome}">
+              <svg class="bcard__shape" viewBox="0 0 210 340" preserveAspectRatio="none" aria-hidden="true">
+                <defs><clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SHAPE}"/></clipPath></defs>
+                <g clip-path="url(#${cid})"><image href="${p.img}" x="0" y="0" width="210" height="340" preserveAspectRatio="xMidYMid slice"/></g>
+              </svg>
+              <span class="bcard__hash">#TudoPassa.AVendaNão</span>
+              <div class="bcard__foot"><img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/><div class="bcard__id"><b>${p.cliente || 'Case'}</b><span>${p.nome}</span></div></div>
+            </a>
+            <div class="brief-cell-actions">
+              <a class="btn ghost sm" href="${p.link}" target="_blank" rel="noopener" aria-label="Abrir projeto ${p.nome}">${UI.icon('external',15)}<span>Ver projeto</span></a>
+            </div>
+          </div>`;
+        }).join('')}</div>`
+      : `<div class="port-soon">${UI.icon('rocket',28)}<b>Em breve</b><p>Estamos reunindo os melhores projetos já entregues pela OutBox para você usar como prova social nas suas vendas. Assim que estiverem no ar, você poderá abrir e compartilhar cada case com os seus clientes por aqui.</p></div>`;
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="row alc" style="gap:8px;margin-bottom:4px">${UI.icon('prize',16)}<b>Portfólio de entregas</b></div>
+      <p class="mut" style="font-size:12.5px;margin-bottom:16px">Sites e projetos já entregues pela OutBox, prontos para você mostrar aos clientes como prova de resultado.</p>
+      ${body}
+    </div>`;
+  },
 
   projetoCard(s) {
     const cli = OB.clientById(s.clientId);

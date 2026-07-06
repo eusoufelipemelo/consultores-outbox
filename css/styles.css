@@ -998,7 +998,15 @@ td .strong { color: var(--text); font-weight: 600; }
 }
 
 /* Biblioteca de briefings — cartões estilo crachá */
-.brief-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 20px; }
+.brief-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+@media (max-width: 1024px) { .brief-cards { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .brief-cards { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
+@media (max-width: 430px)  { .brief-cards { grid-template-columns: 1fr; } }
+/* portfólio — estado "em breve" */
+.port-soon { text-align: center; padding: 36px 22px; border: 1.5px dashed var(--border-strong); border-radius: 16px; background: var(--surface-2); }
+.port-soon svg { color: var(--brand); margin-bottom: 10px; }
+.port-soon b { display: block; font-size: 16px; color: var(--text); margin-bottom: 5px; }
+.port-soon p { font-size: 13px; color: var(--text-mut); max-width: 480px; margin: 0 auto; line-height: 1.55; }
 .brief-cell { display: flex; flex-direction: column; gap: 9px; }
 .brief-cell-actions { display: flex; gap: 8px; }
 .brief-cell-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; gap: 6px; padding: 9px 8px; font-size: 12.5px; }
@@ -1024,4 +1032,4 @@ td .strong { color: var(--text); font-weight: 600; }
 .bcard__id b { display: block; font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
 .bcard__id span { display: block; font-size: 10.5px; color: var(--text-soft); font-weight: 600; }
 .bcard__id small { display: block; font-size: 9.5px; color: var(--text-mut); font-weight: 600; letter-spacing: .12em; margin-top: 1px; }
-@media (max-width: 520px) { .brief-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; } .bcard__hash { font-size: 12px; } .bcard__id b { font-size: 15px; } }
+@media (max-width: 520px) { .bcard__hash { font-size: 12px; } .bcard__id b { font-size: 15px; } }
