@@ -7,6 +7,7 @@ const Admin = {
     { id: 'painel',     label: 'Painel Geral',     icon: 'overview' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
+    { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
@@ -16,6 +17,7 @@ const Admin = {
     painel:      ['Painel Geral', 'Visão consolidada de toda a operação'],
     financeiro:  ['Gestão Financeira', 'Comissões e prêmios — pague mediante comprovação'],
     consultores: ['Consultores', 'Todos os consultores e seus números'],
+    mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
@@ -383,6 +385,137 @@ const Admin = {
         ${reqs.length?Consultor.reqList(reqs):'<p class="mut" style="font-size:13px">Sem solicitações.</p>'}`,
       footer: `<button class="btn brand" data-close>Fechar</button>`
     });
+  },
+
+  /* ====================== MAPA DA REDE ====================== */
+  UF_NOMES: { AC:'Acre', AL:'Alagoas', AP:'Amapá', AM:'Amazonas', BA:'Bahia', CE:'Ceará', DF:'Distrito Federal', ES:'Espírito Santo', GO:'Goiás', MA:'Maranhão', MT:'Mato Grosso', MS:'Mato Grosso do Sul', MG:'Minas Gerais', PA:'Pará', PB:'Paraíba', PR:'Paraná', PE:'Pernambuco', PI:'Piauí', RJ:'Rio de Janeiro', RN:'Rio Grande do Norte', RS:'Rio Grande do Sul', RO:'Rondônia', RR:'Roraima', SC:'Santa Catarina', SP:'São Paulo', SE:'Sergipe', TO:'Tocantins' },
+
+  view_mapa() {
+    const v = document.getElementById('main-view');
+    const cons = this.consultores();
+    // agrupa: estados do BR (UF válida) · exterior (país != Brasil) · sem estado (BR sem UF)
+    const ehBR = c => (c.pais || 'Brasil') === 'Brasil';
+    const porUF = {}; const exterior = []; const semUF = [];
+    cons.forEach(c => {
+      const uf = (c.uf || '').toUpperCase();
+      if (!ehBR(c)) exterior.push(c);
+      else if (this.UF_NOMES[uf]) (porUF[uf] = porUF[uf] || []).push(c);
+      else semUF.push(c);
+    });
+    const maxC = Math.max(1, ...Object.values(porUF).map(a => a.length));
+    const nEstados = Object.keys(porUF).length;
+    const paises = [...new Set(cons.map(c => c.pais || 'Brasil'))];
+    const rank = Object.keys(porUF).map(uf => ({ uf, n: porUF[uf].length })).sort((a, b) => b.n - a.n);
+
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('users', cons.length, 'Consultores', 'No total')}
+        ${Consultor.kpi('map', nEstados, 'Estados com consultores', 'De 27 unidades federativas')}
+        ${Consultor.kpi('pin', rank.length ? this.UF_NOMES[rank[0].uf] : '—', 'Estado com mais gente', rank.length ? rank[0].n + ' consultor(es)' : 'sem dados')}
+      </div>
+      <div class="mapa-wrap">
+        <div class="card mapa-box">
+          <div class="mapa-svg" id="mapa-svg">${MAPA_BR}</div>
+          <div class="mapa-legenda">
+            <span class="mut" style="font-size:11px">Menos</span>
+            <span class="lg-scale"></span>
+            <span class="mut" style="font-size:11px">Mais</span>
+            <span class="lg-vazio"></span><span class="mut" style="font-size:11px">Sem consultor</span>
+          </div>
+          <div class="mapa-tip" id="mapa-tip"></div>
+        </div>
+        <div class="card mapa-painel" id="mapa-painel"></div>
+      </div>`;
+
+    const painel = document.getElementById('mapa-painel');
+    const tip = document.getElementById('mapa-tip');
+    const svg = document.getElementById('mapa-svg');
+
+    // pinta os estados conforme a quantidade
+    svg.querySelectorAll('path[data-uf]').forEach(p => {
+      const uf = p.dataset.uf;
+      const n = (porUF[uf] || []).length;
+      const alpha = n ? (0.28 + 0.72 * (n / maxC)) : 0;
+      p.style.fill = n ? `rgba(241,85,50,${alpha.toFixed(2)})` : 'var(--surface-3)';
+      p.classList.toggle('tem', !!n);
+      p.setAttribute('data-n', n);
+    });
+
+    // painel: lista de estados (padrão) e lista de consultores de um estado (ao clicar)
+    const painelEstados = () => {
+      painel.innerHTML = `
+        <div class="mapa-painel-head"><b>Consultores por estado</b><span class="mut" style="font-size:12px">clique no mapa ou na lista</span></div>
+        ${rank.length ? rank.map(r => `
+          <button class="mapa-uf-row" data-uf="${r.uf}">
+            <span class="mapa-uf-sigla">${r.uf}</span>
+            <span class="grow" style="min-width:0"><b>${this.UF_NOMES[r.uf] || r.uf}</b></span>
+            <span class="mapa-uf-n">${r.n}</span>
+          </button>`).join('') : '<p class="mut" style="font-size:13px;padding:6px 2px">Nenhum consultor com estado cadastrado ainda.</p>'}
+        ${exterior.length ? `<button class="mapa-uf-row" data-uf="__ext"><span class="mapa-uf-sigla" style="background:rgba(37,211,102,.14);color:#1fa855">🌎</span><span class="grow" style="min-width:0"><b>Exterior</b></span><span class="mapa-uf-n">${exterior.length}</span></button>` : ''}
+        ${semUF.length ? `<div class="hint" style="margin-top:10px">${UI.icon('info',12)} ${semUF.length} consultor(es) ainda sem estado no cadastro.</div>` : ''}`;
+      painel.querySelectorAll('[data-uf]').forEach(b => b.onclick = () => selecionar(b.dataset.uf));
+    };
+    const painelEstado = (uf) => {
+      const lista = (porUF[uf] || []).slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+      painel.innerHTML = `
+        <button class="mapa-voltar" id="mapa-voltar">${UI.icon('chevron',15)} Todos os estados</button>
+        <div class="mapa-painel-head" style="margin-top:8px"><b>${this.UF_NOMES[uf] || uf}</b><span class="chip brand">${lista.length} consultor(es)</span></div>
+        ${lista.map(c => `
+          <div class="mapa-cons" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
+            <div class="av-box mapa-av">${OB.fotos[c.id] ? `<img src="${OB.fotos[c.id]}">` : (c.nome ? c.nome[0] : '?')}</div>
+            <div class="grow" style="min-width:0">
+              <b>${c.nome} ${c.sobrenome || ''}</b>
+              <div class="mut" style="font-size:12px">${UI.icon('pin',11)} ${c.cidade || 'Cidade não informada'} · ${uf} · ${c.pais || 'Brasil'}</div>
+            </div>
+            ${UI.icon('chevron',15)}
+          </div>`).join('')}`;
+      document.getElementById('mapa-voltar').onclick = () => { selecionar(null); };
+      painel.querySelectorAll('[data-view-cons]').forEach(b => b.onclick = () => this.detalheConsultor(b.dataset.viewCons));
+      // fotos em 2º plano
+      OB.carregarFotos().then(() => painel.querySelectorAll('.mapa-av').forEach((el, i) => {
+        const id = lista[i] && lista[i].id; const f = id && OB.fotos[id]; if (f) el.innerHTML = `<img src="${f}">`;
+      })).catch(() => {});
+    };
+    const painelExterior = () => {
+      const lista = exterior.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+      painel.innerHTML = `
+        <button class="mapa-voltar" id="mapa-voltar">${UI.icon('chevron',15)} Todos os estados</button>
+        <div class="mapa-painel-head" style="margin-top:8px"><b>🌎 Exterior</b><span class="chip green">${lista.length} consultor(es)</span></div>
+        ${lista.map(c => `
+          <div class="mapa-cons" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
+            <div class="av-box mapa-av">${OB.fotos[c.id] ? `<img src="${OB.fotos[c.id]}">` : (c.nome ? c.nome[0] : '?')}</div>
+            <div class="grow" style="min-width:0"><b>${c.nome} ${c.sobrenome || ''}</b>
+              <div class="mut" style="font-size:12px">${UI.icon('pin',11)} ${c.cidade || 'Cidade não informada'}${c.uf ? ' · ' + c.uf : ''} · ${c.pais || '-'}</div></div>
+            ${UI.icon('chevron',15)}
+          </div>`).join('')}`;
+      document.getElementById('mapa-voltar').onclick = () => selecionar(null);
+      painel.querySelectorAll('[data-view-cons]').forEach(b => b.onclick = () => this.detalheConsultor(b.dataset.viewCons));
+      OB.carregarFotos().then(() => painel.querySelectorAll('.mapa-av').forEach((el, i) => { const id = lista[i] && lista[i].id; const f = id && OB.fotos[id]; if (f) el.innerHTML = `<img src="${f}">`; })).catch(() => {});
+    };
+    const selecionar = (uf) => {
+      svg.querySelectorAll('path[data-uf]').forEach(p => p.classList.toggle('sel', p.dataset.uf === uf));
+      if (uf === '__ext') painelExterior();
+      else if (uf && porUF[uf]) painelEstado(uf);
+      else painelEstados();
+    };
+
+    // interações do mapa
+    svg.querySelectorAll('path[data-uf]').forEach(p => {
+      p.onmouseenter = () => {
+        const uf = p.dataset.uf, n = +p.dataset.n;
+        tip.innerHTML = `<b>${this.UF_NOMES[uf] || uf}</b> · ${n} consultor(es)`;
+        tip.classList.add('show');
+      };
+      p.onmousemove = (e) => {
+        const box = svg.getBoundingClientRect();
+        tip.style.left = (e.clientX - box.left + 12) + 'px';
+        tip.style.top = (e.clientY - box.top + 12) + 'px';
+      };
+      p.onmouseleave = () => tip.classList.remove('show');
+      p.onclick = () => selecionar(p.dataset.uf);
+    });
+
+    painelEstados();
   },
 
   /* ====================== VENDAS ====================== */
