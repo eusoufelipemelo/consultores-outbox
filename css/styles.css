@@ -1000,7 +1000,9 @@ td .strong { color: var(--text); font-weight: 600; }
 /* Biblioteca de briefings — cartões estilo crachá */
 .brief-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 20px; }
 .brief-cell { display: flex; flex-direction: column; gap: 9px; }
-.brief-cell .btn { width: 100%; justify-content: center; }
+.brief-cell-actions { display: flex; gap: 8px; }
+.brief-cell-actions .btn { flex: 1; min-width: 0; justify-content: center; white-space: nowrap; }
+@media (max-width: 380px) { .brief-cell-actions { flex-direction: column; } }
 .bcard {
   position: relative; display: block; text-decoration: none;
   aspect-ratio: 210 / 340; border-radius: 18px; overflow: hidden;

@@ -1949,7 +1949,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             <div class="bcard__id"><b>Briefing</b><span>${b.nome}</span><small>${num}</small></div>
           </div>
         </a>
-        <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
+        <div class="brief-cell-actions">
+          <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
+          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir em nova guia</a>
+        </div>
       </div>`;
     }).join('');
     return `<div class="card" style="margin-bottom:18px">
