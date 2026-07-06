@@ -945,3 +945,20 @@ td .strong { color: var(--text); font-weight: 600; }
 .mapa-cons b { font-size: 13.5px; }
 .mapa-cons > svg { color: var(--text-mut); flex: none; }
 .mapa-av { width: 36px; height: 36px; font-size: 13px; flex: none; }
+
+/* Mapa da Rede: resumo por região, toggle de métrica e stats do estado */
+.mapa-regioes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 720px) { .mapa-regioes { grid-template-columns: repeat(2, 1fr); } }
+.mapa-reg { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; text-align: center; }
+.mapa-reg span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mut); font-weight: 700; }
+.mapa-reg b { display: block; font-size: 20px; line-height: 1.1; margin-top: 2px; }
+.mapa-reg small { display: block; font-size: 11px; color: var(--text-soft); margin-top: 1px; }
+.mapa-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-3); border-radius: 10px; margin-bottom: 14px; }
+.mapa-toggle button { display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent; color: var(--text-soft); font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 8px; cursor: pointer; transition: .15s; }
+.mapa-toggle button.on { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-sm); }
+@media (max-width: 480px) { .mapa-toggle { width: 100%; } .mapa-toggle button { flex: 1; justify-content: center; padding: 8px 6px; } }
+.mapa-uf-sub { display: block; font-size: 11px; color: var(--text-mut); font-weight: 500; }
+.mapa-estado-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 12px; }
+.mapa-estado-stats > div { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+.mapa-estado-stats span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mut); font-weight: 700; }
+.mapa-estado-stats b { font-size: 15px; }

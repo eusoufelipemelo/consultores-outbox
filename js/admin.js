@@ -389,6 +389,8 @@ const Admin = {
 
   /* ====================== MAPA DA REDE ====================== */
   UF_NOMES: { AC:'Acre', AL:'Alagoas', AP:'Amapá', AM:'Amazonas', BA:'Bahia', CE:'Ceará', DF:'Distrito Federal', ES:'Espírito Santo', GO:'Goiás', MA:'Maranhão', MT:'Mato Grosso', MS:'Mato Grosso do Sul', MG:'Minas Gerais', PA:'Pará', PB:'Paraíba', PR:'Paraná', PE:'Pernambuco', PI:'Piauí', RJ:'Rio de Janeiro', RN:'Rio Grande do Norte', RS:'Rio Grande do Sul', RO:'Rondônia', RR:'Roraima', SC:'Santa Catarina', SP:'São Paulo', SE:'Sergipe', TO:'Tocantins' },
+  REGIOES: ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'],
+  UF_REGIAO: { AC:'Norte', AM:'Norte', AP:'Norte', PA:'Norte', RO:'Norte', RR:'Norte', TO:'Norte', MA:'Nordeste', PI:'Nordeste', CE:'Nordeste', RN:'Nordeste', PB:'Nordeste', PE:'Nordeste', AL:'Nordeste', SE:'Nordeste', BA:'Nordeste', MT:'Centro-Oeste', MS:'Centro-Oeste', GO:'Centro-Oeste', DF:'Centro-Oeste', MG:'Sudeste', ES:'Sudeste', RJ:'Sudeste', SP:'Sudeste', PR:'Sul', SC:'Sul', RS:'Sul' },
 
   view_mapa() {
     const v = document.getElementById('main-view');
@@ -402,24 +404,45 @@ const Admin = {
       else if (this.UF_NOMES[uf]) (porUF[uf] = porUF[uf] || []).push(c);
       else semUF.push(c);
     });
-    const maxC = Math.max(1, ...Object.values(porUF).map(a => a.length));
+    // estatísticas por estado: consultores, volume vendido (aprovado) e clientes
+    const vendidoDe = id => OB.salesOf(id).filter(s => s.statusProposta === 'aprovada').reduce((t, s) => t + (s.valor || 0), 0);
+    const statUF = {};
+    Object.keys(porUF).forEach(uf => {
+      const a = porUF[uf];
+      statUF[uf] = { n: a.length, vol: a.reduce((t, c) => t + vendidoDe(c.id), 0), clientes: a.reduce((t, c) => t + OB.clientsOf(c.id).length, 0) };
+    });
     const nEstados = Object.keys(porUF).length;
-    const paises = [...new Set(cons.map(c => c.pais || 'Brasil'))];
-    const rank = Object.keys(porUF).map(uf => ({ uf, n: porUF[uf].length })).sort((a, b) => b.n - a.n);
+    const totalVol = Object.values(statUF).reduce((t, s) => t + s.vol, 0);
+    // métrica ativa do mapa: 'cons' (consultores) ou 'vendas' (R$)
+    const metrica = this._mapaMetrica || 'cons';
+    const valM = uf => statUF[uf] ? (metrica === 'vendas' ? statUF[uf].vol : statUF[uf].n) : 0;
+    const maxM = Math.max(1, ...Object.keys(statUF).map(valM));
+    const rank = Object.keys(porUF).map(uf => ({ uf, ...statUF[uf] })).sort((a, b) => metrica === 'vendas' ? b.vol - a.vol : b.n - a.n);
+    // resumo por região
+    const reg = {}; this.REGIOES.forEach(r => reg[r] = { n: 0, vol: 0 });
+    Object.keys(statUF).forEach(uf => { const r = this.UF_REGIAO[uf]; if (r) { reg[r].n += statUF[uf].n; reg[r].vol += statUF[uf].vol; } });
+    const topRank = rank[0];
 
     v.innerHTML = `
-      <div class="cards cols-3" style="margin-bottom:16px">
-        ${Consultor.kpi('users', cons.length, 'Consultores', 'No total')}
-        ${Consultor.kpi('map', nEstados, 'Estados com consultores', 'De 27 unidades federativas')}
-        ${Consultor.kpi('pin', rank.length ? this.UF_NOMES[rank[0].uf] : '—', 'Estado com mais gente', rank.length ? rank[0].n + ' consultor(es)' : 'sem dados')}
+      <div class="cards cols-3" style="margin-bottom:14px">
+        ${Consultor.kpi('users', cons.length, 'Consultores', nEstados + ' estado(s)' + (exterior.length ? ' · ' + exterior.length + ' no exterior' : ''))}
+        ${Consultor.kpi('cart', OB.brl(totalVol), 'Vendido pela rede', 'Somando propostas aprovadas')}
+        ${Consultor.kpi('pin', topRank ? this.UF_NOMES[topRank.uf] : '—', metrica === 'vendas' ? 'Estado que mais vende' : 'Estado com mais gente', topRank ? (metrica === 'vendas' ? OB.brl(topRank.vol) : topRank.n + ' consultor(es)') : 'sem dados')}
+      </div>
+      <div class="mapa-regioes">
+        ${this.REGIOES.map(r => `<div class="mapa-reg"><span>${r}</span><b>${reg[r].n}</b><small>${reg[r].vol ? OB.brl(reg[r].vol) : '—'}</small></div>`).join('')}
+      </div>
+      <div class="mapa-toggle seg">
+        <button type="button" data-m="cons" class="${metrica === 'cons' ? 'on' : ''}">${UI.icon('users',14)} Colorir por consultores</button>
+        <button type="button" data-m="vendas" class="${metrica === 'vendas' ? 'on' : ''}">${UI.icon('cart',14)} Colorir por vendas (R$)</button>
       </div>
       <div class="mapa-wrap">
         <div class="card mapa-box">
           <div class="mapa-svg" id="mapa-svg">${MAPA_BR}</div>
           <div class="mapa-legenda">
-            <span class="mut" style="font-size:11px">Menos</span>
+            <span class="mut" style="font-size:11px">${metrica === 'vendas' ? 'Vende menos' : 'Menos'}</span>
             <span class="lg-scale"></span>
-            <span class="mut" style="font-size:11px">Mais</span>
+            <span class="mut" style="font-size:11px">${metrica === 'vendas' ? 'Vende mais' : 'Mais'}</span>
             <span class="lg-vazio"></span><span class="mut" style="font-size:11px">Sem consultor</span>
           </div>
           <div class="mapa-tip" id="mapa-tip"></div>
@@ -427,18 +450,21 @@ const Admin = {
         <div class="card mapa-painel" id="mapa-painel"></div>
       </div>`;
 
+    // alterna a métrica do mapa
+    v.querySelectorAll('.mapa-toggle [data-m]').forEach(b => b.onclick = () => { this._mapaMetrica = b.dataset.m; this.view_mapa(); });
+
     const painel = document.getElementById('mapa-painel');
     const tip = document.getElementById('mapa-tip');
     const svg = document.getElementById('mapa-svg');
 
-    // pinta os estados conforme a quantidade
+    // pinta os estados conforme a métrica ativa
     svg.querySelectorAll('path[data-uf]').forEach(p => {
-      const uf = p.dataset.uf;
-      const n = (porUF[uf] || []).length;
-      const alpha = n ? (0.28 + 0.72 * (n / maxC)) : 0;
-      p.style.fill = n ? `rgba(241,85,50,${alpha.toFixed(2)})` : 'var(--surface-3)';
-      p.classList.toggle('tem', !!n);
-      p.setAttribute('data-n', n);
+      const uf = p.dataset.uf, s = statUF[uf];
+      const alpha = s ? (0.28 + 0.72 * (valM(uf) / maxM)) : 0;
+      p.style.fill = s ? `rgba(241,85,50,${alpha.toFixed(2)})` : 'var(--surface-3)';
+      p.classList.toggle('tem', !!s);
+      p.setAttribute('data-n', s ? s.n : 0);
+      p.setAttribute('data-vol', s ? s.vol : 0);
     });
 
     // painel: lista de estados (padrão) e lista de consultores de um estado (ao clicar)
@@ -448,18 +474,24 @@ const Admin = {
         ${rank.length ? rank.map(r => `
           <button class="mapa-uf-row" data-uf="${r.uf}">
             <span class="mapa-uf-sigla">${r.uf}</span>
-            <span class="grow" style="min-width:0"><b>${this.UF_NOMES[r.uf] || r.uf}</b></span>
-            <span class="mapa-uf-n">${r.n}</span>
+            <span class="grow" style="min-width:0"><b>${this.UF_NOMES[r.uf] || r.uf}</b><small class="mapa-uf-sub">${r.n} consultor(es) · ${r.vol ? OB.brl(r.vol) : 'sem vendas'}</small></span>
+            <span class="mapa-uf-n">${metrica === 'vendas' ? OB.brl(r.vol) : r.n}</span>
           </button>`).join('') : '<p class="mut" style="font-size:13px;padding:6px 2px">Nenhum consultor com estado cadastrado ainda.</p>'}
         ${exterior.length ? `<button class="mapa-uf-row" data-uf="__ext"><span class="mapa-uf-sigla" style="background:rgba(37,211,102,.14);color:#1fa855">🌎</span><span class="grow" style="min-width:0"><b>Exterior</b></span><span class="mapa-uf-n">${exterior.length}</span></button>` : ''}
         ${semUF.length ? `<div class="hint" style="margin-top:10px">${UI.icon('info',12)} ${semUF.length} consultor(es) ainda sem estado no cadastro.</div>` : ''}`;
       painel.querySelectorAll('[data-uf]').forEach(b => b.onclick = () => selecionar(b.dataset.uf));
     };
     const painelEstado = (uf) => {
-      const lista = (porUF[uf] || []).slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+      const lista = (porUF[uf] || []).slice().sort((a, b) => vendidoDe(b.id) - vendidoDe(a.id) || (a.nome || '').localeCompare(b.nome || ''));
+      const st = statUF[uf] || { n: 0, vol: 0, clientes: 0 };
       painel.innerHTML = `
         <button class="mapa-voltar" id="mapa-voltar">${UI.icon('chevron',15)} Todos os estados</button>
-        <div class="mapa-painel-head" style="margin-top:8px"><b>${this.UF_NOMES[uf] || uf}</b><span class="chip brand">${lista.length} consultor(es)</span></div>
+        <div class="mapa-painel-head" style="margin-top:8px"><b>${this.UF_NOMES[uf] || uf}</b><span class="chip brand">${this.UF_REGIAO[uf] || ''}</span></div>
+        <div class="mapa-estado-stats">
+          <div><span>Consultores</span><b>${st.n}</b></div>
+          <div><span>Vendido</span><b style="color:var(--brand)">${OB.brl(st.vol)}</b></div>
+          <div><span>Clientes</span><b>${st.clientes}</b></div>
+        </div>
         ${lista.map(c => `
           <div class="mapa-cons" data-view-cons="${c.id}" title="Ver detalhes de ${c.nome}">
             <div class="av-box mapa-av">${OB.fotos[c.id] ? `<img src="${OB.fotos[c.id]}">` : (c.nome ? c.nome[0] : '?')}</div>
@@ -502,8 +534,8 @@ const Admin = {
     // interações do mapa
     svg.querySelectorAll('path[data-uf]').forEach(p => {
       p.onmouseenter = () => {
-        const uf = p.dataset.uf, n = +p.dataset.n;
-        tip.innerHTML = `<b>${this.UF_NOMES[uf] || uf}</b> · ${n} consultor(es)`;
+        const uf = p.dataset.uf, n = +p.dataset.n, vol = +p.dataset.vol;
+        tip.innerHTML = `<b>${this.UF_NOMES[uf] || uf}</b> · ${n} consultor(es)${vol ? ' · ' + OB.brl(vol) : ''}`;
         tip.classList.add('show');
       };
       p.onmousemove = (e) => {
