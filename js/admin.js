@@ -9,7 +9,7 @@ const Admin = {
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
-    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase' },
+    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
@@ -20,7 +20,7 @@ const Admin = {
     consultores: ['Consultores', 'Todos os consultores e seus números'],
     mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
-    projetos:    ['Projetos & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
+    projetos:    ['Briefings & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']

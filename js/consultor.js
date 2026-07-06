@@ -7,7 +7,7 @@ const Consultor = {
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
-    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase' },
+    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
@@ -23,7 +23,7 @@ const Consultor = {
     clientes:   ['Meus Clientes', 'Cadastre e gerencie seus clientes'],
     orcamentos: ['Orçamentos', 'Crie propostas e acompanhe os aceites'],
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
-    projetos:   ['Projetos', 'Envie o briefing e acompanhe a entrega de cada serviço vendido'],
+    projetos:   ['Briefings', 'Envie o briefing e acompanhe a entrega de cada serviço vendido'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
     ebooks:     ['E-Books', 'Materiais exclusivos para baixar, estudar e compartilhar conhecimento'],
@@ -1914,6 +1914,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         ${this.kpi('clock', aguardando.length, 'Aguardando pagamento', 'Briefing libera após o pagamento')}
       </div>
       <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing. O cliente preenche, a OutBox produz e você acompanha cada etapa aqui, podendo emitir relatórios para o seu cliente.</div></div>
+      ${this.bibliotecaBriefings()}
       ${pagas.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagas.map(s => this.projetoCard(s)).join('')}` : ''}
       ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}
       ${!vendas.length ? this.empty('briefcase', 'Nenhum projeto ainda', 'Lance uma venda aprovada. Quando o pagamento for confirmado, você envia o briefing por aqui.') : ''}`;
@@ -1923,6 +1924,27 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-relatorio]').forEach(b => b.onclick = () => this.emitirRelatorio(b.dataset.relatorio));
     v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
     v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
+    v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
+  },
+
+  /* biblioteca: todos os briefings prontos, só com o link (para copiar / abrir) */
+  bibliotecaBriefings() {
+    const rows = OB.BRIEFINGS_PRONTOS.map(b => {
+      const link = OB.briefingLinkTipo(b.tipo);
+      return `<div class="brief-lib-row">
+        <div class="brief-lib-name">${UI.icon('briefcase',15)} <span>${b.nome}</span></div>
+        <div class="brief-lib-actions">
+          <input class="grow" value="${link}" readonly/>
+          <button type="button" class="btn ghost sm" data-copylink="${link}">${UI.icon('docs',14)} Copiar link</button>
+          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir</a>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="row alc" style="gap:8px;margin-bottom:4px">${UI.icon('briefcase',16)}<b>Biblioteca de briefings</b></div>
+      <p class="mut" style="font-size:12.5px;margin-bottom:14px">Todos os briefings prontos, por serviço. Copie o link e envie ao cliente quando precisar. Para vincular a um projeto e receber as respostas aqui dentro, use o botão <b>Enviar briefing</b> no serviço pago.</p>
+      <div class="brief-lib">${rows}</div>
+    </div>`;
   },
 
   projetoCard(s) {

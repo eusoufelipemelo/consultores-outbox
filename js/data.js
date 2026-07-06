@@ -168,6 +168,15 @@ const OB = {
     if (pid && token) url += '&pid=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token);
     return url;
   },
+  /* briefings prontos (biblioteca): formulário publicado por serviço */
+  BRIEFINGS_PRONTOS: [
+    { tipo: 'site', nome: 'Site Institucional' },
+    { tipo: 'landing', nome: 'Landing Page' },
+    { tipo: 'vendas', nome: 'Página de Vendas' },
+    { tipo: 'onepage', nome: 'OnePage' },
+    { tipo: 'identidade', nome: 'Identidade Visual' }
+  ],
+  briefingLinkTipo(tipo) { return this.BRIEFING_BASE + '?p=' + tipo; },
 
   /* etapas da timeline de entrega (ordem = progresso do projeto) */
   ETAPAS_PROJETO: [
