@@ -231,6 +231,8 @@ const Auth = {
     UI.closeModal();
     await OB.loadAll();
     document.getElementById('auth').style.display = 'none';
+    // login de verdade (não é refresh): libera o pop-up de propaganda toda vez que logar
+    App._loginFlow = true;
     // portão de aceite: consultor só entra depois de aceitar a versão vigente dos termos
     if (OB.precisaAceitarTermos()) { App.showTermosGate(); return; }
     App.boot(goProfile);

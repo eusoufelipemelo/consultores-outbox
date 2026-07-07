@@ -91,6 +91,7 @@ const App = {
       try {
         await OB.aceitarTermos(meta);
         host.remove();
+        this._loginFlow = true; // acabou de logar + aceitar: libera o pop-up de propaganda
         this.boot();
         UI.toast('Tudo certo!', 'Aceite registrado. Bom trabalho!', 'ok');
       } catch (e) {
@@ -297,21 +298,18 @@ const App = {
     if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
     if (this.perfilLock) { this.go('perfil'); }
     else { this.go(goProfile ? 'perfil' : nav[0].id); }
-    // propaganda/pop-up de marketing: só consultor, fora do portão de perfil
-    if (!isAdmin && !this.perfilLock) this.showCampanha();
+    // propaganda/pop-up: aparece a CADA login (não em refresh) enquanto a campanha estiver no ar.
+    // Se estiver preso no portão de perfil, mantém o flag e mostra ao liberar o perfil.
+    if (!isAdmin && this._loginFlow && !this.perfilLock) { this._loginFlow = false; this.showCampanha(); }
   },
 
   /* ---------- propaganda/pop-up de marketing (arte 4:5 agendada pelo admin) ---------- */
   async showCampanha() {
     try {
-      if (!OB.campanhaAtivaAgora()) return;
-      const c = OB.getCampanha();
-      const key = 'ob_camp_vista_' + (c.atualizadoEm || 'x');
-      let visto = false; try { visto = !!sessionStorage.getItem(key); } catch (e) {}
-      if (visto) return;
+      if (!OB.campanhaAtivaAgora()) return;   // respeita período + dias + horário
       const img = await OB.getCampanhaImagem();
       if (!img) return;
-      this.campanhaModal(img, key);
+      this.campanhaModal(img);                // sem "já viu": mostra em todo login
     } catch (e) {}
   },
   // pop-up centralizado, cabe na tela (não é tela cheia); fecha só quando o consultor decide
@@ -346,6 +344,8 @@ const App = {
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.remove('perfil-lock');
     this.go(this.mod().NAV[0].id);
+    // se o pop-up ficou pendente por causa do portão de perfil, mostra agora
+    if (this._loginFlow) { this._loginFlow = false; this.showCampanha(); }
   },
 
   /* ---------- barra de aviso/comunicado no topo (definida pelo admin) ---------- */
