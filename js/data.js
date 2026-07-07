@@ -145,6 +145,9 @@ const OB = {
     { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · com juros da operadora' }
   ],
 
+  /* ---------- propaganda/pop-up de marketing (arte 4:5 gerida pelo admin) ---------- */
+  CAMPANHA_ID: '00000000-0000-0000-0000-0000000000c1',
+
   /* ---------- aviso/comunicado (barra colorida no topo, gerido pelo admin) ---------- */
   AVISO_ID: '00000000-0000-0000-0000-0000000000a1',
   TIPOS_AVISO: [
@@ -192,7 +195,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -215,6 +218,29 @@ const OB = {
   _avIn(r)  { return r && { id: r.id, texto: r.texto || '', tipo: r.tipo || 'info', ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null }; },
   _avOut(a) { return { id: this.AVISO_ID, texto: a.texto || '', tipo: a.tipo || 'info', ativo: !!a.ativo, inicio: a.inicio || null, fim: a.fim || null, atualizado_em: new Date().toISOString() }; },
 
+  /* campanha/propaganda: metadados (sem imagem, para o load ser leve) */
+  _campIn(r) { return r && { id: r.id, ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null, diasSemana: r.dias_semana || [], horaInicio: r.hora_inicio || '', horaFim: r.hora_fim || '', atualizadoEm: r.atualizado_em, imagem: (typeof r.imagem === 'string' ? r.imagem : undefined) }; },
+  _campOut(c) { return { id: this.CAMPANHA_ID, imagem: c.imagem || null, ativo: !!c.ativo, inicio: c.inicio || null, fim: c.fim || null, dias_semana: Array.isArray(c.diasSemana) ? c.diasSemana : [], hora_inicio: c.horaInicio || null, hora_fim: c.horaFim || null, atualizado_em: new Date().toISOString() }; },
+  /* comprime a arte enviada (máx 1080px de largura; PNG, cai p/ JPEG se ficar pesado) */
+  _comprimirArte(dataUrl) {
+    return new Promise((res) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const MAXW = 1080; let w = img.width, h = img.height;
+          if (w > MAXW) { h = Math.round(h * MAXW / w); w = MAXW; }
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let out; try { out = cv.toDataURL('image/png'); } catch (e) { return res(dataUrl); }
+          if (out.length > 1200000) { try { const j = cv.toDataURL('image/jpeg', 0.9); if (j.length < out.length) out = j; } catch (e) {} }
+          res(out);
+        };
+        img.onerror = () => res(dataUrl);
+        img.src = dataUrl;
+      } catch (e) { res(dataUrl); }
+    });
+  },
+
   _lIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, telefone: r.telefone, email: r.email, servico: r.servico, estagio: r.estagio, valorEstimado: Number(r.valor_estimado || 0), moeda: r.moeda || 'BRL', obs: r.obs, ordem: r.ordem, criadoEm: r.criado_em, followupEm: r.followup_em || null }; },
   _lOut(l) { return { id: l.id, consultor_id: l.consultorId, nome: l.nome, telefone: l.telefone, email: l.email, servico: l.servico || null, estagio: l.estagio, valor_estimado: l.valorEstimado || 0, moeda: l.moeda || 'BRL', obs: l.obs, ordem: l.ordem || 0, criado_em: l.criadoEm, followup_em: l.followupEm || null }; },
 
@@ -233,7 +259,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -243,7 +269,8 @@ const OB = {
       SB.from('avisos').select('*').eq('id', this.AVISO_ID).maybeSingle(),
       SB.from('training_progress').select('*'),
       SB.rpc('ranking_treinamentos'),
-      SB.from('projetos').select('*')
+      SB.from('projetos').select('*'),
+      SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle()
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -260,6 +287,7 @@ const OB = {
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
     this.db.leads = (lds.data || []).map(r => this._lIn(r));
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
+    this.db.campanha = cmp && cmp.data ? this._campIn(cmp.data) : null;
     // progresso de treinamentos: todas as linhas visíveis (RLS: consultor vê as suas, admin vê todas)
     const tprows = (tp && tp.data) ? tp.data : [];
     const objTr = (typeof TREINOS !== 'undefined' ? TREINOS.OBJETIVO : 90);
@@ -271,7 +299,7 @@ const OB = {
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -473,6 +501,43 @@ const OB = {
     if (a.inicio && agora < new Date(a.inicio)) return null;
     if (a.fim && agora > new Date(a.fim)) return null;
     return a;
+  },
+
+  /* ---------- propaganda/pop-up (arte 4:5 agendada pelo admin) ---------- */
+  getCampanha() { return this.db.campanha || { id: this.CAMPANHA_ID, ativo: false, inicio: null, fim: null, diasSemana: [], horaInicio: '', horaFim: '', atualizadoEm: null }; },
+  /* a campanha deve aparecer agora? (ativa + dentro do período + dia da semana + faixa de horário) */
+  campanhaAtivaAgora() {
+    const c = this.db.campanha;
+    if (!c || !c.ativo) return false;
+    const agora = new Date();
+    if (c.inicio && agora < new Date(c.inicio)) return false;
+    if (c.fim && agora > new Date(c.fim)) return false;
+    const dias = c.diasSemana || [];
+    if (dias.length && !dias.includes(agora.getDay())) return false; // getDay: 0=domingo ... 6=sábado
+    if (c.horaInicio || c.horaFim) {
+      const toM = (t) => { const p = (t || '').split(':'); return (+p[0] || 0) * 60 + (+p[1] || 0); };
+      const mins = agora.getHours() * 60 + agora.getMinutes();
+      if (c.horaInicio && mins < toM(c.horaInicio)) return false;
+      if (c.horaFim && mins > toM(c.horaFim)) return false;
+    }
+    return true;
+  },
+  /* busca só a imagem (base64) sob demanda — não vem no load pra não pesar */
+  async getCampanhaImagem() {
+    try { const { data } = await SB.from('campanhas').select('imagem').eq('id', this.CAMPANHA_ID).maybeSingle(); return (data && data.imagem) || ''; }
+    catch (e) { return ''; }
+  },
+  /* linha completa (com imagem) para o admin editar */
+  async getCampanhaFull() {
+    try { const { data } = await SB.from('campanhas').select('*').eq('id', this.CAMPANHA_ID).maybeSingle(); return data ? this._campIn(data) : this.getCampanha(); }
+    catch (e) { return this.getCampanha(); }
+  },
+  saveCampanha(c) {
+    const out = this._campOut(c);
+    this._save('campanhas', out);
+    // mantém no cache só os metadados (sem a imagem pesada)
+    this.db.campanha = { id: this.CAMPANHA_ID, ativo: !!c.ativo, inicio: c.inicio || null, fim: c.fim || null, diasSemana: Array.isArray(c.diasSemana) ? c.diasSemana : [], horaInicio: c.horaInicio || '', horaFim: c.horaFim || '', atualizadoEm: out.atualizado_em };
+    return this.db.campanha;
   },
 
   /* ---------- treinamentos (quiz) ---------- */

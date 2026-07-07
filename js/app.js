@@ -297,6 +297,47 @@ const App = {
     if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
     if (this.perfilLock) { this.go('perfil'); }
     else { this.go(goProfile ? 'perfil' : nav[0].id); }
+    // propaganda/pop-up de marketing: só consultor, fora do portão de perfil
+    if (!isAdmin && !this.perfilLock) this.showCampanha();
+  },
+
+  /* ---------- propaganda/pop-up de marketing (arte 4:5 agendada pelo admin) ---------- */
+  async showCampanha() {
+    try {
+      if (!OB.campanhaAtivaAgora()) return;
+      const c = OB.getCampanha();
+      const key = 'ob_camp_vista_' + (c.atualizadoEm || 'x');
+      let visto = false; try { visto = !!sessionStorage.getItem(key); } catch (e) {}
+      if (visto) return;
+      const img = await OB.getCampanhaImagem();
+      if (!img) return;
+      this.campanhaModal(img, key);
+    } catch (e) {}
+  },
+  // pop-up centralizado, cabe na tela (não é tela cheia); fecha só quando o consultor decide
+  campanhaModal(img, dismissKey) {
+    if (document.querySelector('.camp-pop')) return;
+    const host = document.createElement('div');
+    host.className = 'camp-pop';
+    host.innerHTML = `
+      <div class="camp-pop__box" role="dialog" aria-modal="true" aria-label="Comunicado da OutBox">
+        <button class="camp-pop__close" type="button" aria-label="Fechar">${UI.icon('x', 20)}</button>
+        <img class="camp-pop__img" src="${img}" alt="Comunicado da OutBox"/>
+      </div>`;
+    document.body.appendChild(host);
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    const close = () => {
+      host.classList.remove('show');
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+      if (dismissKey) { try { sessionStorage.setItem(dismissKey, '1'); } catch (e) {} }
+      setTimeout(() => host.remove(), 200);
+    };
+    host.querySelector('.camp-pop__close').onclick = close;
+    host.addEventListener('click', (e) => { if (e.target === host) close(); });
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(() => host.classList.add('show'));
   },
 
   /* libera o sistema depois que o consultor completa e salva o perfil */

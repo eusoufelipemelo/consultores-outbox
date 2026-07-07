@@ -12,6 +12,7 @@ const Admin = {
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
+    { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
   titles: {
@@ -23,6 +24,7 @@ const Admin = {
     projetos:    ['Briefings & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
+    campanha:    ['Propaganda / Pop-up', 'Suba uma arte 4:5 e agende quando ela aparece para os consultores no login'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']
   },
 
@@ -875,6 +877,116 @@ const Admin = {
         App.renderAviso();
         this.render('avisos');
         UI.toast('Aviso removido', '', 'ok');
+      }, 'Remover');
+    };
+  },
+
+  /* ====================== PROPAGANDA / POP-UP (arte 4:5 agendada) ====================== */
+  _DOW: [[0, 'Dom'], [1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb']],
+  view_campanha() {
+    const v = document.getElementById('main-view');
+    const c = OB.getCampanha();
+    this._campImg = ''; // imagem atual carrega async
+    const dias = c.diasSemana || [];
+    v.innerHTML = `
+      <div class="avisos-grid">
+        <div class="card">
+          <div class="card-head"><h3>Arte da propaganda</h3></div>
+          <div class="field"><label>Imagem (PNG, formato 4:5)</label>
+            <input id="cp-file" type="file" accept="image/png,image/jpeg" hidden/>
+            <button type="button" class="btn ghost" id="cp-pick" style="width:100%">${UI.icon('external',16)} Escolher arte no computador</button>
+            <div class="hint">Envie a arte em <b>4:5</b> (ex.: 1080 × 1350 px). Ela é comprimida automaticamente para carregar rápido.</div></div>
+          <div class="field"><label>Exibir para os consultores</label>
+            <label class="seg" style="padding:3px;width:100%"><button type="button" class="${c.ativo ? '' : 'on'}" id="cp-off" style="flex:1">Desligado</button><button type="button" class="${c.ativo ? 'on' : ''}" id="cp-on" style="flex:1">Ligado</button></label></div>
+          <div class="grid-2">
+            <div class="field"><label>Início (opcional)</label>
+              <input id="cp-inicio" type="datetime-local" value="${this._toLocalInput(c.inicio)}"/>
+              <div class="hint">Vazio = começa já.</div></div>
+            <div class="field"><label>Fim (opcional)</label>
+              <input id="cp-fim" type="datetime-local" value="${this._toLocalInput(c.fim)}"/>
+              <div class="hint">Vazio = não expira.</div></div>
+          </div>
+          <div class="field"><label>Dias da semana (opcional)</label>
+            <div class="dow-row">${this._DOW.map(([n, lbl]) => `<button type="button" class="dow ${dias.includes(n) ? 'on' : ''}" data-dow="${n}">${lbl}</button>`).join('')}</div>
+            <div class="hint">Nenhum marcado = todos os dias.</div></div>
+          <div class="grid-2">
+            <div class="field"><label>A partir das (opcional)</label>
+              <input id="cp-hi" type="time" value="${c.horaInicio || ''}"/></div>
+            <div class="field"><label>Até as (opcional)</label>
+              <input id="cp-hf" type="time" value="${c.horaFim || ''}"/></div>
+          </div>
+          <div class="row" style="gap:10px;margin-top:6px">
+            <button class="btn brand" id="cp-save">${UI.icon('check',16)} Salvar e publicar</button>
+            <button class="btn ghost" id="cp-remove">${UI.icon('trash',16)} Remover arte</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Pré-visualização (4:5)</h3></div>
+          <div class="hint" style="margin-bottom:12px">É a arte que o consultor vê no pop-up ao logar:</div>
+          <div class="camp-frame" id="cp-frame"><div class="camp-frame__empty">${UI.icon('gallery',30)}<span>Nenhuma arte enviada</span></div></div>
+          <div class="row" style="gap:10px;margin-top:14px">
+            <button class="btn ghost" id="cp-preview" disabled>${UI.icon('external',16)} Ver como pop-up</button>
+          </div>
+          <div class="notice" style="margin-top:16px">${UI.icon('info',16)}<div>O pop-up aparece <b>centralizado</b> (cabe em qualquer tela, não ocupa tudo) <b>toda vez que o consultor loga</b>, dentro do período/dias/horário definidos. Ele fecha no <b>X</b>, quando o consultor quiser.</div></div>
+        </div>
+      </div>`;
+
+    const frame = document.getElementById('cp-frame');
+    const drawFrame = () => {
+      frame.innerHTML = this._campImg
+        ? `<img src="${this._campImg}" alt="Arte da propaganda"/>`
+        : `<div class="camp-frame__empty">${UI.icon('gallery',30)}<span>Nenhuma arte enviada</span></div>`;
+      document.getElementById('cp-preview').disabled = !this._campImg;
+    };
+    // carrega a arte atual (async, sem travar)
+    OB.getCampanhaImagem().then(img => { if (img) { this._campImg = img; drawFrame(); } });
+
+    // upload
+    const file = document.getElementById('cp-file');
+    document.getElementById('cp-pick').onclick = () => file.click();
+    file.onchange = () => {
+      const f = file.files && file.files[0]; if (!f) return;
+      if (!/image\/(png|jpeg)/.test(f.type)) return UI.toast('Formato inválido', 'Envie um PNG (ou JPG)', 'err');
+      const rd = new FileReader();
+      rd.onload = async () => {
+        const comp = await OB._comprimirArte(rd.result);
+        this._campImg = comp; drawFrame();
+        UI.toast('Arte carregada', 'Confira a prévia e clique em Salvar', 'ok');
+      };
+      rd.readAsDataURL(f);
+    };
+
+    // toggle e dias
+    const on = document.getElementById('cp-on'), off = document.getElementById('cp-off');
+    on.onclick = () => { on.classList.add('on'); off.classList.remove('on'); };
+    off.onclick = () => { off.classList.add('on'); on.classList.remove('on'); };
+    v.querySelectorAll('.dow').forEach(b => b.onclick = () => b.classList.toggle('on'));
+
+    const get = () => ({
+      imagem: this._campImg || '',
+      ativo: on.classList.contains('on'),
+      inicio: this._fromLocalInput(document.getElementById('cp-inicio').value),
+      fim: this._fromLocalInput(document.getElementById('cp-fim').value),
+      diasSemana: Array.from(v.querySelectorAll('.dow.on')).map(b => +b.dataset.dow),
+      horaInicio: document.getElementById('cp-hi').value || '',
+      horaFim: document.getElementById('cp-hf').value || ''
+    });
+
+    document.getElementById('cp-preview').onclick = () => { if (this._campImg) App.campanhaModal(this._campImg, null); };
+    document.getElementById('cp-save').onclick = () => {
+      const cur = get();
+      if (cur.ativo && !cur.imagem) return UI.toast('Falta a arte', 'Envie uma imagem para publicar o pop-up', 'err');
+      if (cur.inicio && cur.fim && new Date(cur.fim) <= new Date(cur.inicio)) return UI.toast('Datas invertidas', 'O fim precisa ser depois do início', 'err');
+      if (cur.horaInicio && cur.horaFim && cur.horaFim <= cur.horaInicio) return UI.toast('Horário invertido', 'O horário final precisa ser depois do inicial', 'err');
+      OB.saveCampanha(cur);
+      UI.toast(cur.ativo ? 'Propaganda publicada' : 'Propaganda salva', cur.ativo ? 'Aparece no próximo login dos consultores' : 'Salva, mas desligada', 'ok');
+    };
+    document.getElementById('cp-remove').onclick = () => {
+      UI.confirm('Remover propaganda', 'Tirar o pop-up da tela dos consultores? A arte será apagada.', () => {
+        this._campImg = '';
+        OB.saveCampanha({ imagem: '', ativo: false, inicio: null, fim: null, diasSemana: [], horaInicio: '', horaFim: '' });
+        this.render('campanha');
+        UI.toast('Propaganda removida', '', 'ok');
       }, 'Remover');
     };
   },

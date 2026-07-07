@@ -1033,3 +1033,54 @@ td .strong { color: var(--text); font-weight: 600; }
 .bcard__id span { display: block; font-size: 10.5px; color: var(--text-soft); font-weight: 600; }
 .bcard__id small { display: block; font-size: 9.5px; color: var(--text-mut); font-weight: 600; letter-spacing: .12em; margin-top: 1px; }
 @media (max-width: 520px) { .bcard__hash { font-size: 12px; } .bcard__id b { font-size: 15px; } }
+
+/* ============================================================
+   Propaganda / Pop-up de marketing (arte 4:5)
+   ============================================================ */
+/* pop-up do consultor: centralizado, cabe na tela (nunca tela cheia) */
+.camp-pop {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(6, 8, 12, .74); backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity .22s ease;
+}
+.camp-pop.show { opacity: 1; }
+.camp-pop__box { position: relative; transform: scale(.96); transition: transform .24s cubic-bezier(.2,.8,.2,1); }
+.camp-pop.show .camp-pop__box { transform: scale(1); }
+.camp-pop__img {
+  display: block; width: auto; height: auto;
+  max-width: min(92vw, 460px); max-height: 86vh;
+  border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.camp-pop__close {
+  position: absolute; top: 10px; right: 10px;
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; color: #14181d;
+  background: rgba(255,255,255,.94); box-shadow: 0 4px 14px rgba(0,0,0,.28);
+  transition: background .15s ease, transform .15s ease;
+}
+.camp-pop__close:hover { background: #fff; }
+.camp-pop__close:active { transform: scale(.94); }
+.camp-pop__close:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .camp-pop, .camp-pop__box { transition: none; }
+  .camp-pop__box { transform: none; }
+}
+
+/* admin: moldura de preview 4:5 + seletor de dias */
+.camp-frame {
+  aspect-ratio: 4 / 5; width: 100%; max-width: 300px; margin: 0 auto;
+  border-radius: 14px; overflow: hidden; border: 1px solid var(--border);
+  background: var(--surface-3); display: grid; place-items: center;
+}
+.camp-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camp-frame__empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-mut); font-size: 12.5px; }
+.camp-frame__empty svg { color: var(--border-strong); }
+.dow-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.dow {
+  flex: 1 1 0; min-width: 40px; padding: 9px 4px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
+  font-size: 12.5px; font-weight: 600; transition: all .15s ease;
+}
+.dow:hover { border-color: var(--border-strong); }
+.dow.on { background: var(--brand); border-color: var(--brand); color: #fff; }
