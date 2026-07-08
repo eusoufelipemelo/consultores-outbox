@@ -456,6 +456,17 @@ const OB = {
     }
     return foto;
   },
+  /* fotos de ids específicos via RPC SECURITY DEFINER (funciona p/ consultor ver os outros no ranking, driblando o RLS) */
+  async fotosDe(ids) {
+    const faltam = [...new Set(ids || [])].filter(id => id && this.fotos[id] === undefined);
+    if (!faltam.length) return this.fotos;
+    try {
+      const { data } = await SB.rpc('fotos_consultores', { p_ids: faltam });
+      (data || []).forEach(row => { this.fotos[row.id] = row.foto || null; });
+    } catch (e) {}
+    faltam.forEach(id => { if (this.fotos[id] === undefined) this.fotos[id] = null; });
+    return this.fotos;
+  },
   /* busca as fotos que faltam no cache e encolhe as grandes; devolve o mapa id->foto */
   async carregarFotos() {
     const own = this.db.profile;

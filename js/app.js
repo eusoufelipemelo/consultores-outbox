@@ -580,8 +580,8 @@ const App = {
       <div class="rk-podium">${podHTML}</div>
       ${restHTML ? `<div class="rk-list">${restHTML}</div>` : ''}`;
 
-    // fotos lazy (preserva o badge do pódio)
-    OB.carregarFotos().then(() => v.querySelectorAll('[data-av]').forEach(el => {
+    // fotos lazy via RPC (funciona também para o consultor ver os demais) — preserva o badge do pódio
+    OB.fotosDe(top.map(r => r.consultor_id)).then(() => v.querySelectorAll('[data-av]').forEach(el => {
       const f = OB.fotos[el.dataset.av]; if (!f) return;
       const badge = el.querySelector('.rk-pod__badge');
       el.innerHTML = `<img src="${f}" alt="">` + (badge ? badge.outerHTML : '');
