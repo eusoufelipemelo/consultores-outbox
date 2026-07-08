@@ -532,30 +532,75 @@ const App = {
     box.innerHTML = `<div class="side-user"><div class="av">${av}</div><div class="grow" style="min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome} ${u.sobrenome||''}</b><span>${u.role === 'admin' ? 'Administrador' : 'Consultor'}</span></div></div>`;
   },
 
-  /* ---------- Ranking de consultores (vendas + treinamentos) ---------- */
+  /* ---------- Ranking de consultores (vendas + treinamentos) — visão premium ---------- */
   renderRanking(v, highlightId) {
     const top = OB.rankingGeral().slice(0, 10);
     if (!top.length) {
       v.innerHTML = `<div class="card"><div class="port-soon">${UI.icon('ranking',30)}<b>Ranking em formação</b><p>Assim que os consultores registrarem vendas aprovadas e concluírem treinamentos, o Top 10 aparece aqui.</p></div></div>`;
       return;
     }
-    const rows = top.map((r, i) => {
-      const pos = i + 1;
-      const nome = ((r.nome || '') + ' ' + (r.sobrenome || '')).trim() || 'Consultor';
-      const foto = OB.fotos[r.consultor_id];
-      const me = highlightId && r.consultor_id === highlightId;
-      return `<div class="rank-row${me ? ' me' : ''}${i < 3 ? ' top' : ''}">
-        <div class="rank-pos p${pos <= 3 ? pos : 'x'}">${pos}</div>
-        <div class="rank-av" data-av="${r.consultor_id}">${foto ? `<img src="${foto}" alt="">` : (r.nome ? r.nome[0].toUpperCase() : '?')}</div>
-        <div class="rank-name"><b>${nome}${me ? ' <span class="rank-you">você</span>' : ''}</b><span>${r.treinos_concluidos || 0} treino(s) · ${OB.fmt(Number(r.volume || 0))} vendidos</span></div>
-        <div class="rank-pts"><b>${OB.fmtNum(r.pontos)}</b><small>pts</small></div>
+    const nomeDe = r => ((r.nome || '') + ' ' + (r.sobrenome || '')).trim() || 'Consultor';
+    const ini = r => (r.nome ? r.nome[0].toUpperCase() : '?');
+    const isMe = r => highlightId && r.consultor_id === highlightId;
+    const max = Math.max(1, Number(top[0].pontos) || 1);
+    const sub = r => `${r.treinos_concluidos || 0} treino${(r.treinos_concluidos || 0) !== 1 ? 's' : ''} · ${OB.fmt(Number(r.volume || 0))}`;
+    const av = r => { const f = OB.fotos[r.consultor_id]; return f ? `<img src="${f}" alt="">` : ini(r); };
+
+    // pódio (top 3) exibido na ordem 2 · 1 · 3
+    const podium = [[top[1], 2, 0], [top[0], 1, 1], [top[2], 3, 2]];
+    const podHTML = podium.map(([r, rank, i]) => {
+      if (!r) return '<div></div>';
+      return `<div class="rk-pod rk-pod--${rank}${isMe(r) ? ' me' : ''}" style="--i:${i}">
+        <div class="rk-pod__crown">${rank === 1 ? UI.icon('crown', 24) : ''}</div>
+        <div class="rk-pod__ph" data-av="${r.consultor_id}">${av(r)}<span class="rk-pod__badge">${rank}</span></div>
+        <b class="rk-pod__nm">${nomeDe(r)}${isMe(r) ? ' <span class="rank-you">você</span>' : ''}</b>
+        <div class="rk-pod__pts"><b data-count="${r.pontos}">0</b><small>pts</small></div>
+        <div class="rk-pod__base"><span>${rank}º</span></div>
       </div>`;
     }).join('');
-    v.innerHTML = `<div class="card">
-      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Como pontuar: <b>1 ponto a cada R$ 10 vendidos</b> (vendas aprovadas) + <b>100 pontos por treinamento concluído</b>. Suba no ranking vendendo mais e treinando mais.</div></div>
-      <div class="rank-list">${rows}</div>
-    </div>`;
-    OB.carregarFotos().then(() => v.querySelectorAll('.rank-av[data-av]').forEach(el => { const f = OB.fotos[el.dataset.av]; if (f) el.innerHTML = `<img src="${f}" alt="">`; })).catch(() => {});
+
+    // lista 4..10 com barra de progresso
+    const restHTML = top.slice(3).map((r, i) => {
+      const pos = i + 4;
+      const w = Math.round((Number(r.pontos) / max) * 100);
+      return `<div class="rk-row${isMe(r) ? ' me' : ''}" style="--i:${i}">
+        <span class="rk-row__pos">${pos}</span>
+        <span class="rk-row__ph" data-av="${r.consultor_id}">${av(r)}</span>
+        <div class="rk-row__meta">
+          <b>${nomeDe(r)}${isMe(r) ? ' <span class="rank-you">você</span>' : ''}</b>
+          <span class="rk-row__sub">${sub(r)}</span>
+          <div class="rk-bar"><i data-w="${w}"></i></div>
+        </div>
+        <div class="rk-row__pts"><b data-count="${r.pontos}">0</b><small>pts</small></div>
+      </div>`;
+    }).join('');
+
+    v.innerHTML = `
+      <div class="rk-legend">${UI.icon('info',15)}<span>Pontuação: <b>1 pt a cada R$ 10 vendidos</b> + <b>100 pts por treinamento concluído</b>. Suba vendendo e treinando mais.</span></div>
+      <div class="rk-podium">${podHTML}</div>
+      ${restHTML ? `<div class="rk-list">${restHTML}</div>` : ''}`;
+
+    // fotos lazy (preserva o badge do pódio)
+    OB.carregarFotos().then(() => v.querySelectorAll('[data-av]').forEach(el => {
+      const f = OB.fotos[el.dataset.av]; if (!f) return;
+      const badge = el.querySelector('.rk-pod__badge');
+      el.innerHTML = `<img src="${f}" alt="">` + (badge ? badge.outerHTML : '');
+    })).catch(() => {});
+    // movimento: contagem crescente + barras enchendo
+    const reduce = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    v.querySelectorAll('[data-count]').forEach(el => this._countUp(el, +el.dataset.count, reduce));
+    requestAnimationFrame(() => v.querySelectorAll('.rk-bar i[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; }));
+  },
+  _countUp(el, target, reduce) {
+    target = Number(target) || 0;
+    if (reduce || !target) { el.textContent = OB.fmtNum(target); return; }
+    const dur = 1100, start = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / dur);
+      el.textContent = OB.fmtNum(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   },
   /* widget no canto superior direito (consultor): foto + pontos + posição */
   refreshRankBadge() {

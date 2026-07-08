@@ -55,7 +55,8 @@ const UI = {
       gallery: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
       megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M10 6l9-3v18l-9-3"/><path d="M19 9a3 3 0 0 1 0 6"/>',
       ranking: '<path d="M2 21h20"/><rect x="9" y="5" width="6" height="16" rx="1"/><rect x="2" y="11" width="6" height="10" rx="1"/><rect x="16" y="9" width="6" height="12" rx="1"/>',
-      chat: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'
+      chat: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+      crown: '<path d="M3 17.5 1.6 8l5.4 3.6L12 4.5l5 7.1L22.4 8 21 17.5z"/><rect x="3" y="17.5" width="18" height="3" rx="1"/><circle cx="12" cy="4.5" r="1.3"/><circle cx="1.6" cy="8" r="1.2"/><circle cx="22.4" cy="8" r="1.2"/>'
     };
     return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p[name] || ''}</svg>`;
   },
