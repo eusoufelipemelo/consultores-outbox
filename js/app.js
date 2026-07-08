@@ -671,13 +671,18 @@ const App = {
   },
   toggleChat(force) {
     const p = document.getElementById('chat-panel'); if (!p) return;
+    const w = document.getElementById('chat-widget');
     const open = force !== undefined ? force : p.hasAttribute('hidden');
     if (open) {
+      if (w) w.classList.add('open');           // esconde o FAB, o painel toma o lugar
       p.removeAttribute('hidden'); requestAnimationFrame(() => p.classList.add('show'));
       this.renderChatPanel(); this._ensureAudio();
       OB.marcarChatLido(OB.session().id, 'admin').then(() => this.refreshChatBadges());
       setTimeout(() => { const t = document.getElementById('chat-text'); if (t) t.focus(); }, 60);
-    } else { p.classList.remove('show'); setTimeout(() => p.setAttribute('hidden', ''), 200); }
+    } else {
+      if (w) w.classList.remove('open');
+      p.classList.remove('show'); setTimeout(() => p.setAttribute('hidden', ''), 200);
+    }
   },
   chatBubble(m, mine, themAv) {
     const hora = new Date(m.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
