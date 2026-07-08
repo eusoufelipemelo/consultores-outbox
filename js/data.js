@@ -183,6 +183,40 @@ const OB = {
   ],
   briefingLinkTipo(tipo) { return this.BRIEFING_BASE + '?p=' + tipo; },
 
+  /* ---------- portfólio: cases entregues, por serviço (prova social) ---------- */
+  PORTFOLIO_CATS: [
+    { id: 'sites', nome: 'Sites e Landing Pages', filtravel: true, itens: [
+      { nome: 'Dra. Angélica Chiararia', link: 'https://angelica-chiararia.vercel.app/', img: 'assets/portfolio/angelica-chiarariavercelapp.jpg', nicho: 'Saúde' },
+      { nome: 'Bellucci Planejados', link: 'https://bellucciplanejados.com.br/', img: 'assets/portfolio/bellucciplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Cardiopediatra Brasília', link: 'https://www.cardiopediatrabrasilia.com.br/', img: 'assets/portfolio/cardiopediatrabrasiliacombr.jpg', nicho: 'Saúde' },
+      { nome: 'Casa 46', link: 'https://www.casa46.com.br/', img: 'assets/portfolio/casa46combr.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'Clínica Áurea Plenus', link: 'https://www.clinicaaureaplenus.com.br/', img: 'assets/portfolio/clinicaaureaplenuscombr.jpg', nicho: 'Saúde' },
+      { nome: 'DentSite', link: 'https://dentsite.com.br/', img: 'assets/portfolio/dentsitecombr.jpg', nicho: 'Saúde' },
+      { nome: 'Doutor das Vendas', link: 'https://www.jonaspastore.com.br/doutor-das-vendas', img: 'assets/portfolio/jonaspastorecombr-doutor-das-vendas.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'Escola de Planejados', link: 'https://www.escoladeplanejados.com.br/', img: 'assets/portfolio/escoladeplanejadoscombr.jpg', nicho: 'Educação' },
+      { nome: 'Espaço Bello', link: 'https://www.espacobello.com.br/', img: 'assets/portfolio/espacobellocombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'In.casa Projetos', link: 'https://www.incasaprojetos.pt/', img: 'assets/portfolio/incasaprojetospt.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Je Aromas', link: 'https://www.jearomas.com.br/', img: 'assets/portfolio/jearomascombr.jpg', nicho: 'Cosméticos & Aromas' },
+      { nome: 'Jônas Pastore', link: 'https://www.jonaspastore.com.br/', img: 'assets/portfolio/jonaspastorecombr.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'Josué Alves', link: 'https://www.josuealves.com/', img: 'assets/portfolio/josuealvescom.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'Magare Planejados', link: 'https://www.magare.com.br/', img: 'assets/portfolio/magarecombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Mayra Maximiano', link: 'https://mayramaximiano.com.br/', img: 'assets/portfolio/mayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'MOBID Marcenaria', link: 'https://www.mobidmarcenaria.com.br/', img: 'assets/portfolio/mobidmarcenariacombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Modini Planejados', link: 'https://www.modiniplanejados.com.br/', img: 'assets/portfolio/modiniplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Móveis Planejados Itajaí', link: 'https://www.moveisplanejadositajai.com.br/', img: 'assets/portfolio/moveisplanejadositajaicombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Paz Pediatria', link: 'https://www.pazpediatria.com.br/', img: 'assets/portfolio/pazpediatriacombr.jpg', nicho: 'Saúde' },
+      { nome: 'PneumoMed', link: 'https://www.pneumomed.com.br/', img: 'assets/portfolio/pneumomedcombr.jpg', nicho: 'Saúde' },
+      { nome: 'Solid Planejados', link: 'https://www.solidplanejados.com.br/', img: 'assets/portfolio/solidplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Stopa Design', link: 'https://www.stopadesing.com.br/', img: 'assets/portfolio/stopadesingcombr.jpg', nicho: 'Móveis Planejados' },
+      { nome: 'Vida em ORDEM Business', link: 'https://www.veobus.mayramaximiano.com.br/', img: 'assets/portfolio/veobusmayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
+      { nome: 'Werte Engenharia', link: 'https://www.werte.eng.br/', img: 'assets/portfolio/werteengbr.jpg', nicho: 'Engenharia & Construção' }
+    ] },
+    { id: 'ecommerce',  nome: 'E-commerce',           filtravel: false, itens: [] },
+    { id: 'identidade', nome: 'Identidades Visuais',  filtravel: false, itens: [] },
+    { id: 'brandbook',  nome: 'Brandbook',            filtravel: false, itens: [] },
+    { id: 'sistemas',   nome: 'Sistemas Sob Medida',  filtravel: false, itens: [] }
+  ],
+
   /* etapas da timeline de entrega (ordem = progresso do projeto) */
   ETAPAS_PROJETO: [
     { id: 'briefing_enviado',  nome: 'Briefing enviado',   icon: 'share',    campo: 'briefingEnviadoEm',  quem: 'Consultor enviou o formulário ao cliente' },

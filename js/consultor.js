@@ -1964,30 +1964,48 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   /* formato do bloco laranja (referência Itaú): topo-esquerda + swoosh branco no canto inferior direito (viewBox 210x340) */
   BCARD_SHAPE: 'M0 0 H150 C150 70 150 120 130 152 C105 188 70 182 40 197 C22 205 10 208 0 210 Z',
 
-  /* Portfólio de entregas: cases já entregues pela OutBox (prova social). Populado por OB.PORTFOLIO quando o usuário enviar links + imagens. */
+  /* Portfólio de entregas: cases por serviço (prova social). Sites/LP com OG + filtro por nicho; demais serviços "Em breve". */
   view_portfolio() {
     const v = document.getElementById('main-view');
-    const itens = OB.PORTFOLIO || [];
-    v.innerHTML = itens.length
-      ? `<div class="brief-cards">${itens.map(p => {
-          const cid = 'pf-' + (p.id || Math.random().toString(36).slice(2));
-          return `<div class="brief-cell">
-            <a class="bcard" href="${p.link}" target="_blank" rel="noopener" title="Abrir projeto · ${p.nome}">
-              <svg class="bcard__shape" viewBox="0 0 210 340" preserveAspectRatio="none" aria-hidden="true">
-                <defs><clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SHAPE}"/></clipPath></defs>
-                <g clip-path="url(#${cid})"><image href="${p.img}" x="0" y="0" width="210" height="340" preserveAspectRatio="xMidYMid slice"/></g>
-              </svg>
-              <span class="bcard__hash">#TudoPassa.AVendaNão</span>
-              <div class="bcard__foot"><img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/><div class="bcard__id"><b>${p.cliente || 'Case'}</b><span>${p.nome}</span></div></div>
-            </a>
-            <div class="brief-cell-actions">
-              <button type="button" class="btn ghost sm" data-copylink="${p.link}" aria-label="Copiar link de ${p.nome}">${UI.icon('docs',15)}<span>Copiar</span></button>
-              <a class="btn ghost sm" href="${p.link}" target="_blank" rel="noopener" aria-label="Abrir projeto ${p.nome}">${UI.icon('external',15)}<span>Abrir</span></a>
-            </div>
-          </div>`;
-        }).join('')}</div>`
-      : `<div class="card"><div class="port-soon">${UI.icon('rocket',30)}<b>Em breve</b><p>Estamos reunindo os melhores projetos já entregues pela OutBox para você usar como prova social nas suas vendas. Assim que estiverem no ar, você poderá abrir e compartilhar cada case com os seus clientes por aqui.</p></div></div>`;
+    v.innerHTML = (OB.PORTFOLIO_CATS || []).map(cat => this.portfolioCatHTML(cat)).join('');
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
+    // filtro por nicho
+    v.querySelectorAll('.port-filtros').forEach(bar => {
+      const grid = bar.parentElement.querySelector('.port-grid');
+      bar.querySelectorAll('.port-chip').forEach(chip => chip.onclick = () => {
+        bar.querySelectorAll('.port-chip').forEach(c => c.classList.toggle('on', c === chip));
+        const nicho = chip.dataset.nicho;
+        grid.querySelectorAll('.port-cell').forEach(cell => { cell.style.display = (!nicho || cell.dataset.nicho === nicho) ? '' : 'none'; });
+      });
+    });
+  },
+  portfolioCatHTML(cat) {
+    const itens = (cat.itens || []).slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
+    const cont = itens.length ? `<span class="mut" style="font-weight:600">· ${itens.length} projeto${itens.length > 1 ? 's' : ''}</span>` : '';
+    const body = itens.length
+      ? `${cat.filtravel ? this.portfolioFiltros(itens) : ''}<div class="port-grid">${itens.map(p => this.portCard(p)).join('')}</div>`
+      : `<div class="port-soon">${UI.icon('rocket',28)}<b>Em breve</b><p>Estamos reunindo os cases de <b>${cat.nome}</b> já entregues pela OutBox. Assim que estiverem prontos, aparecem aqui para você mostrar aos clientes.</p></div>`;
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="row alc" style="gap:8px;margin-bottom:14px">${UI.icon('gallery',16)}<b>${cat.nome}</b> ${cont}</div>
+      ${body}
+    </div>`;
+  },
+  portfolioFiltros(itens) {
+    const nichos = [...new Set(itens.map(p => p.nicho).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    return `<div class="port-filtros">
+      <button type="button" class="port-chip on" data-nicho="">Todos</button>
+      ${nichos.map(n => `<button type="button" class="port-chip" data-nicho="${n}">${n}</button>`).join('')}
+    </div>`;
+  },
+  portCard(p) {
+    return `<div class="port-cell" data-nicho="${p.nicho || ''}">
+      <a class="port-thumb" href="${p.link}" target="_blank" rel="noopener" title="Abrir ${p.nome}"><img src="${p.img}" alt="Prévia do site ${p.nome}" loading="lazy"/></a>
+      <div class="port-body"><b>${p.nome}</b>${p.nicho ? `<span class="port-tag">${p.nicho}</span>` : ''}</div>
+      <div class="port-actions">
+        <button type="button" class="btn ghost sm" data-copylink="${p.link}" aria-label="Copiar link de ${p.nome}">${UI.icon('docs',15)}<span>Copiar</span></button>
+        <a class="btn ghost sm" href="${p.link}" target="_blank" rel="noopener" aria-label="Abrir ${p.nome} em nova guia">${UI.icon('external',15)}<span>Abrir</span></a>
+      </div>
+    </div>`;
   },
 
   projetoCard(s) {
