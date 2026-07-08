@@ -222,7 +222,7 @@ const App = {
           </div>
           <div class="brand-desc">Soluções Digitais</div>
           <nav class="nav" id="nav">
-            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}${n.id === 'projetos' ? '<span class="badge hidden" id="proj-badge"></span>' : ''}</button>`).join('')}
+            ${nav.map(n => `<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}${n.id === 'projetos' ? '<span class="badge hidden" id="proj-badge"></span>' : ''}${n.id === 'atendimento' ? '<span class="badge hidden" id="atend-badge"></span>' : ''}</button>`).join('')}
           </nav>
           ${!isAdmin ? `<a class="side-whats" href="https://chat.whatsapp.com/Bv5EM9xjqNkLiQiP3cUfKd" target="_blank" rel="noopener" title="Entrar no grupo de consultores da OutBox no WhatsApp">
             <span class="wa-ico"><svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M16.003 5.333c-5.888 0-10.667 4.779-10.667 10.667 0 1.88.494 3.72 1.432 5.341L5.333 26.667l5.464-1.433a10.63 10.63 0 0 0 5.203 1.325h.004c5.884 0 10.663-4.779 10.666-10.665a10.6 10.6 0 0 0-3.124-7.545 10.6 10.6 0 0 0-7.543-3.021zm0 19.2h-.003a8.85 8.85 0 0 1-4.51-1.235l-.323-.192-3.351.879.894-3.266-.21-.335a8.83 8.83 0 0 1-1.354-4.716c.002-4.889 3.982-8.868 8.874-8.868a8.81 8.81 0 0 1 6.27 2.599 8.82 8.82 0 0 1 2.597 6.276c-.002 4.889-3.982 8.868-8.874 8.868zm4.867-6.641c-.267-.134-1.578-.779-1.823-.868-.245-.089-.423-.134-.601.134-.178.267-.69.868-.846 1.046-.156.178-.311.2-.578.067-.267-.134-1.126-.415-2.145-1.324-.793-.707-1.328-1.58-1.484-1.847-.156-.267-.017-.411.117-.545.12-.12.267-.311.401-.467.134-.156.178-.267.267-.445.089-.178.045-.334-.022-.467-.067-.134-.601-1.449-.824-1.983-.217-.521-.437-.45-.601-.458l-.512-.009a.98.98 0 0 0-.712.334c-.245.267-.935.913-.935 2.226 0 1.313.957 2.582 1.09 2.76.134.178 1.884 2.876 4.564 4.032.638.276 1.135.44 1.523.563.64.204 1.223.175 1.683.106.514-.077 1.578-.645 1.801-1.269.223-.623.223-1.157.156-1.269-.067-.111-.245-.178-.512-.311z"/></svg></span>
@@ -287,6 +287,11 @@ const App = {
     this.subscribeAviso();
     this.refreshProjetosBadge();
     this.subscribeProjetos();
+    // chat Manu: widget flutuante (consultor) + tempo real + som
+    if (!isAdmin) this.mountChatWidget();
+    this.subscribeChat();
+    this.refreshChatBadges();
+    if (!this._audioUnlock) { this._audioUnlock = true; const unlock = () => { this._ensureAudio(); document.removeEventListener('pointerdown', unlock, true); }; document.addEventListener('pointerdown', unlock, true); }
     // presença (quem está logado) + lembretes de follow-up
     OB.pingPresenca();
     if (this._presTimer) clearInterval(this._presTimer);
@@ -561,11 +566,147 @@ const App = {
     const av = el.querySelector('#rankb-av'); if (av) av.innerHTML = u.foto ? `<img src="${u.foto}" alt="">` : ((u.nome || '?')[0].toUpperCase());
   },
 
+  /* ============================================================
+     Chat "Manu" — atendimento consultor ↔ admin (tempo real + som)
+     ============================================================ */
+  manuAvatar(cls) {
+    return `<span class="manu-av ${cls || ''}"><b>M</b>${OB.MANU.foto ? `<img src="${OB.MANU.foto}" alt="Manu" onerror="this.remove()">` : ''}</span>`;
+  },
+  _ensureAudio() {
+    try {
+      if (!this._audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this._audioCtx = new AC(); }
+      if (this._audioCtx && this._audioCtx.state === 'suspended') this._audioCtx.resume();
+    } catch (e) {}
+  },
+  playPing(urgente) {
+    try {
+      this._ensureAudio(); const ctx = this._audioCtx; if (!ctx) return;
+      const beep = (freq, start, dur) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination);
+        const t = ctx.currentTime + start;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.28, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.03);
+      };
+      beep(880, 0, 0.17);
+      if (urgente) { beep(1180, 0.20, 0.15); beep(1180, 0.40, 0.15); }
+    } catch (e) {}
+  },
+  _chatChannel: null,
+  subscribeChat() {
+    if (typeof SB === 'undefined' || !SB.channel) return;
+    const u = OB.session(); if (!u) return;
+    const isAdmin = u.role === 'admin';
+    if (this._chatChannel) { try { SB.removeChannel(this._chatChannel); } catch (e) {} this._chatChannel = null; }
+    this._chatChannel = SB.channel('chat-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_mensagens' }, (payload) => {
+        const row = payload.new || payload.old; if (!row) return;
+        const m = OB._msgIn(row);
+        const arr = OB.db.chat || (OB.db.chat = []);
+        const i = arr.findIndex(x => x.id === m.id);
+        if (payload.eventType === 'DELETE') { if (i >= 0) arr.splice(i, 1); }
+        else if (i >= 0) arr[i] = m; else arr.push(m);
+        if (payload.eventType === 'INSERT') {
+          if (isAdmin && m.autor === 'consultor') {
+            this.playPing(m.urgente);
+            UI.toast(m.urgente ? 'Mensagem URGENTE' : 'Nova mensagem no atendimento', 'Um consultor te enviou algo. Abra o Atendimento.', m.urgente ? 'err' : 'ok');
+          } else if (!isAdmin && m.autor === 'admin' && m.consultorId === u.id) {
+            this.playPing(false);
+            const p = document.getElementById('chat-panel');
+            if (!p || p.hasAttribute('hidden')) UI.toast('Manu respondeu', 'Você recebeu uma nova mensagem no atendimento', 'ok');
+          }
+        }
+        this.refreshChatBadges();
+        if (isAdmin && this.current === 'atendimento') Admin.render('atendimento');
+        if (!isAdmin) { const p = document.getElementById('chat-panel'); if (p && !p.hasAttribute('hidden')) { this.renderChatPanel(); OB.marcarChatLido(u.id, 'admin').then(() => this.refreshChatBadges()); } }
+      })
+      .subscribe();
+  },
+  unsubscribeChat() { if (this._chatChannel) { try { SB.removeChannel(this._chatChannel); } catch (e) {} this._chatChannel = null; } },
+  refreshChatBadges() {
+    const u = OB.session(); if (!u) return;
+    if (u.role === 'admin') {
+      const b = document.getElementById('atend-badge'); if (!b) return;
+      const n = OB.chatNaoLidasAdmin();
+      b.textContent = n; b.classList.toggle('hidden', !n); b.classList.toggle('badge-urgent', OB.chatUrgentesAdmin() && n > 0);
+    } else {
+      const b = document.getElementById('chat-fab-badge'); if (!b) return;
+      const n = OB.chatNaoLidasConsultor(u.id);
+      b.textContent = n; b.classList.toggle('hidden', !n);
+    }
+  },
+  mountChatWidget() {
+    const old = document.getElementById('chat-widget'); if (old) old.remove();
+    const host = document.createElement('div'); host.id = 'chat-widget';
+    host.innerHTML = `
+      <div class="chat-panel" id="chat-panel" hidden>
+        <div class="chat-head">
+          <div class="chat-head__id">${this.manuAvatar('chat-head__av')}<div class="chat-head__nm"><b>${OB.MANU.nome}</b><span>${OB.MANU.cargo}</span></div></div>
+          <button class="chat-close" id="chat-close" type="button" aria-label="Fechar">${UI.icon('x',18)}</button>
+        </div>
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-inputbar">
+          <label class="chat-urg"><input type="checkbox" id="chat-urg"><span>Marcar como urgente</span></label>
+          <div class="chat-inputrow">
+            <textarea id="chat-text" rows="1" placeholder="Tire dúvidas, peça algo ou dê sugestões..."></textarea>
+            <button class="chat-send" id="chat-send" type="button" aria-label="Enviar">${UI.icon('send',18)}</button>
+          </div>
+        </div>
+      </div>
+      <button class="chat-fab" id="chat-fab" type="button" title="Tirar dúvidas e sugestões com a Manu">
+        ${this.manuAvatar('chat-fab__av')}
+        <span class="chat-fab__txt">Dúvidas e sugestões</span>
+        <span class="chat-fab__badge hidden" id="chat-fab-badge"></span>
+      </button>`;
+    document.body.appendChild(host);
+    document.getElementById('chat-fab').onclick = () => this.toggleChat();
+    document.getElementById('chat-close').onclick = () => this.toggleChat(false);
+    document.getElementById('chat-send').onclick = () => this.sendChatMsg();
+    const ta = document.getElementById('chat-text');
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChatMsg(); } });
+    ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 110) + 'px'; });
+    this.refreshChatBadges();
+  },
+  toggleChat(force) {
+    const p = document.getElementById('chat-panel'); if (!p) return;
+    const open = force !== undefined ? force : p.hasAttribute('hidden');
+    if (open) {
+      p.removeAttribute('hidden'); requestAnimationFrame(() => p.classList.add('show'));
+      this.renderChatPanel(); this._ensureAudio();
+      OB.marcarChatLido(OB.session().id, 'admin').then(() => this.refreshChatBadges());
+      setTimeout(() => { const t = document.getElementById('chat-text'); if (t) t.focus(); }, 60);
+    } else { p.classList.remove('show'); setTimeout(() => p.setAttribute('hidden', ''), 200); }
+  },
+  chatBubble(m, mine, themAv) {
+    const hora = new Date(m.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const txt = (m.texto || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    return `<div class="chat-b ${mine ? 'me' : 'them'}">${!mine ? (themAv || this.manuAvatar('chat-b__av')) : ''}<div class="chat-b__body">${m.urgente ? '<span class="chat-urg-tag">Urgente</span>' : ''}<p>${txt}</p><time>${hora}</time></div></div>`;
+  },
+  renderChatPanel() {
+    const box = document.getElementById('chat-msgs'); if (!box) return;
+    const u = OB.session(); const msgs = OB.chatDoConsultor(u.id);
+    box.innerHTML = msgs.length ? msgs.map(m => this.chatBubble(m, m.autor === 'consultor')).join('')
+      : `<div class="chat-empty">${this.manuAvatar('chat-empty__av')}<p>Oi! Eu sou a <b>Manu</b> 👋<br>Me conta sua dúvida, peça algo ou mande uma sugestão. Se for urgente, marque a caixinha antes de enviar.</p></div>`;
+    box.scrollTop = box.scrollHeight;
+  },
+  async sendChatMsg() {
+    const ta = document.getElementById('chat-text'), urg = document.getElementById('chat-urg');
+    const texto = (ta.value || '').trim(); if (!texto) return;
+    const urgente = urg.checked; const u = OB.session();
+    ta.value = ''; ta.style.height = 'auto'; urg.checked = false;
+    await OB.enviarMensagem({ consultorId: u.id, autor: 'consultor', texto, urgente });
+    this.renderChatPanel();
+  },
+
   logout() {
     UI.confirm('Sair da conta', 'Deseja realmente sair?', async () => {
       try {
         this.unsubscribeAviso();
         this.unsubscribeProjetos();
+        this.unsubscribeChat();
+        { const w = document.getElementById('chat-widget'); if (w) w.remove(); }
         if (this._presTimer) { clearInterval(this._presTimer); this._presTimer = null; }
         if (this._fuTimer) { clearInterval(this._fuTimer); this._fuTimer = null; }
         await SB.auth.signOut();

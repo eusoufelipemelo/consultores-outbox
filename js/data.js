@@ -145,6 +145,9 @@ const OB = {
     { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · com juros da operadora' }
   ],
 
+  /* ---------- atendente virtual "Manu" (chat consultor ↔ admin) ---------- */
+  MANU: { nome: 'Manu', cargo: 'Atendimento OutBox', foto: 'assets/manu.jpg' },
+
   /* ---------- propaganda/pop-up de marketing (arte 4:5 gerida pelo admin) ---------- */
   CAMPANHA_ID: '00000000-0000-0000-0000-0000000000c1',
 
@@ -229,7 +232,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -255,6 +258,10 @@ const OB = {
   /* campanha/propaganda: metadados (sem imagem, para o load ser leve) */
   _campIn(r) { return r && { id: r.id, ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null, diasSemana: r.dias_semana || [], horaInicio: r.hora_inicio || '', horaFim: r.hora_fim || '', atualizadoEm: r.atualizado_em, imagem: (typeof r.imagem === 'string' ? r.imagem : undefined) }; },
   _campOut(c) { return { id: this.CAMPANHA_ID, imagem: c.imagem || null, ativo: !!c.ativo, inicio: c.inicio || null, fim: c.fim || null, dias_semana: Array.isArray(c.diasSemana) ? c.diasSemana : [], hora_inicio: c.horaInicio || null, hora_fim: c.horaFim || null, atualizado_em: new Date().toISOString() }; },
+  /* chat Manu: mensagens */
+  _msgIn(r) { return { id: r.id, consultorId: r.consultor_id, autor: r.autor || 'consultor', texto: r.texto || '', urgente: !!r.urgente, lido: !!r.lido, criadoEm: r.criado_em }; },
+  _msgOut(m) { return { id: m.id, consultor_id: m.consultorId, autor: m.autor || 'consultor', texto: m.texto || '', urgente: !!m.urgente, lido: !!m.lido, criado_em: m.criadoEm || new Date().toISOString() }; },
+
   /* comprime a arte enviada (máx 1080px de largura; PNG, cai p/ JPEG se ficar pesado) */
   _comprimirArte(dataUrl) {
     return new Promise((res) => {
@@ -293,7 +300,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -305,7 +312,8 @@ const OB = {
       SB.rpc('ranking_treinamentos'),
       SB.from('projetos').select('*'),
       SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle(),
-      SB.rpc('ranking_geral')
+      SB.rpc('ranking_geral'),
+      SB.from('chat_mensagens').select('*').order('criado_em')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -324,6 +332,7 @@ const OB = {
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
     this.db.campanha = cmp && cmp.data ? this._campIn(cmp.data) : null;
     this.db.rankingGeral = (rgl && rgl.data) ? rgl.data : [];
+    this.db.chat = (cht && cht.data) ? cht.data.map(r => this._msgIn(r)) : [];
     // progresso de treinamentos: todas as linhas visíveis (RLS: consultor vê as suas, admin vê todas)
     const tprows = (tp && tp.data) ? tp.data : [];
     const objTr = (typeof TREINOS !== 'undefined' ? TREINOS.OBJETIVO : 90);
@@ -335,7 +344,7 @@ const OB = {
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -598,6 +607,37 @@ const OB = {
     return { posicao: i >= 0 ? i + 1 : null, pontos: i >= 0 ? (arr[i].pontos || 0) : 0, total: arr.length, row: i >= 0 ? arr[i] : null };
   },
   fmtNum(n) { return Number(n || 0).toLocaleString('pt-BR'); },
+
+  /* ---------- chat Manu (atendimento consultor ↔ admin) ---------- */
+  chatDoConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id).sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm)); },
+  chatThreads() {
+    const by = {};
+    (this.db.chat || []).forEach(m => { (by[m.consultorId] = by[m.consultorId] || []).push(m); });
+    return Object.keys(by).map(cid => {
+      const msgs = by[cid].sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm));
+      const ultima = msgs[msgs.length - 1];
+      const naoLidas = msgs.filter(m => m.autor === 'consultor' && !m.lido).length;
+      const urgente = msgs.some(m => m.autor === 'consultor' && !m.lido && m.urgente);
+      const c = this.userById(cid);
+      return { consultorId: cid, nome: c ? ((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || 'Consultor' : 'Consultor', ultima, naoLidas, urgente, msgs };
+    }).sort((a, b) => (b.urgente - a.urgente) || (new Date(b.ultima.criadoEm) - new Date(a.ultima.criadoEm)));
+  },
+  chatNaoLidasAdmin() { return (this.db.chat || []).filter(m => m.autor === 'consultor' && !m.lido).length; },
+  chatUrgentesAdmin() { return (this.db.chat || []).some(m => m.autor === 'consultor' && !m.lido && m.urgente); },
+  chatNaoLidasConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id && m.autor === 'admin' && !m.lido).length; },
+  async enviarMensagem({ consultorId, autor, texto, urgente }) {
+    const m = { id: this.uid(), consultorId, autor: autor || 'consultor', texto: (texto || '').trim(), urgente: !!urgente, lido: false, criadoEm: new Date().toISOString() };
+    if (!this.db.chat) this.db.chat = [];
+    this.db.chat.push(m);
+    await this._save('chat_mensagens', this._msgOut(m));
+    return m;
+  },
+  async marcarChatLido(consultorId, autorDasMsgs) {
+    const alvo = (this.db.chat || []).filter(m => m.consultorId === consultorId && m.autor === autorDasMsgs && !m.lido);
+    if (!alvo.length) return;
+    alvo.forEach(m => m.lido = true);
+    try { await SB.from('chat_mensagens').update({ lido: true }).eq('consultor_id', consultorId).eq('autor', autorDasMsgs).eq('lido', false); } catch (e) {}
+  },
   saveTreino(id, nota) {
     const cur = this.treinoProgress(id);
     const melhor = Math.max(cur.melhorNota, nota);

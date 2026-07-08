@@ -14,6 +14,7 @@ const Admin = {
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
+    { id: 'atendimento',label: 'Atendimento',      icon: 'chat' },
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
   ],
   titles: {
@@ -27,6 +28,7 @@ const Admin = {
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
     campanha:    ['Propaganda / Pop-up', 'Suba uma arte 4:5 e agende quando ela aparece para os consultores no login'],
+    atendimento: ['Atendimento (Manu)', 'Dúvidas, urgências e sugestões dos consultores — você responde como Manu'],
     perfil:      ['Editar Perfil', 'Seus dados de administrador']
   },
 
@@ -885,6 +887,55 @@ const Admin = {
 
   /* Ranking de consultores (compartilhado via App.renderRanking) */
   view_ranking() { App.renderRanking(document.getElementById('main-view'), null); },
+
+  /* ====================== ATENDIMENTO / CHAT MANU ====================== */
+  _consAv(id, nome) { const f = OB.fotos[id]; return `<span class="atend-av" data-av="${id}">${f ? `<img src="${f}" alt="">` : ((nome || '?')[0] || '?').toUpperCase()}</span>`; },
+  view_atendimento() {
+    const v = document.getElementById('main-view');
+    const threads = OB.chatThreads();
+    App.refreshChatBadges();
+    if (!threads.length) {
+      v.innerHTML = `<div class="card"><div class="port-soon">${UI.icon('chat',30)}<b>Nenhuma conversa ainda</b><p>Quando um consultor enviar dúvidas, urgências ou sugestões pelo chat da <b>Manu</b>, as conversas aparecem aqui para você responder.</p></div></div>`;
+      return;
+    }
+    if (!this._atendSel || !threads.find(t => t.consultorId === this._atendSel)) this._atendSel = threads[0].consultorId;
+    const sel = threads.find(t => t.consultorId === this._atendSel);
+    const consAv = this._consAv(sel.consultorId, sel.nome);
+
+    const listHTML = threads.map(t => {
+      const prev = (t.ultima.texto || '').slice(0, 46).replace(/</g, '&lt;') || '...';
+      const quem = t.ultima.autor === 'admin' ? 'Você: ' : '';
+      return `<button type="button" class="atend-item${t.consultorId === this._atendSel ? ' on' : ''}" data-thread="${t.consultorId}">
+        ${this._consAv(t.consultorId, t.nome)}
+        <span class="atend-info"><b>${t.nome}${t.urgente ? ' <span class="atend-urg">urgente</span>' : ''}</b><span>${quem}${prev}</span></span>
+        ${t.naoLidas ? `<span class="atend-count">${t.naoLidas}</span>` : ''}
+      </button>`;
+    }).join('');
+    const conv = sel.msgs.map(m => App.chatBubble(m, m.autor === 'admin', consAv)).join('');
+
+    v.innerHTML = `<div class="atend-grid">
+      <div class="atend-list">${listHTML}</div>
+      <div class="atend-conv">
+        <div class="atend-conv__head">${consAv}<div class="atend-conv__nm"><b>${sel.nome}</b><span>Você responde como <b>Manu</b></span></div></div>
+        <div class="atend-msgs" id="atend-msgs">${conv}</div>
+        <div class="atend-reply">
+          <textarea id="atend-text" rows="1" placeholder="Responder como Manu..."></textarea>
+          <button class="btn brand" id="atend-send" type="button">${UI.icon('send',16)} Enviar</button>
+        </div>
+      </div>
+    </div>`;
+
+    OB.marcarChatLido(sel.consultorId, 'consultor').then(() => App.refreshChatBadges());
+    OB.carregarFotos().then(() => v.querySelectorAll('.atend-av[data-av]').forEach(el => { const f = OB.fotos[el.dataset.av]; if (f) el.innerHTML = `<img src="${f}" alt="">`; })).catch(() => {});
+    const mb = document.getElementById('atend-msgs'); if (mb) mb.scrollTop = mb.scrollHeight;
+
+    v.querySelectorAll('[data-thread]').forEach(b => b.onclick = () => { this._atendSel = b.dataset.thread; this.render('atendimento'); });
+    const ta = document.getElementById('atend-text');
+    const send = async () => { const txt = (ta.value || '').trim(); if (!txt) return; ta.value = ''; ta.style.height = 'auto'; await OB.enviarMensagem({ consultorId: sel.consultorId, autor: 'admin', texto: txt, urgente: false }); this.render('atendimento'); };
+    document.getElementById('atend-send').onclick = send;
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+    ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
+  },
 
   /* ====================== PROPAGANDA / POP-UP (arte 4:5 agendada) ====================== */
   _DOW: [[0, 'Dom'], [1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb']],
