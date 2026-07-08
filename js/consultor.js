@@ -11,6 +11,7 @@ const Consultor = {
     { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
+    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
     { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
@@ -27,6 +28,7 @@ const Consultor = {
     projetos:   ['Briefings', 'Envie o briefing e acompanhe a entrega de cada serviço vendido'],
     portfolio:  ['Portfólio de entregas', 'Projetos já entregues pela OutBox para você usar como prova social'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
+    ranking:    ['Ranking de Consultores', 'Os 10 primeiros em pontos (vendas + treinamentos)'],
     documentos: ['Documentos', 'Materiais e técnicas de venda SPIN Selling'],
     ebooks:     ['E-Books', 'Materiais exclusivos para baixar, estudar e compartilhar conhecimento'],
     treinamentos: ['Treinamentos', 'Trilha de como vender os produtos da OutBox'],
@@ -1928,6 +1930,9 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
   },
+
+  /* Ranking de consultores (compartilhado com o admin via App.renderRanking) */
+  view_ranking() { App.renderRanking(document.getElementById('main-view'), this.u().id); },
 
   /* biblioteca: cada briefing pronto vira um cartão estilo crachá (layout da referência Itaú) */
   bibliotecaBriefings() {

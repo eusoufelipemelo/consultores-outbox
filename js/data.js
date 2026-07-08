@@ -229,7 +229,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -293,7 +293,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -304,7 +304,8 @@ const OB = {
       SB.from('training_progress').select('*'),
       SB.rpc('ranking_treinamentos'),
       SB.from('projetos').select('*'),
-      SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle()
+      SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle(),
+      SB.rpc('ranking_geral')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -322,6 +323,7 @@ const OB = {
     this.db.leads = (lds.data || []).map(r => this._lIn(r));
     this.db.aviso = avi && avi.data ? this._avIn(avi.data) : null;
     this.db.campanha = cmp && cmp.data ? this._campIn(cmp.data) : null;
+    this.db.rankingGeral = (rgl && rgl.data) ? rgl.data : [];
     // progresso de treinamentos: todas as linhas visíveis (RLS: consultor vê as suas, admin vê todas)
     const tprows = (tp && tp.data) ? tp.data : [];
     const objTr = (typeof TREINOS !== 'undefined' ? TREINOS.OBJETIVO : 90);
@@ -333,7 +335,7 @@ const OB = {
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], projetos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -587,6 +589,15 @@ const OB = {
     return (this.db.treinosAll || []).filter(r => r.consultorId === consultorId && r.concluido);
   },
   rankingTreinos() { return this.db.ranking || []; },
+
+  /* ---------- ranking geral (vendas + treinamentos) ---------- */
+  rankingGeral() { return this.db.rankingGeral || []; },
+  meuRankingPos(id) {
+    const arr = this.db.rankingGeral || [];
+    const i = arr.findIndex(r => r.consultor_id === id);
+    return { posicao: i >= 0 ? i + 1 : null, pontos: i >= 0 ? (arr[i].pontos || 0) : 0, total: arr.length, row: i >= 0 ? arr[i] : null };
+  },
+  fmtNum(n) { return Number(n || 0).toLocaleString('pt-BR'); },
   saveTreino(id, nota) {
     const cur = this.treinoProgress(id);
     const melhor = Math.max(cur.melhorNota, nota);

@@ -7,6 +7,7 @@ const Admin = {
     { id: 'painel',     label: 'Painel Geral',     icon: 'overview' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
+    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
@@ -19,6 +20,7 @@ const Admin = {
     painel:      ['Painel Geral', 'Visão consolidada de toda a operação'],
     financeiro:  ['Gestão Financeira', 'Comissões e prêmios — pague mediante comprovação'],
     consultores: ['Consultores', 'Todos os consultores e seus números'],
+    ranking:     ['Ranking de Consultores', 'Os 10 primeiros em pontos (vendas + treinamentos)'],
     mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
     projetos:    ['Briefings & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
@@ -880,6 +882,9 @@ const Admin = {
       }, 'Remover');
     };
   },
+
+  /* Ranking de consultores (compartilhado via App.renderRanking) */
+  view_ranking() { App.renderRanking(document.getElementById('main-view'), null); },
 
   /* ====================== PROPAGANDA / POP-UP (arte 4:5 agendada) ====================== */
   _DOW: [[0, 'Dom'], [1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb']],

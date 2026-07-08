@@ -250,7 +250,11 @@ const App = {
                   <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
                   <button class="commission-pill locked" id="bloq-pill"><div style="text-align:left"><div class="lbl">Mínimo p/ saque</div><div class="val" id="bloq-val">R$ 500,00</div></div>${UI.icon('lock',18)}</button>
                   <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
-                </div>`}
+                </div>
+                <button class="rank-badge" id="rank-badge" title="Seu ranking · clique para ver o Top 10">
+                  <span class="rank-badge__av" id="rankb-av"></span>
+                  <span class="rank-badge__txt"><b id="rankb-pts">0 pts</b><small id="rankb-pos">#—</small></span>
+                </button>`}
             ${this.themeBtnHTML()}
           </header>
           <div id="main-view" class="view"></div>
@@ -260,7 +264,7 @@ const App = {
     // binds
     this.bindThemeBtn(app);
     this.refreshSidebarUser();
-    if (!isAdmin) this.refreshCommission();
+    if (!isAdmin) { this.refreshCommission(); this.refreshRankBadge(); const rb = document.getElementById('rank-badge'); if (rb) rb.onclick = () => this.go('ranking'); }
     this.refreshBadge();
 
     document.querySelectorAll('#nav .nav-item').forEach(b => b.onclick = () => this.go(b.dataset.view));
@@ -519,8 +523,42 @@ const App = {
     const u = OB.session();
     const box = document.getElementById('side-user-box');
     if (!box) return;
-    const av = u.foto ? `<img src="${u.foto}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : (u.nome ? u.nome[0].toUpperCase() : '?');
+    const av = u.foto ? `<img src="${u.foto}" alt="">` : (u.nome ? u.nome[0].toUpperCase() : '?');
     box.innerHTML = `<div class="side-user"><div class="av">${av}</div><div class="grow" style="min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome} ${u.sobrenome||''}</b><span>${u.role === 'admin' ? 'Administrador' : 'Consultor'}</span></div></div>`;
+  },
+
+  /* ---------- Ranking de consultores (vendas + treinamentos) ---------- */
+  renderRanking(v, highlightId) {
+    const top = OB.rankingGeral().slice(0, 10);
+    if (!top.length) {
+      v.innerHTML = `<div class="card"><div class="port-soon">${UI.icon('ranking',30)}<b>Ranking em formação</b><p>Assim que os consultores registrarem vendas aprovadas e concluírem treinamentos, o Top 10 aparece aqui.</p></div></div>`;
+      return;
+    }
+    const rows = top.map((r, i) => {
+      const pos = i + 1;
+      const nome = ((r.nome || '') + ' ' + (r.sobrenome || '')).trim() || 'Consultor';
+      const foto = OB.fotos[r.consultor_id];
+      const me = highlightId && r.consultor_id === highlightId;
+      return `<div class="rank-row${me ? ' me' : ''}${i < 3 ? ' top' : ''}">
+        <div class="rank-pos p${pos <= 3 ? pos : 'x'}">${pos}</div>
+        <div class="rank-av" data-av="${r.consultor_id}">${foto ? `<img src="${foto}" alt="">` : (r.nome ? r.nome[0].toUpperCase() : '?')}</div>
+        <div class="rank-name"><b>${nome}${me ? ' <span class="rank-you">você</span>' : ''}</b><span>${r.treinos_concluidos || 0} treino(s) · ${OB.fmt(Number(r.volume || 0))} vendidos</span></div>
+        <div class="rank-pts"><b>${OB.fmtNum(r.pontos)}</b><small>pts</small></div>
+      </div>`;
+    }).join('');
+    v.innerHTML = `<div class="card">
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Como pontuar: <b>1 ponto a cada R$ 10 vendidos</b> (vendas aprovadas) + <b>100 pontos por treinamento concluído</b>. Suba no ranking vendendo mais e treinando mais.</div></div>
+      <div class="rank-list">${rows}</div>
+    </div>`;
+    OB.carregarFotos().then(() => v.querySelectorAll('.rank-av[data-av]').forEach(el => { const f = OB.fotos[el.dataset.av]; if (f) el.innerHTML = `<img src="${f}" alt="">`; })).catch(() => {});
+  },
+  /* widget no canto superior direito (consultor): foto + pontos + posição */
+  refreshRankBadge() {
+    const el = document.getElementById('rank-badge'); if (!el) return;
+    const u = OB.session(); const r = OB.meuRankingPos(u.id);
+    const pts = el.querySelector('#rankb-pts'); if (pts) pts.textContent = OB.fmtNum(r.pontos) + ' pts';
+    const pos = el.querySelector('#rankb-pos'); if (pos) pos.textContent = r.posicao ? ('#' + r.posicao + ' de ' + r.total) : 'sem pontos';
+    const av = el.querySelector('#rankb-av'); if (av) av.innerHTML = u.foto ? `<img src="${u.foto}" alt="">` : ((u.nome || '?')[0].toUpperCase());
   },
 
   logout() {
