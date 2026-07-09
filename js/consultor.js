@@ -1867,36 +1867,44 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   view_ebooks() {
     const v = document.getElementById('main-view');
-    // regra: e-books só liberam após a primeira venda aprovada
-    if (!OB.fezPrimeiraVenda(this.u().id)) {
-      v.innerHTML = `<div class="card"><div class="ebook-lock">
-        <span class="ebook-lock__ic">${UI.icon('lock',30)}</span>
-        <b>Seus e-books estão a uma venda de distância</b>
-        <p>A biblioteca de e-books é liberada assim que você registra a sua primeira venda. Feche seu primeiro negócio e volte aqui para baixar todo o material de estudo e prospecção.</p>
-        <button class="btn brand" id="eb-vender">${UI.icon('cart',16)} Lançar minha primeira venda</button>
-      </div></div>`;
-      const b = document.getElementById('eb-vender'); if (b) b.onclick = () => App.go('comissao');
-      return;
-    }
     const itens = this.EBOOKS.slice().sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt', { sensitivity: 'base' }));
     if (!itens.length) { v.innerHTML = this.empty('book', 'Nenhum e-book ainda', 'Os e-books disponibilizados pela OutBox aparecem aqui.'); return; }
+    // regra: o catálogo fica SEMPRE à mostra (gera desejo), mas só libera ler/baixar após a primeira venda aprovada
+    const liberado = OB.fezPrimeiraVenda(this.u().id);
     const cats = [...new Set(itens.map(e => e.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    const aviso = liberado ? '' : `
+      <div class="ebook-aviso">
+        <span class="ebook-aviso__ic">${UI.icon('lock',20)}</span>
+        <div class="ebook-aviso__txt">
+          <b>Sua biblioteca está a uma venda de distância</b>
+          <span>Todos os e-books abaixo liberam para leitura e download assim que você registra a sua primeira venda.</span>
+        </div>
+        <button class="btn brand" id="eb-vender">${UI.icon('cart',15)} Lançar minha primeira venda</button>
+      </div>`;
+    const acoes = e => liberado
+      ? `<a class="btn ghost" href="${e.arquivo}" target="_blank" rel="noopener" title="Ler agora em nova aba">${UI.icon('eye',15)} Ler</a>
+         <a class="btn brand grow" href="${e.arquivo}" download title="Baixar o PDF">${UI.icon('download',15)} Baixar e-book</a>`
+      : `<button class="btn brand grow" data-lock title="Libere fazendo a sua primeira venda">${UI.icon('lock',15)} Liberar na 1ª venda</button>`;
     v.innerHTML = `
+      ${aviso}
       <div class="port-filtros" id="eb-filtros">
         <button type="button" class="port-chip on" data-cat="">Todos</button>
         ${cats.map(c => `<button type="button" class="port-chip" data-cat="${c}">${c}</button>`).join('')}
       </div>
-      <div class="ebook-grid">
+      <div class="ebook-grid${liberado ? '' : ' is-locked'}">
         ${itens.map(e => `
-          <div class="card ebook-card" data-cat="${e.categoria || ''}">
-            <div class="ebook-capa"><img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/>${e.categoria ? `<span class="ebook-tag">${e.categoria}</span>` : ''}</div>
+          <div class="card ebook-card${liberado ? '' : ' locked'}" data-cat="${e.categoria || ''}">
+            <div class="ebook-capa">
+              <img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/>
+              ${e.categoria ? `<span class="ebook-tag">${e.categoria}</span>` : ''}
+              ${liberado ? '' : `<span class="ebook-cadeado">${UI.icon('lock',22)}</span>`}
+            </div>
             <div class="ebook-info">
               <b>${e.titulo}</b>
               <span class="ebook-autor">${e.autor}${e.paginas ? ' · ' + e.paginas + ' páginas' : ''}</span>
               <p>${e.desc || ''}</p>
               <div class="row" style="gap:8px;margin-top:auto">
-                <a class="btn ghost" href="${e.arquivo}" target="_blank" rel="noopener" title="Ler agora em nova aba">${UI.icon('eye',15)} Ler</a>
-                <a class="btn brand grow" href="${e.arquivo}" download title="Baixar o PDF">${UI.icon('download',15)} Baixar e-book</a>
+                ${acoes(e)}
               </div>
             </div>
           </div>`).join('')}
@@ -1908,6 +1916,11 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       const cat = chip.dataset.cat;
       grid.querySelectorAll('.ebook-card').forEach(card => { card.style.display = (!cat || card.dataset.cat === cat) ? '' : 'none'; });
     });
+    if (!liberado) {
+      const ir = () => App.go('comissao');
+      const b = document.getElementById('eb-vender'); if (b) b.onclick = ir;
+      grid.querySelectorAll('[data-lock]').forEach(btn => btn.onclick = ir);
+    }
   },
 
   /* ====================== PROJETOS / BRIEFING / ENTREGA ====================== */

@@ -1284,8 +1284,15 @@ td .strong { color: var(--text); font-weight: 600; }
   .rk-row__pts b { font-size: 15px; }
 }
 
-/* E-Books bloqueados até a primeira venda */
-.ebook-lock { text-align: center; padding: 40px 22px; max-width: 520px; margin: 0 auto; }
-.ebook-lock__ic { display: inline-grid; place-items: center; width: 68px; height: 68px; border-radius: 20px; background: var(--brand-soft); color: var(--brand); margin-bottom: 16px; }
-.ebook-lock b { display: block; font-size: 18px; color: var(--text); margin-bottom: 8px; }
-.ebook-lock p { font-size: 13.5px; color: var(--text-soft); line-height: 1.55; margin-bottom: 20px; }
+/* E-Books: catálogo à mostra, bloqueado até a primeira venda */
+.ebook-aviso { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 14px; border-radius: 14px; background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent); }
+.ebook-aviso__ic { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; background: var(--brand); color: #fff; }
+.ebook-aviso__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ebook-aviso__txt b { font-size: 14.5px; color: var(--text); }
+.ebook-aviso__txt span { font-size: 12.5px; color: var(--text-soft); line-height: 1.4; }
+.ebook-aviso .btn { flex: 0 0 auto; }
+.ebook-card.locked .ebook-capa img { filter: grayscale(.35) brightness(.82); }
+.ebook-card.locked .ebook-cadeado { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(10,10,10,.28); backdrop-filter: blur(1px); }
+.ebook-card.locked .ebook-cadeado svg { padding: 12px; border-radius: 50%; background: rgba(241,85,50,.92); box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+.ebook-card.locked .btn[data-lock] { opacity: .95; }
+@media (max-width: 560px) { .ebook-aviso { flex-wrap: wrap; } .ebook-aviso .btn { width: 100%; justify-content: center; } }
