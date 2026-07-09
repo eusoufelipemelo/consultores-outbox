@@ -10,6 +10,7 @@ const Admin = {
     { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
@@ -799,6 +800,82 @@ const Admin = {
       document.querySelectorAll('#vd-filter button').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(b.dataset.f);
     });
     const ca = document.getElementById('vd-conf-all'); if (ca) ca.onclick = () => this.pagamentosPopup();
+  },
+
+  /* ====================== CONTRATOS (controle + filtros) ====================== */
+  _ctFiltro: { cliente: '', servico: '', uf: '', consultor: '', de: '', ate: '', status: 'todos' },
+  view_contratos() {
+    const v = document.getElementById('main-view');
+    const all = OB.contratos().slice().sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+    if (!all.length) { v.innerHTML = Consultor.empty('contract', 'Nenhum contrato ainda', 'Quando os consultores gerarem contratos a partir das vendas, eles aparecem aqui com filtros e controle de aceite.'); return; }
+    const consultores = (OB.profiles || []).filter(p => p.role !== 'admin').sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    const ufs = [...new Set(all.map(c => (c.dados && c.dados.cliente && c.dados.cliente.uf) || '').filter(Boolean))].sort();
+    const f = this._ctFiltro;
+    const aceitos = all.filter(c => c.status === 'aceito').length;
+    v.innerHTML = `
+      <div class="kpis kpis-3" style="margin-bottom:14px">
+        <div class="kpi"><div class="kpi-v">${all.length}</div><div class="kpi-l">Contratos</div></div>
+        <div class="kpi"><div class="kpi-v" style="color:#16a34a">${aceitos}</div><div class="kpi-l">Aceitos</div></div>
+        <div class="kpi"><div class="kpi-v" style="color:var(--brand)">${all.length - aceitos}</div><div class="kpi-l">Aguardando aceite</div></div>
+      </div>
+      <div class="cons-filtros" id="ct-filtros">
+        <input id="ctf-cliente" placeholder="Buscar cliente / nº" value="${f.cliente}"/>
+        <select id="ctf-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
+        <select id="ctf-uf"><option value="">Todas as regiões</option>${ufs.map(u => `<option value="${u}" ${f.uf === u ? 'selected' : ''}>${this.UF_NOMES[u] || u}</option>`).join('')}</select>
+        <select id="ctf-cons"><option value="">Todos os consultores</option>${consultores.map(c => `<option value="${c.id}" ${f.consultor === c.id ? 'selected' : ''}>${c.nome} ${c.sobrenome || ''}</option>`).join('')}</select>
+        <select id="ctf-status"><option value="todos">Todos os status</option><option value="aceito" ${f.status === 'aceito' ? 'selected' : ''}>Aceitos</option><option value="pendente" ${f.status === 'pendente' ? 'selected' : ''}>Aguardando</option></select>
+        <label class="ctf-date">De <input type="date" id="ctf-de" value="${f.de}"/></label>
+        <label class="ctf-date">Até <input type="date" id="ctf-ate" value="${f.ate}"/></label>
+        <button class="btn ghost" id="ctf-limpar">Limpar</button>
+      </div>
+      <div class="card" style="padding:0" id="ct-table"></div>`;
+    const draw = () => {
+      const ff = this._ctFiltro;
+      const q = (ff.cliente || '').toLowerCase();
+      const rows = all.filter(c => {
+        const cl = (c.dados && c.dados.cliente) || {};
+        if (q && !((cl.nome || '').toLowerCase().includes(q) || (c.numero || '').toLowerCase().includes(q))) return false;
+        if (ff.servico && !((c.dados && c.dados.servicos) || []).some(s => s.id === ff.servico)) return false;
+        if (ff.uf && cl.uf !== ff.uf) return false;
+        if (ff.consultor && c.consultorId !== ff.consultor) return false;
+        if (ff.status !== 'todos' && (ff.status === 'aceito' ? c.status !== 'aceito' : c.status === 'aceito')) return false;
+        const dia = (c.criadoEm || '').slice(0, 10);
+        if (ff.de && dia < ff.de) return false;
+        if (ff.ate && dia > ff.ate) return false;
+        return true;
+      });
+      const el = document.getElementById('ct-table');
+      if (!rows.length) { el.innerHTML = Consultor.empty('contract', 'Nada neste filtro', 'Ajuste os filtros para ver os contratos.'); return; }
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Nº</th><th>Data</th><th>Cliente</th><th>Serviços</th><th>Consultor</th><th>Região</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
+        ${rows.map(c => {
+          const cl = (c.dados && c.dados.cliente) || {};
+          const cons = OB.userById(c.consultorId);
+          const svc = ((c.dados && c.dados.servicos) || []).map(s => s.nome).join(' + ');
+          const val = (c.dados && c.dados.pagamento) ? OB.money(c.dados.pagamento.valorCliente, c.dados.pagamento.moeda) : '';
+          const st = c.status === 'aceito' ? `<span class="chip green nowrap">Aceito</span>` : `<span class="chip warn nowrap">Aguardando</span>`;
+          return `<tr><td class="strong nowrap">${c.numero || '-'}</td><td class="nowrap">${OB.dataBR(c.criadoEm)}</td>
+            <td>${cl.nome || '-'}</td><td>${svc}</td><td>${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</td>
+            <td class="nowrap">${cl.uf ? (this.UF_NOMES[cl.uf] || cl.uf) : '-'}</td><td class="strong nowrap">${val}</td><td>${st}</td>
+            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ct-ver="${c.id}" title="Visualizar">${UI.icon('eye',15)}</button><button class="iconbtn" data-ct-bx="${c.id}" title="Baixar">${UI.icon('download',15)}</button></td></tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+      el.querySelectorAll('[data-ct-ver]').forEach(b => b.onclick = () => Consultor.visualizarContrato(OB.contratoById(b.dataset.ctVer)));
+      el.querySelectorAll('[data-ct-bx]').forEach(b => b.onclick = () => Consultor.baixarContrato(OB.contratoById(b.dataset.ctBx)));
+    };
+    const capt = () => { this._ctFiltro = {
+      cliente: document.getElementById('ctf-cliente').value,
+      servico: document.getElementById('ctf-servico').value,
+      uf: document.getElementById('ctf-uf').value,
+      consultor: document.getElementById('ctf-cons').value,
+      status: document.getElementById('ctf-status').value,
+      de: document.getElementById('ctf-de').value,
+      ate: document.getElementById('ctf-ate').value
+    }; draw(); };
+    ['ctf-servico', 'ctf-uf', 'ctf-cons', 'ctf-status', 'ctf-de', 'ctf-ate'].forEach(id => { const el = document.getElementById(id); if (el) el.onchange = capt; });
+    const busca = document.getElementById('ctf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
+    document.getElementById('ctf-limpar').onclick = () => { this._ctFiltro = { cliente: '', servico: '', uf: '', consultor: '', de: '', ate: '', status: 'todos' }; this.view_contratos(); };
+    draw();
   },
 
   /* ====================== AVISOS (barra de comunicado) ====================== */

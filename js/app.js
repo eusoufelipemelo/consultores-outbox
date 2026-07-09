@@ -13,6 +13,8 @@ const App = {
     // página pública de ACEITE da proposta (cliente clica no link do orçamento)
     const qs = new URLSearchParams(location.search);
     if (qs.get('aceite')) { return this.renderAceite(qs.get('aceite'), qs.get('t')); }
+    // página pública de ACEITE do contrato (cliente lê e assina virtualmente)
+    if (qs.get('contrato')) { return this.renderAceiteContrato(qs.get('contrato'), qs.get('t')); }
 
     // link de recuperação de senha vindo do e-mail
     SB.auth.onAuthStateChange((event) => {
@@ -174,6 +176,70 @@ const App = {
     } catch (e) {
       host.innerHTML = card(alert, '#dc2626', 'Erro ao confirmar', 'Tente novamente em instantes ou avise o seu consultor. (' + ((e && e.message) || 'falha de conexão') + ')');
     }
+  },
+
+  _ctMsg(cor, titulo, msg, extra) {
+    return `<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#F15532,#e0431f)">
+      <div style="max-width:460px;width:100%;background:#fff;border-radius:20px;padding:40px 32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="width:72px;height:72px;border-radius:50%;background:${cor}1a;color:${cor};display:grid;place-items:center;margin:0 auto 20px;font-size:34px;font-weight:800">${cor === '#16a34a' ? '&#10003;' : '!'}</div>
+        <h1 style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:8px">${titulo}</h1>
+        <p style="color:#46505c;font-size:15px;line-height:1.6">${msg}</p>${extra || ''}
+        <p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais</p>
+      </div></div>`;
+  },
+  /* página pública onde o cliente lê o contrato e confirma o aceite (assinatura virtual) */
+  async renderAceiteContrato(id, token) {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    const host = document.createElement('div');
+    host.id = 'contrato-page';
+    host.style.cssText = 'position:fixed;inset:0;overflow:auto;background:#eef1f4;font-family:Inter,system-ui,sans-serif';
+    document.body.appendChild(host);
+    host.innerHTML = `<div style="text-align:center;padding:70px 20px;color:#8a96a3;font-size:15px">Carregando contrato…</div>`;
+    if (!id || !token) { host.innerHTML = this._ctMsg('#dc2626', 'Link inválido', 'Este link de contrato está incompleto. Peça ao consultor para reenviar.'); return; }
+    let info;
+    try { const { data, error } = await SB.rpc('contrato_publico', { p_id: id, p_token: token }); if (error) throw error; info = data; }
+    catch (e) { host.innerHTML = this._ctMsg('#dc2626', 'Erro ao carregar', 'Tente novamente em instantes. (' + ((e && e.message) || 'falha') + ')'); return; }
+    if (!info) { host.innerHTML = this._ctMsg('#dc2626', 'Contrato não encontrado', 'Confira o link com o seu consultor.'); return; }
+    const jaAceito = info.status === 'aceito';
+    const c = { id, numero: info.numero, dados: info.dados, status: info.status, acceptToken: '', aceiteNome: info.aceite_nome, aceiteDoc: info.aceite_doc, aceitoEm: info.aceito_em, aceiteIp: info.aceite_ip };
+    const docHtml = Consultor.buildContratoHTML(c);
+    const cli = (info.dados && info.dados.cliente) || {};
+    host.innerHTML = `
+      <div style="max-width:900px;margin:0 auto;padding:16px 12px 150px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 4px;color:#0A0A0A">
+          <b style="font-size:17px">Contrato ${info.numero || ''}</b>
+          <span style="margin-left:auto;font-size:12px;color:#8a96a3">${jaAceito ? 'Aceito' : 'Leia o contrato e confirme o aceite abaixo'}</span>
+        </div>
+        <iframe id="ct-frame" style="width:100%;height:72vh;border:1px solid #e6eaef;border-radius:14px;background:#fff"></iframe>
+      </div>
+      <div id="ct-bar" style="position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e6eaef;box-shadow:0 -6px 24px rgba(0,0,0,.08);padding:14px 16px"></div>`;
+    document.getElementById('ct-frame').srcdoc = docHtml;
+    const bar = document.getElementById('ct-bar');
+    if (jaAceito) {
+      bar.innerHTML = `<div style="max-width:900px;margin:0 auto;text-align:center;color:#15803d;font-weight:700;font-size:14px">&#10003; Contrato aceito em ${info.aceito_em ? new Date(info.aceito_em).toLocaleString('pt-BR') : ''}</div>`;
+      return;
+    }
+    bar.innerHTML = `<div style="max-width:900px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input id="ct-nome" placeholder="Seu nome completo" value="${cli.nome || ''}" style="flex:1;min-width:180px;padding:12px 14px;border:1px solid #e6eaef;border-radius:10px;font-size:14px">
+      <input id="ct-doc" placeholder="CPF ou CNPJ" value="${cli.doc || ''}" style="flex:1;min-width:140px;padding:12px 14px;border:1px solid #e6eaef;border-radius:10px;font-size:14px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c4652;flex:1 1 100%"><input type="checkbox" id="ct-agree" style="width:17px;height:17px;accent-color:#F15532"> Li e concordo com todos os termos deste contrato.</label>
+      <button id="ct-accept" style="width:100%;padding:15px;background:#F15532;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer">Aceitar contrato</button>
+    </div>`;
+    document.getElementById('ct-accept').onclick = async () => {
+      const nome = (document.getElementById('ct-nome').value || '').trim();
+      const doc = (document.getElementById('ct-doc').value || '').trim();
+      if (!document.getElementById('ct-agree').checked) return alert('Marque que você leu e concorda com o contrato.');
+      if (!nome) return alert('Informe o seu nome completo.');
+      const btn = document.getElementById('ct-accept'); btn.disabled = true; btn.textContent = 'Registrando…';
+      let ip = ''; try { ip = await fetch('https://api.ipify.org').then(r => r.text()); } catch (e) {}
+      try {
+        const { data, error } = await SB.rpc('aceitar_contrato', { p_id: id, p_token: token, p_nome: nome, p_doc: doc, p_ip: ip });
+        if (error) throw error;
+        if (data && data.ok) { document.getElementById('contrato-page').innerHTML = this._ctMsg('#16a34a', data.ja ? 'Contrato já aceito' : 'Contrato aceito! 🎉', 'Seu aceite foi registrado com validade jurídica (MP 2.200-2/2001 e Lei 14.063/2020). O consultor foi notificado e dará seguimento ao seu projeto.'); }
+        else { btn.disabled = false; btn.textContent = 'Aceitar contrato'; alert('Não foi possível confirmar: ' + ((data && data.erro) || 'erro')); }
+      } catch (e) { btn.disabled = false; btn.textContent = 'Aceitar contrato'; alert('Erro ao registrar: ' + ((e && e.message) || 'falha')); }
+    };
   },
 
   /* ---------- tema ---------- */

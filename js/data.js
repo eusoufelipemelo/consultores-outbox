@@ -18,17 +18,17 @@ const OB = {
 
   /* ---------- catálogo de produtos + tabela de preços fixos por porte (R$) ---------- */
   PRODUTOS: [
-    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4500,  grande: 6500,  industria: 9000 },
+    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4200,  grande: 6400,  industria: 9000 },
       incluso: 'Criação de logotipo profissional com variações, paleta de cores, tipografia da marca, manual básico de aplicação e entrega dos arquivos em alta resolução para uso digital e impresso.' },
-    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1500,  media: 2500,  grande: 3500,  industria: 4500 },
+    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1900,  media: 2900,  grande: 4200,  industria: 5500 },
       incluso: 'Página única focada em conversão: texto persuasivo, chamada para ação, botão de WhatsApp, formulário de contato, otimização para celular e publicação no ar.' },
-    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2500,  media: 3800,  grande: 4900,  industria: 6000 },
+    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2900,  media: 4500,  grande: 6200,  industria: 8000 },
       incluso: 'Site completo em página única: apresentação da empresa, serviços, diferenciais, depoimentos, mapa de localização, botão de WhatsApp, otimização para celular e para o Google.' },
-    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5000,  media: 8500,  grande: 11500, industria: 15000 },
+    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5500,  media: 8900,  grande: 12500, industria: 16500 },
       incluso: 'Site com múltiplas páginas (início, sobre, serviços, contato), formulário de contato, botão de WhatsApp, otimização para celular e SEO básico para ser encontrado no Google.' },
-    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9000,  media: 16000, grande: 23000, industria: 30000 },
+    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9500,  media: 16900, grande: 24500, industria: 33000 },
       incluso: 'Loja virtual completa: cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gerenciar pedidos.' },
-    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 18000, media: 45000, grande: 80000, industria: 120000 },
+    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 19000, media: 45000, grande: 82000, industria: 130000 },
       incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' }
   ],
   /* preço de tabela conforme produto + porte do cliente */
@@ -36,6 +36,37 @@ const OB = {
     const p = this.PRODUTOS.find(x => x.id === produtoId);
     if (!p || !p.precos) return 0;
     return p.precos[porteId] || p.precos.pequena || 0;
+  },
+  /* ---------- tabela FIXA de descontos comerciais (o consultor escolhe, o sistema limita) ---------- */
+  DESC_LIMIAR: 15000, // a partir deste valor de orçamento libera a faixa maior de desconto
+  DESC_ATE:   [0, 2, 3, 5],   // orçamentos até R$ 14.999
+  DESC_ACIMA: [0, 5, 8, 10],  // orçamentos a partir de R$ 15.000
+  /* opções de desconto permitidas conforme o valor de tabela do orçamento */
+  descontosPermitidos(valorBase) {
+    return (Number(valorBase) || 0) >= this.DESC_LIMIAR ? this.DESC_ACIMA : this.DESC_ATE;
+  },
+  PIX_DESCONTO: 5, // % de desconto adicional no PIX à vista (se o consultor conceder)
+  /* ---------- juros do cartão por nº de parcelas (repasse/grossup) ---------- */
+  JUROS_CARTAO: { 1: 5.99, 2: 11.39, 3: 12.49, 4: 13.09, 5: 13.79, 6: 14.49, 7: 15.49, 8: 16.09, 9: 16.69, 10: 17.39, 11: 18.39, 12: 18.79 },
+  jurosCartao(parcelas) { return this.JUROS_CARTAO[parcelas] || this.JUROS_CARTAO[1]; },
+  /* cálculo do pagamento a partir do valor NEGOCIADO (já com o desconto comercial aplicado).
+     retorna { forma, valorServico (base de comissão/receita), valorCliente (total que o cliente paga), parcelas, valorParcela, jurosPct, pixDesconto } */
+  calcPagamento(valorNegociado, forma, opts) {
+    opts = opts || {};
+    const base = Math.max(0, Number(valorNegociado) || 0);
+    if (forma === 'pix') {
+      const pixOn = !!opts.pixDesconto;
+      const servico = pixOn ? Math.round(base * (1 - this.PIX_DESCONTO / 100)) : base;
+      return { forma, valorServico: servico, valorCliente: servico, parcelas: 1, valorParcela: servico, jurosPct: 0, pixDesconto: pixOn };
+    }
+    if (forma === 'cartao') {
+      const n = Math.min(12, Math.max(1, parseInt(opts.parcelas, 10) || 1));
+      const j = this.jurosCartao(n);
+      const total = Math.round(base / (1 - j / 100));
+      return { forma, valorServico: base, valorCliente: total, parcelas: n, valorParcela: Math.round((total / n) * 100) / 100, jurosPct: j, pixDesconto: false };
+    }
+    // boleto à vista (preço cheio, sem o desconto do PIX)
+    return { forma: 'boleto', valorServico: base, valorCliente: base, parcelas: 1, valorParcela: base, jurosPct: 0, pixDesconto: false };
   },
   /* valor mínimo para solicitar o saque da comissão (regra fixa) */
   SAQUE_MINIMO: 500,
@@ -140,9 +171,9 @@ const OB = {
 
   /* ---------- formas de pagamento ---------- */
   FORMAS_PAGAMENTO: [
-    { id: 'pix',     nome: 'PIX à vista', detalhe: 'Pagamento integral em até 3 dias úteis · sem desconto' },
-    { id: 'boleto',  nome: 'Boleto à vista', detalhe: 'Pagamento integral em até 3 dias úteis · sem desconto' },
-    { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · com juros da operadora' }
+    { id: 'pix',     nome: 'PIX à vista', detalhe: 'Pagamento integral · pode conceder 5% de desconto à vista' },
+    { id: 'boleto',  nome: 'Boleto à vista', detalhe: 'Pagamento integral · preço cheio, sem o desconto do PIX' },
+    { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · juros do parcelamento repassados ao cliente' }
   ],
 
   /* ---------- atendente virtual "Manu" (chat consultor ↔ admin) ---------- */
@@ -232,7 +263,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -249,8 +280,8 @@ const OB = {
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
 
-  _sIn(r)  { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods) || !prods.length) prods = r.produto ? [r.produto] : []; return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, produtos: prods, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente' }; },
-  _sOut(s) { const prods = (Array.isArray(s.produtos) && s.produtos.length) ? s.produtos : (s.produto ? [s.produto] : []); return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto || prods[0] || null, produtos: JSON.stringify(prods), valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente' }; },
+  _sIn(r)  { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods) || !prods.length) prods = r.produto ? [r.produto] : []; return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, produtos: prods, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', parcelas: Number(r.parcelas || 1), pixDesconto: !!r.pix_desconto, valorCliente: r.valor_cliente != null ? Number(r.valor_cliente) : Number(r.valor), acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente' }; },
+  _sOut(s) { const prods = (Array.isArray(s.produtos) && s.produtos.length) ? s.produtos : (s.produto ? [s.produto] : []); return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto || prods[0] || null, produtos: JSON.stringify(prods), valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', parcelas: s.parcelas || 1, pix_desconto: !!s.pixDesconto, valor_cliente: s.valorCliente != null ? s.valorCliente : s.valor, accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente' }; },
 
   _avIn(r)  { return r && { id: r.id, texto: r.texto || '', tipo: r.tipo || 'info', ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null }; },
   _avOut(a) { return { id: this.AVISO_ID, texto: a.texto || '', tipo: a.tipo || 'info', ativo: !!a.ativo, inicio: a.inicio || null, fim: a.fim || null, atualizado_em: new Date().toISOString() }; },
@@ -300,7 +331,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -313,7 +344,8 @@ const OB = {
       SB.from('projetos').select('*'),
       SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle(),
       SB.rpc('ranking_geral'),
-      SB.from('chat_mensagens').select('*').order('criado_em')
+      SB.from('chat_mensagens').select('*').order('criado_em'),
+      SB.from('contratos').select('*').order('criado_em', { ascending: false })
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -342,9 +374,10 @@ const OB = {
     this.db.treinosAll.filter(r => r.consultorId === user.id).forEach(r => { this.db.treinos[r.treinoId] = { melhorNota: r.melhorNota, tentativas: r.tentativas, concluido: r.concluido }; });
     this.db.ranking = (rk && rk.data) ? rk.data : [];
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
+    this.db.contratos = (ctr && ctr.data) ? ctr.data.map(r => this._ctIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -547,6 +580,35 @@ const OB = {
   },
   /* briefings recebidos que ainda não entraram em produção (alerta do admin) */
   briefingsPendentesAdmin() { return (this.db.projetos || []).filter(p => p.status === 'briefing_recebido'); },
+
+  /* ---------- CONTRATOS por serviço (aceite virtual) ---------- */
+  CONTRATO_FORO: 'Comarca de Santa Cruz do Rio Pardo, Estado de São Paulo',
+  /* cláusula do objeto + prazo por tipo de serviço (contrato-base) */
+  CONTRATO_MODELOS: {
+    identidade:   { objeto: 'criação de identidade visual, compreendendo logotipo com variações, paleta de cores, tipografia da marca, manual básico de aplicação e entrega dos arquivos em alta resolução para uso digital e impresso', prazo: '10 a 20 dias úteis', revisoes: '2 (duas) rodadas de revisão do conceito aprovado' },
+    lp:           { objeto: 'desenvolvimento de uma landing page (página única focada em conversão), contemplando texto persuasivo, chamada para ação, botão de WhatsApp, formulário de contato, otimização para dispositivos móveis e publicação no ar', prazo: '7 a 15 dias úteis', revisoes: '2 (duas) rodadas de revisão' },
+    onepage:      { objeto: 'desenvolvimento de site em página única (one page), contemplando apresentação da empresa, serviços, diferenciais, depoimentos, mapa de localização, botão de WhatsApp e otimização para dispositivos móveis e para mecanismos de busca', prazo: '10 a 20 dias úteis', revisoes: '2 (duas) rodadas de revisão' },
+    institucional:{ objeto: 'desenvolvimento de site institucional com múltiplas páginas (início, sobre, serviços e contato), formulário de contato, botão de WhatsApp, otimização para dispositivos móveis e SEO básico', prazo: '20 a 35 dias úteis', revisoes: '3 (três) rodadas de revisão' },
+    ecommerce:    { objeto: 'desenvolvimento de loja virtual (e-commerce) com cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gestão de pedidos', prazo: '30 a 45 dias úteis', revisoes: '3 (três) rodadas de revisão' },
+    sistemas:     { objeto: 'desenvolvimento de sistema sob medida, contemplando levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação', prazo: 'conforme cronograma aprovado no levantamento de requisitos', revisoes: 'as previstas no escopo aprovado' }
+  },
+  contratoModelo(produtoId) { return this.CONTRATO_MODELOS[produtoId] || this.CONTRATO_MODELOS.institucional; },
+  _ctIn(r) { let dados = {}; try { dados = r.dados ? (typeof r.dados === 'string' ? JSON.parse(r.dados) : r.dados) : {}; } catch (e) { dados = {}; }
+    return { id: r.id, numero: r.numero || '', saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, dados, status: r.status || 'pendente', acceptToken: r.accept_token || '', aceiteNome: r.aceite_nome || '', aceiteDoc: r.aceite_doc || '', aceiteIp: r.aceite_ip || '', aceitoEm: r.aceito_em || null, criadoEm: r.criado_em }; },
+  _ctOut(c) { return { id: c.id, numero: c.numero || null, sale_id: c.saleId || null, consultor_id: c.consultorId, client_id: c.clientId || null, dados: JSON.stringify(c.dados || {}), status: c.status || 'pendente', accept_token: c.acceptToken || null, aceite_nome: c.aceiteNome || null, aceite_doc: c.aceiteDoc || null, aceite_ip: c.aceiteIp || null, aceito_em: c.aceitoEm || null, criado_em: c.criadoEm }; },
+  contratos() { return this.db.contratos || []; },
+  contratosDe(consultorId) { return (this.db.contratos || []).filter(c => c.consultorId === consultorId); },
+  contratoDaVenda(saleId) { return (this.db.contratos || []).find(c => c.saleId === saleId) || null; },
+  contratoById(id) { return (this.db.contratos || []).find(c => c.id === id) || null; },
+  addContrato(c) { this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
+  updateContrato(c) { const i = this.db.contratos.findIndex(x => x.id === c.id); if (i >= 0) this.db.contratos[i] = c; else this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
+  /* número sequencial do contrato: OB-AAAA-NNNN */
+  gerarNumeroContrato() {
+    const ano = new Date().getFullYear();
+    const doAno = (this.db.contratos || []).filter(c => (c.numero || '').includes('-' + ano + '-'));
+    const seq = String(doAno.length + 1).padStart(4, '0');
+    return `OB-${ano}-${seq}`;
+  },
 
   /* ---------- aviso/comunicado ---------- */
   getAviso() { return this.db.aviso || { id: this.AVISO_ID, texto: '', tipo: 'info', ativo: false, inicio: null, fim: null }; },

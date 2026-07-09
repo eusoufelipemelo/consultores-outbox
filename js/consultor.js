@@ -7,6 +7,7 @@ const Consultor = {
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
@@ -364,47 +365,78 @@ const Consultor = {
     this.render('comissao');
   },
 
-  /* editar valor + aplicar desconto (R$ ou %) */
+  /* editar apenas desconto + forma de pagamento (o valor de tabela é fixo) */
   editarVenda(s) {
     if (!s) return;
-    const u = this.u();
+    const moeda = s.moeda || 'BRL';
+    const valorBase = s.valorBruto || s.valor; // valor de tabela travado
+    const fmtJuros = j => (Number(j) || 0).toFixed(2).replace('.', ',') + '%';
     UI.modal({
       title: 'Editar venda',
-      sub: 'Ajuste o valor e aplique desconto se quiser',
+      sub: 'O valor dos serviços é fixo pela tabela. Ajuste desconto e pagamento.',
       body: `
-        <div class="grid-2">
-          <div class="field"><label>Valor bruto <span class="req">*</span></label><input id="ed-bruto" type="text" inputmode="decimal"/></div>
-          <div class="field"><label>Moeda</label><select id="ed-moeda">${this.moedaOptions(s.moeda||'BRL')}</select></div>
-        </div>
-        <div class="field"><label>Desconto</label>
-          <select id="ed-desc">
-            ${[0, 3, 5, 8, 10].map(p => `<option value="${p}" ${(s.descontoTipo === 'percent' && s.descontoValor === p) || (!s.descontoTipo && p === 0) ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('')}
-          </select>
-          <div class="hint">Descontos pré-aprovados pela OutBox, aplicados sobre o valor do projeto.</div></div>
-        <div class="notice"><div class="row between alc grow"><span>Valor final</span><b id="ed-final" style="font-size:18px;color:var(--brand)">${OB.money(s.valor, s.moeda)}</b></div></div>
+        <div class="notice" style="margin-bottom:14px"><div class="row between alc grow"><span>Valor de tabela ${UI.icon('lock',13)}</span><b style="font-size:16px">${OB.money(valorBase, moeda)}</b></div></div>
+        <div class="field"><label>Desconto comercial</label>
+          <select id="ed-desc"></select>
+          <div class="hint" id="ed-desc-hint"></div></div>
+        <div class="field"><label>Forma de pagamento</label>
+          <select id="ed-pgto">${OB.FORMAS_PAGAMENTO.map(f => `<option value="${f.id}" ${s.formaPagamento === f.id ? 'selected' : ''}>${f.nome}</option>`).join('')}</select>
+          <div class="hint" id="ed-pgto-hint">${(OB.FORMAS_PAGAMENTO.find(f => f.id === (s.formaPagamento || 'pix')) || {}).detalhe || ''}</div></div>
+        <label class="pix-check" id="ed-pix-wrap"><input type="checkbox" id="ed-pixdesc" ${s.pixDesconto ? 'checked' : ''}/> <span>Conceder <b>5% de desconto</b> no PIX à vista</span></label>
+        <div class="field" id="ed-parc-wrap" hidden><label>Parcelas no cartão</label>
+          <select id="ed-parcelas">${Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<option value="${n}" ${s.parcelas === n ? 'selected' : ''}>${n}x</option>`).join('')}</select></div>
+        <div class="pay-summary" id="ed-paybox"></div>
         <div class="field" style="margin-top:14px"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <input id="ed-link" type="url" value="${s.linkPagamento || ''}" placeholder="https://... cole o link da cobrança"/>
           <div class="hint">Gera o botão verde "Ir para o pagamento" no orçamento deste cliente.</div></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ed-save">Salvar</button>`
     });
-    const edMoeda = document.getElementById('ed-moeda');
-    UI.money.set(document.getElementById('ed-bruto'), s.valorBruto || s.valor, s.moeda);
-    UI.money.bind(document.getElementById('ed-bruto'), () => edMoeda.value);
-    const calc = () => {
-      const moeda = edMoeda.value;
-      const bruto = UI.money.parse(document.getElementById('ed-bruto').value);
-      const d = parseInt(document.getElementById('ed-desc').value, 10) || 0;
-      const final = Math.round(Math.max(0, bruto * (1 - d / 100)));
-      document.getElementById('ed-final').textContent = OB.money(final, moeda);
-      return { bruto, d, final, moeda };
+    const edDesc = document.getElementById('ed-desc');
+    const edPgto = document.getElementById('ed-pgto');
+    const edPixWrap = document.getElementById('ed-pix-wrap');
+    const edPixDesc = document.getElementById('ed-pixdesc');
+    const edParcWrap = document.getElementById('ed-parc-wrap');
+    const edParcelas = document.getElementById('ed-parcelas');
+    const payBox = document.getElementById('ed-paybox');
+    const perms = OB.descontosPermitidos(valorBase);
+    const descAtual = (s.descontoTipo === 'percent' ? s.descontoValor : 0) || 0;
+    edDesc.innerHTML = perms.map(p => `<option value="${p}" ${p === descAtual ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('');
+    document.getElementById('ed-desc-hint').innerHTML = `Desconto de até <b>${perms[perms.length - 1]}%</b> para este valor de orçamento.`;
+    const recalcular = () => {
+      const desc = parseInt(edDesc.value, 10) || 0;
+      const negociado = Math.round(valorBase * (1 - desc / 100));
+      const forma = edPgto.value;
+      edParcWrap.hidden = forma !== 'cartao';
+      edPixWrap.style.display = forma === 'pix' ? '' : 'none';
+      if (forma !== 'pix') edPixDesc.checked = false;
+      const calc = OB.calcPagamento(negociado, forma, { pixDesconto: edPixDesc.checked, parcelas: parseInt(edParcelas.value, 10) || 1 });
+      let linhas = `<div class="row"><span>Valor de tabela</span><b>${OB.money(valorBase, moeda)}</b></div>`;
+      if (desc) linhas += `<div class="row"><span>Desconto comercial (${desc}%)</span><span class="neg">- ${OB.money(valorBase - negociado, moeda)}</span></div>`;
+      if (forma === 'pix' && calc.pixDesconto) linhas += `<div class="row"><span>Desconto PIX à vista (5%)</span><span class="neg">- ${OB.money(negociado - calc.valorServico, moeda)}</span></div>`;
+      if (forma === 'cartao') {
+        linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - negociado, moeda)}</span></div>`;
+        linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+        linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, moeda)}</b></div>`;
+      } else {
+        linhas += `<div class="row total"><span>${forma === 'pix' ? 'À vista no PIX' : 'À vista no boleto'}</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+      }
+      linhas += `<div class="pay-note">Comissão sobre ${OB.money(calc.valorServico, moeda)} (valor do serviço).</div>`;
+      payBox.innerHTML = linhas;
+      payBox._calc = calc; payBox._desc = desc;
     };
-    document.getElementById('ed-bruto').addEventListener('input', calc);
-    document.getElementById('ed-desc').onchange = calc;
-    edMoeda.onchange = () => { const eb = document.getElementById('ed-bruto'); UI.money.set(eb, UI.money.parse(eb.value), edMoeda.value); calc(); };
+    edDesc.onchange = recalcular;
+    edPgto.onchange = () => { document.getElementById('ed-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === edPgto.value) || {}).detalhe || ''; recalcular(); };
+    edParcelas.onchange = recalcular;
+    edPixDesc.onchange = recalcular;
+    recalcular();
     document.getElementById('ed-save').onclick = () => {
-      const c = calc();
-      if (!c.bruto || c.bruto <= 0) return UI.toast('Informe o valor', '', 'err');
-      Object.assign(s, { valorBruto: c.bruto, descontoTipo: c.d ? 'percent' : null, descontoValor: c.d, valor: c.final, moeda: c.moeda, linkPagamento: (document.getElementById('ed-link').value || '').trim() });
+      const calc = payBox._calc; const desc = payBox._desc || 0;
+      Object.assign(s, {
+        valorBruto: valorBase, descontoTipo: desc ? 'percent' : null, descontoValor: desc,
+        valor: calc.valorServico, valorCliente: calc.valorCliente,
+        formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
+        linkPagamento: (document.getElementById('ed-link').value || '').trim()
+      });
       OB.updateSale(s);
       UI.closeModal(); UI.toast('Venda atualizada', '', 'ok');
       App.refreshCommission(true);
@@ -477,28 +509,18 @@ const Consultor = {
           <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
           <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
         <div id="s-treino-aviso"></div>
-        <div class="field"><label>Preço</label>
-          <select id="s-precomodo">
-            <option value="tabela">Tabela (pelo porte)</option>
-            <option value="personalizado">Personalizado (projeto mais complexo / maior valor)</option>
-          </select></div>
-        <div class="grid-2">
-          <div class="field"><label>Valor <span class="req">*</span></label>
-            <input id="s-val" type="text" inputmode="decimal" placeholder="0,00"/>
-            <div class="hint" id="s-hint"></div></div>
-          <div class="field"><label>Moeda</label>
-            <select id="s-moeda">${this.moedaOptions(OB.moedaAtual())}</select></div>
-        </div>
-        <div class="field"><label>Desconto</label>
-          <select id="s-desc">
-            <option value="0">Sem desconto</option>
-            <option value="3">3%</option><option value="5">5%</option>
-            <option value="8">8%</option><option value="10">10%</option>
-          </select>
-          <div class="hint">Descontos pré-aprovados pela OutBox. Aplicado sobre o valor do projeto.</div></div>
+        <div class="field"><label>Moeda</label>
+          <select id="s-moeda">${this.moedaOptions(OB.moedaAtual())}</select></div>
+        <div class="field"><label>Desconto comercial</label>
+          <select id="s-desc"></select>
+          <div class="hint" id="s-desc-hint">O valor dos serviços é fixo pela tabela da OutBox. Você escolhe apenas o desconto permitido.</div></div>
         <div class="field"><label>Forma de pagamento</label>
           <select id="s-pgto">${OB.FORMAS_PAGAMENTO.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select>
           <div class="hint" id="s-pgto-hint">${OB.FORMAS_PAGAMENTO[0].detalhe}</div></div>
+        <label class="pix-check" id="s-pix-wrap"><input type="checkbox" id="s-pixdesc"/> <span>Conceder <b>5% de desconto</b> no PIX à vista</span></label>
+        <div class="field" id="s-parc-wrap" hidden><label>Parcelas no cartão</label>
+          <select id="s-parcelas">${Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<option value="${n}">${n}x</option>`).join('')}</select></div>
+        <div class="pay-summary" id="s-paybox"></div>
         <div class="field"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <input id="s-link" type="url" placeholder="https://... cole o link da cobrança"/>
           <div class="hint">Vira o botão verde "Ir para o pagamento" no orçamento. Pode colar depois, editando a proposta.</div></div>
@@ -512,31 +534,62 @@ const Consultor = {
     });
     const sMoeda = document.getElementById('s-moeda');
     const sCli = document.getElementById('s-cli');
-    const sVal = document.getElementById('s-val');
-    const sModo = document.getElementById('s-precomodo');
     const sPorte = document.getElementById('s-porte');
+    const sDesc = document.getElementById('s-desc');
+    const sPgto = document.getElementById('s-pgto');
+    const sPixWrap = document.getElementById('s-pix-wrap');
+    const sPixDesc = document.getElementById('s-pixdesc');
+    const sParcWrap = document.getElementById('s-parc-wrap');
+    const sParcelas = document.getElementById('s-parcelas');
+    const payBox = document.getElementById('s-paybox');
     // serviços selecionados (múltipla escolha)
     const prodsSel = () => [...document.querySelectorAll('#s-prods input:checked')].map(i => i.value);
-    UI.money.bind(sVal, () => sMoeda.value);
     // sincroniza o porte com o cliente selecionado
     const sincPorteComCliente = () => {
       const cliente = OB.clientById(sCli.value);
       sPorte.value = cliente ? (cliente.porte || 'pequena') : 'pequena';
     };
     sincPorteComCliente();
-    // preço automático pela tabela (soma dos serviços marcados) OU personalizado (digita livre)
-    const aplicarPreco = () => {
-      const modo = sModo.value;
+    const fmtJuros = j => (Number(j) || 0).toFixed(2).replace('.', ',') + '%';
+    // preenche as opções de desconto conforme a faixa do valor de tabela
+    const fillDescontos = (valorBase) => {
+      const perms = OB.descontosPermitidos(valorBase);
+      const cur = parseInt(sDesc.value, 10) || 0;
+      sDesc.innerHTML = perms.map(p => `<option value="${p}">${p ? p + '%' : 'Sem desconto'}</option>`).join('');
+      sDesc.value = perms.includes(cur) ? String(cur) : '0';
+      const teto = perms[perms.length - 1];
+      document.getElementById('s-desc-hint').innerHTML = `Valor fixo pela tabela da OutBox. ${valorBase >= OB.DESC_LIMIAR ? `Orçamento a partir de ${OB.money(OB.DESC_LIMIAR, sMoeda.value)}: desconto de até <b>${teto}%</b>.` : `Orçamento até ${OB.money(OB.DESC_LIMIAR - 1, sMoeda.value)}: desconto de até <b>${teto}%</b>.`}`;
+    };
+    // recalcula tudo: valor de tabela -> desconto comercial -> forma de pagamento
+    const recalcular = () => {
       const porte = sPorte.value;
-      const porteNome = (OB.PORTES.find(p => p.id === porte) || {}).nome || '';
+      const m = sMoeda.value;
       const sel = prodsSel();
-      const soma = sel.reduce((t, id) => t + (OB.precoTabela(id, porte) || 0), 0);
-      if (modo === 'tabela') {
-        UI.money.set(sVal, soma, sMoeda.value);
-        document.getElementById('s-hint').textContent = soma ? `Tabela · ${porteNome} · ${sel.length} serviço(s): ${OB.money(soma, sMoeda.value)} (ajuste se precisar)` : 'Marque os serviços para calcular.';
-      } else {
-        document.getElementById('s-hint').textContent = soma ? `Referência da tabela (${porteNome}, ${sel.length} serviço(s)): ${OB.money(soma, sMoeda.value)}. Digite o valor do projeto.` : 'Digite o valor do projeto.';
+      const valorBase = sel.reduce((t, id) => t + (OB.precoTabela(id, porte) || 0), 0);
+      fillDescontos(valorBase);
+      const desc = parseInt(sDesc.value, 10) || 0;
+      const negociado = Math.round(valorBase * (1 - desc / 100));
+      const forma = sPgto.value;
+      sParcWrap.hidden = forma !== 'cartao';
+      sPixWrap.style.display = forma === 'pix' ? '' : 'none';
+      if (forma !== 'pix') sPixDesc.checked = false;
+      const calc = OB.calcPagamento(negociado, forma, { pixDesconto: sPixDesc.checked, parcelas: parseInt(sParcelas.value, 10) || 1 });
+      if (!valorBase) { payBox.innerHTML = `<div class="pay-empty">Marque os serviços para calcular o valor.</div>`; }
+      else {
+        let linhas = `<div class="row"><span>Valor de tabela${sel.length > 1 ? ` · ${sel.length} serviços` : ''}</span><b>${OB.money(valorBase, m)}</b></div>`;
+        if (desc) linhas += `<div class="row"><span>Desconto comercial (${desc}%)</span><span class="neg">- ${OB.money(valorBase - negociado, m)}</span></div>`;
+        if (forma === 'pix' && calc.pixDesconto) linhas += `<div class="row"><span>Desconto PIX à vista (5%)</span><span class="neg">- ${OB.money(negociado - calc.valorServico, m)}</span></div>`;
+        if (forma === 'cartao') {
+          linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - negociado, m)}</span></div>`;
+          linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+          linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, m)}</b></div>`;
+        } else {
+          linhas += `<div class="row total"><span>${forma === 'pix' ? 'À vista no PIX' : 'À vista no boleto'}</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+        }
+        linhas += `<div class="pay-note">Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)} (valor do serviço, sem juros).</div>`;
+        payBox.innerHTML = linhas;
       }
+      payBox._valorBase = valorBase; payBox._negociado = negociado; payBox._calc = calc;
     };
     // lembrete de treinamento: primeiro serviço marcado cujo treino ainda não foi concluído
     const updateTreinoAviso = () => {
@@ -548,33 +601,31 @@ const Consultor = {
         if (b) b.onclick = () => { UI.closeModal(); App.go('treinamentos'); setTimeout(() => this.treinoIntro(pend.id), 60); };
       } else { box.innerHTML = ''; }
     };
-    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { aplicarPreco(); updateTreinoAviso(); });
-    sCli.onchange = () => { sincPorteComCliente(); aplicarPreco(); };
-    sPorte.onchange = aplicarPreco;
+    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { recalcular(); updateTreinoAviso(); });
+    sCli.onchange = () => { sincPorteComCliente(); recalcular(); };
+    sPorte.onchange = recalcular;
+    sDesc.onchange = recalcular;
+    sPgto.onchange = () => { document.getElementById('s-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === sPgto.value) || {}).detalhe || ''; recalcular(); };
+    sParcelas.onchange = recalcular;
+    sPixDesc.onchange = recalcular;
+    sMoeda.onchange = recalcular;
     updateTreinoAviso();
-    sModo.onchange = () => {
-      // ao mudar para personalizado, mantém o valor atual; ao voltar p/ tabela, reaplica
-      if (sModo.value === 'personalizado') { sVal.focus(); sVal.select && sVal.select(); }
-      aplicarPreco();
-    };
-    aplicarPreco();
-    sMoeda.onchange = () => { UI.money.set(sVal, UI.money.parse(sVal.value), sMoeda.value); };
-    const sPgto = document.getElementById('s-pgto');
-    sPgto.onchange = () => { document.getElementById('s-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === sPgto.value) || {}).detalhe || ''; };
+    recalcular();
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
       const produtos = prodsSel();
       if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço', 'err'); }
-      const bruto = UI.money.parse(document.getElementById('s-val').value);
-      if (!bruto || bruto <= 0) return UI.toast('Informe o valor', 'O valor é obrigatório', 'err');
-      const d = parseInt(document.getElementById('s-desc').value, 10) || 0;
-      const valor = Math.round(Math.max(0, bruto * (1 - d / 100)));
+      const valorBase = payBox._valorBase || 0;
+      if (!valorBase) return UI.toast('Selecione os serviços', 'O valor de tabela ficou zerado', 'err');
+      const desc = parseInt(sDesc.value, 10) || 0;
+      const calc = payBox._calc;
       OB.addSale({
-        id: OB.uid(), consultorId: u.id, clientId: document.getElementById('s-cli').value,
-        produto: produtos[0], produtos, valor, valorBruto: bruto, moeda,
-        descontoTipo: d ? 'percent' : null, descontoValor: d,
-        precoModo: sModo.value, // 'tabela' ou 'personalizado'
-        formaPagamento: sPgto.value,
+        id: OB.uid(), consultorId: u.id, clientId: sCli.value,
+        produto: produtos[0], produtos,
+        valor: calc.valorServico, valorBruto: valorBase, valorCliente: calc.valorCliente, moeda,
+        descontoTipo: desc ? 'percent' : null, descontoValor: desc,
+        precoModo: 'tabela',
+        formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
         linkPagamento: (document.getElementById('s-link').value || '').trim(),
         acceptToken: OB.uid().replace(/-/g, ''), // token p/ o link de aceite do cliente
         data: new Date().toISOString(), statusComissao: 'disponivel',
@@ -680,12 +731,29 @@ const Consultor = {
     </div>
     <table class="tbl"><thead><tr><th>Serviço${prodIds.length > 1 ? 's' : ''}</th><th style="text-align:right">Valor</th></tr></thead>
       <tbody>${linhasSvc}</tbody></table>
-    <div class="tot"><div class="box">
-      <div class="row"><span>Subtotal</span><span>${OB.money(s.valorBruto || s.valor, s.moeda)}</span></div>
-      ${temDesc ? `<div class="row"><span>Desconto ${s.descontoTipo === 'percent' ? '(' + s.descontoValor + '%)' : ''}</span><span>- ${OB.money((s.valorBruto || s.valor) - s.valor, s.moeda)}</span></div>` : ''}
-      <div class="row grand"><span>Total</span><b>${OB.money(s.valor, s.moeda)}</b></div>
-    </div></div>
-    ${(() => { const fp = OB.FORMAS_PAGAMENTO.find(f => f.id === (s.formaPagamento || 'pix')) || OB.FORMAS_PAGAMENTO[0]; return `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink)">Forma de pagamento:</b> ${fp.nome}<br><span style="font-size:12px">${fp.detalhe}</span></div>`; })()}
+    ${(() => {
+      const m = s.moeda;
+      const base = s.valorBruto || s.valor;
+      const desc = s.descontoTipo === 'percent' ? (s.descontoValor || 0) : 0;
+      const negociado = Math.round(base * (1 - desc / 100));
+      const forma = s.formaPagamento || 'pix';
+      const cliente = s.valorCliente != null ? s.valorCliente : s.valor;
+      const parcelas = s.parcelas || 1;
+      let rows = `<div class="row"><span>Valor de tabela</span><span>${OB.money(base, m)}</span></div>`;
+      if (desc) rows += `<div class="row"><span>Desconto comercial (${desc}%)</span><span>- ${OB.money(base - negociado, m)}</span></div>`;
+      if (forma === 'pix' && s.pixDesconto) rows += `<div class="row"><span>Desconto PIX à vista (5%)</span><span>- ${OB.money(negociado - s.valor, m)}</span></div>`;
+      if (forma === 'cartao') rows += `<div class="row"><span>Juros do cartão (${parcelas}x)</span><span>+ ${OB.money(cliente - negociado, m)}</span></div>`;
+      rows += `<div class="row grand"><span>Total ${forma === 'cartao' ? 'no cartão' : 'à vista'}</span><b>${OB.money(cliente, m)}</b></div>`;
+      if (forma === 'cartao') rows += `<div class="row"><span>Parcelamento</span><b>${parcelas}x de ${OB.money(Math.round((cliente / parcelas) * 100) / 100, m)}</b></div>`;
+      return `<div class="tot"><div class="box">${rows}</div></div>`;
+    })()}
+    ${(() => {
+      const fp = OB.FORMAS_PAGAMENTO.find(f => f.id === (s.formaPagamento || 'pix')) || OB.FORMAS_PAGAMENTO[0];
+      let extra = fp.detalhe;
+      if ((s.formaPagamento || 'pix') === 'cartao') extra = `Em ${s.parcelas || 1}x · juros do parcelamento já incluídos no total`;
+      else if ((s.formaPagamento) === 'pix' && s.pixDesconto) extra = 'Pagamento integral via PIX · 5% de desconto à vista aplicado';
+      return `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink)">Forma de pagamento:</b> ${fp.nome}<br><span style="font-size:12px">${extra}</span></div>`;
+    })()}
     ${(() => {
       const aceito = s.statusProposta === 'aprovada';
       const aceiteUrl = s.acceptToken ? `${OB.APP_URL}/?aceite=${encodeURIComponent(s.id)}&t=${encodeURIComponent(s.acceptToken)}` : '';
@@ -720,6 +788,230 @@ const Consultor = {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     UI.toast('Orçamento gerado', 'Abra o arquivo para enviar ou imprimir em PDF', 'ok');
+  },
+
+  /* ====================== CONTRATOS ====================== */
+  /* snapshot dos dados do contrato a partir da venda (fica estável no registro) */
+  montarContratoDados(s) {
+    const cli = OB.clientById(s.clientId) || {};
+    const u = this.u();
+    const prodIds = OB.produtosDaVenda(s);
+    const porte = cli.porte || 'pequena';
+    const base = s.valorBruto || s.valor;
+    const desc = s.descontoTipo === 'percent' ? (s.descontoValor || 0) : 0;
+    const servicos = prodIds.map(id => {
+      const p = OB.PRODUTOS.find(x => x.id === id) || {};
+      const mod = OB.contratoModelo(id);
+      return { id, nome: p.nome || id, incluso: p.incluso || '', objeto: mod.objeto, prazo: mod.prazo, revisoes: mod.revisoes, valor: OB.precoTabela(id, porte) || 0 };
+    });
+    return {
+      numero: '', data: new Date().toISOString(), foro: OB.CONTRATO_FORO, empresa: TERMOS.EMPRESA,
+      consultor: { nome: `${u.nome || ''} ${u.sobrenome || ''}`.trim(), email: u.email || '' },
+      cliente: {
+        nome: cli.nome || '', contato: cli.contato || '', doc: cli.doc || '', tipo: cli.tipo || '', email: cli.email || '', telefone: cli.telefone || '', uf: cli.uf || '', cidade: cli.cidade || '',
+        endereco: [cli.logradouro && (cli.logradouro + (cli.numero ? ', ' + cli.numero : '')), cli.bairro, (cli.cidade ? cli.cidade + (cli.uf ? '/' + cli.uf : '') : ''), cli.cep && ('CEP ' + cli.cep)].filter(Boolean).join(' · ')
+      },
+      servicos,
+      pagamento: { moeda: s.moeda || 'BRL', valorBase: base, desconto: desc, valorServico: s.valor, valorCliente: s.valorCliente != null ? s.valorCliente : s.valor, forma: s.formaPagamento || 'pix', parcelas: s.parcelas || 1, pixDesconto: !!s.pixDesconto }
+    };
+  },
+  /* cria o contrato da venda (uma vez); retorna o existente se já houver */
+  gerarContrato(s) {
+    let c = OB.contratoDaVenda(s.id);
+    if (c) return c;
+    const dados = this.montarContratoDados(s);
+    dados.numero = OB.gerarNumeroContrato();
+    c = { id: OB.uid(), numero: dados.numero, saleId: s.id, consultorId: this.u().id, clientId: s.clientId, dados, status: 'pendente', acceptToken: OB.uid().replace(/-/g, ''), aceiteNome: '', aceiteDoc: '', aceiteIp: '', aceitoEm: null, criadoEm: new Date().toISOString() };
+    OB.addContrato(c);
+    return c;
+  },
+  /* HTML do contrato (branded, logo + marca d'água em todas as páginas, aceite virtual) */
+  buildContratoHTML(c) {
+    const d = c.dados || {}; const e = d.empresa || {}; const p = d.pagamento || {}; const cl = d.cliente || {};
+    const m = p.moeda || 'BRL';
+    const money = v => OB.money(v, m);
+    const dataBR = iso => { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch (x) { return ''; } };
+    const nomes = (d.servicos || []).map(x => x.nome).join(', ');
+    const negociado = Math.round((p.valorBase || 0) * (1 - (p.desconto || 0) / 100));
+    const forma = p.forma || 'pix';
+    const formaTxt = forma === 'cartao' ? `Cartão de crédito em ${p.parcelas || 1}x` : (forma === 'boleto' ? 'Boleto bancário à vista' : 'PIX à vista');
+    const contratantePessoa = (cl.tipo || '').toUpperCase().includes('PJ') || (cl.doc || '').replace(/\D/g, '').length > 11 ? 'pessoa jurídica' : 'pessoa física';
+    const symbol = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 439 439"><g fill="#F15532" fill-opacity="0.09"><path d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></g></svg>`;
+    const wm = `url("data:image/svg+xml;base64,${(typeof btoa !== 'undefined' ? btoa(symbol) : '')}")`;
+    const markHead = `<svg viewBox="0 0 439 439" width="34" height="34" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="90" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const aceiteUrl = c.acceptToken ? `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}` : '';
+    const objetos = (d.servicos || []).map(x => `<li><b>${x.nome}:</b> ${x.objeto}. <span class="mut">Prazo estimado: ${x.prazo}. Revisões: ${x.revisoes}.</span></li>`).join('');
+    // linhas de pagamento
+    let payRows = `<tr><td>Valor dos serviços (tabela)</td><td class="r">${money(p.valorBase)}</td></tr>`;
+    if (p.desconto) payRows += `<tr><td>Desconto comercial (${p.desconto}%)</td><td class="r">- ${money((p.valorBase || 0) - negociado)}</td></tr>`;
+    if (forma === 'pix' && p.pixDesconto) payRows += `<tr><td>Desconto PIX à vista (5%)</td><td class="r">- ${money(negociado - p.valorServico)}</td></tr>`;
+    if (forma === 'cartao') payRows += `<tr><td>Juros do parcelamento (${p.parcelas}x)</td><td class="r">+ ${money((p.valorCliente || 0) - negociado)}</td></tr>`;
+    payRows += `<tr class="tot"><td><b>Total ${forma === 'cartao' ? 'no cartão' : 'à vista'}</b></td><td class="r"><b>${money(p.valorCliente)}</b></td></tr>`;
+    if (forma === 'cartao') payRows += `<tr><td>Parcelamento</td><td class="r"><b>${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}</b></td></tr>`;
+    const aceiteBloco = c.status === 'aceito'
+      ? `<div class="aceite ok"><b>&#10003; Contrato aceito eletronicamente</b><div>Aceito por <b>${c.aceiteNome || cl.nome}</b>${c.aceiteDoc ? ' · Doc: ' + c.aceiteDoc : ''}<br>em ${new Date(c.aceitoEm).toLocaleString('pt-BR')}${c.aceiteIp ? ' · IP ' + c.aceiteIp : ''}</div><div class="mut">Assinatura eletrônica nos termos da MP 2.200-2/2001 e da Lei 14.063/2020.</div></div>`
+      : (aceiteUrl ? `<div class="cta"><a class="accept" href="${aceiteUrl}" target="_blank" rel="noopener">&#10003; Ler e aceitar o contrato</a></div><p class="mut" style="text-align:center;font-size:12px">O aceite eletrônico tem validade jurídica (MP 2.200-2/2001 e Lei 14.063/2020).</p>` : '');
+    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Contrato ${c.numero} · ${cl.nome || ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#3c4652;--mut:#8a96a3;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;color:var(--ink);background:#eef1f4;line-height:1.65;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{position:relative;max-width:820px;margin:0 auto;background-color:#fff;background-image:${wm};background-repeat:repeat;background-size:150px 150px;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 46px;border-bottom:3px solid var(--brand)}
+.head .lg{display:flex;align-items:center;gap:11px}.head .lg b{font-size:19px;font-weight:800}.head .lg span{display:block;font-size:11px;color:var(--mut);font-weight:600;letter-spacing:.02em}
+.head .num{text-align:right;font-size:12px;color:var(--mut)}.head .num b{display:block;font-size:15px;color:var(--ink)}
+.body{padding:30px 46px 10px}
+h1{font-size:21px;font-weight:800;text-align:center;letter-spacing:-.01em;margin-bottom:4px}
+.sub{text-align:center;color:var(--mut);font-size:12.5px;margin-bottom:22px}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.party{border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:12.5px;color:var(--soft)}
+.party .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);font-weight:700;margin-bottom:6px}
+.party b{color:var(--ink)}
+h2{font-size:13.5px;font-weight:800;margin:20px 0 7px;color:var(--ink)}
+p,li{font-size:12.7px;color:var(--soft);text-align:justify}
+ul{margin:6px 0 6px 20px}li{margin-bottom:5px}
+.mut{color:var(--mut)}
+.paytbl{width:100%;border-collapse:collapse;margin:8px 0 4px}
+.paytbl td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.7px;color:var(--soft)}
+.paytbl td.r{text-align:right}.paytbl tr.tot td{border-top:2px solid var(--line);border-bottom:none;color:var(--ink);font-size:14px}
+.paytbl tr.tot td b{color:var(--brand)}
+.aceite{margin:22px 0 6px;padding:16px 18px;border-radius:12px;font-size:12.5px}
+.aceite.ok{background:#e8f7ee;border:1px solid #b7e4c7;color:#15803d}.aceite.ok b{display:block;font-size:14px;margin-bottom:4px}
+.cta{margin:22px 0 6px;text-align:center}.cta .accept{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;padding:15px 30px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 8px 20px rgba(241,85,50,.28)}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:34px;margin:38px 0 10px}
+.sign .l{border-top:1.5px solid var(--ink);padding-top:7px;font-size:11.5px;color:var(--soft);text-align:center}.sign .l b{display:block;color:var(--ink);font-size:12.5px}
+.foot{border-top:1px solid var(--line);padding:18px 46px;color:var(--mut);font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.foot b{color:var(--ink)}
+.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);z-index:5}
+@media print{.print-hint,.cta{display:none}.page{box-shadow:none}.wm{position:fixed}}</style></head>
+<body><div class="page">
+  <div class="head">
+    <div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div>
+    <div class="num">Contrato nº<b>${c.numero}</b>${dataBR(d.data)}</div>
+  </div>
+  <div class="body">
+    <h1>Contrato de Prestação de Serviços</h1>
+    <div class="sub">${nomes}</div>
+    <div class="parties">
+      <div class="party"><div class="tag">Contratada</div><b>${e.razao || 'OutBox Group Soluções Digitais'}</b><br>CNPJ ${e.cnpj || ''}<br>${e.endereco || ''}<br>${e.dpo || ''}</div>
+      <div class="party"><div class="tag">Contratante</div><b>${cl.nome || '—'}</b><br>${cl.doc ? (contratantePessoa === 'pessoa jurídica' ? 'CNPJ ' : 'CPF ') + cl.doc + '<br>' : ''}${cl.endereco || ''}${cl.email ? '<br>' + cl.email : ''}${cl.telefone ? ' · ' + cl.telefone : ''}</div>
+    </div>
+    <p>Pelo presente instrumento particular, de um lado <b>${e.razao || 'OutBox Group Soluções Digitais'}</b>, inscrita no CNPJ sob o nº ${e.cnpj || ''}, com sede na ${e.endereco || ''}, doravante <b>CONTRATADA</b>, e de outro lado <b>${cl.nome || ''}</b>, ${contratantePessoa}${cl.doc ? ', inscrita no ' + (contratantePessoa === 'pessoa jurídica' ? 'CNPJ' : 'CPF') + ' sob o nº ' + cl.doc : ''}, doravante <b>CONTRATANTE</b>, têm entre si justo e contratado o seguinte:</p>
+    <h2>Cláusula 1ª — Do objeto</h2>
+    <p>O presente contrato tem por objeto a prestação, pela CONTRATADA, dos seguintes serviços:</p>
+    <ul>${objetos}</ul>
+    <h2>Cláusula 2ª — Do valor e da forma de pagamento</h2>
+    <p>Pela prestação dos serviços descritos, a CONTRATANTE pagará à CONTRATADA os valores abaixo, na modalidade <b>${formaTxt}</b>:</p>
+    <table class="paytbl">${payRows}</table>
+    <p class="mut">Os juros de parcelamento no cartão, quando aplicáveis, são cobrados pela operadora e já estão refletidos no total. O pagamento via PIX ou boleto é realizado à vista.</p>
+    <h2>Cláusula 3ª — Do prazo de execução</h2>
+    <p>Os prazos de entrega de cada serviço são os indicados na Cláusula 1ª, contados a partir da aprovação deste contrato e do recebimento, pela CONTRATADA, de todo o material e informações necessárias (briefing) e da confirmação do pagamento acordado.</p>
+    <h2>Cláusula 4ª — Das obrigações da CONTRATADA</h2>
+    <p>Executar os serviços com zelo e qualidade técnica; cumprir os prazos ajustados, ressalvados atrasos causados pela CONTRATANTE; realizar as rodadas de revisão previstas; e entregar os arquivos e acessos correspondentes ao serviço contratado.</p>
+    <h2>Cláusula 5ª — Das obrigações da CONTRATANTE</h2>
+    <p>Fornecer, em tempo hábil, todo o conteúdo, textos, imagens, acessos e aprovações necessárias; efetuar os pagamentos nas condições pactuadas; e responsabilizar-se pela veracidade e pela titularidade do material entregue à CONTRATADA.</p>
+    <h2>Cláusula 6ª — Da propriedade e da entrega</h2>
+    <p>Após a quitação integral, a CONTRATANTE passa a deter os direitos de uso do resultado final entregue. Ferramentas, códigos-fonte de terceiros e licenças permanecem regidos por suas respectivas condições. A CONTRATADA poderá exibir o trabalho em seu portfólio.</p>
+    <h2>Cláusula 7ª — Da proteção de dados (LGPD)</h2>
+    <p>As partes comprometem-se a tratar os dados pessoais eventualmente acessados em conformidade com a Lei nº 13.709/2018 (LGPD), utilizando-os exclusivamente para a execução deste contrato. O Encarregado de Dados da CONTRATADA pode ser contatado em ${e.dpo || 'felipe@outboxgroup.com.br'}.</p>
+    <h2>Cláusula 8ª — Da rescisão</h2>
+    <p>Este contrato poderá ser rescindido por qualquer das partes mediante comunicação escrita. Havendo serviços já executados, será devida a remuneração proporcional à etapa concluída.</p>
+    <h2>Cláusula 9ª — Do aceite eletrônico e do foro</h2>
+    <p>As partes reconhecem a validade da contratação e do aceite por meio eletrônico, nos termos da MP nº 2.200-2/2001 e da Lei nº 14.063/2020. Fica eleito o foro da <b>${d.foro || OB.CONTRATO_FORO}</b>, sede da CONTRATADA, para dirimir eventuais controvérsias, com renúncia a qualquer outro.</p>
+    ${aceiteBloco}
+    <div class="sign">
+      <div class="l"><b>${e.razao || 'OutBox Group Soluções Digitais'}</b>CONTRATADA · CNPJ ${e.cnpj || ''}</div>
+      <div class="l"><b>${cl.nome || ''}</b>CONTRATANTE${cl.doc ? ' · ' + cl.doc : ''}</div>
+    </div>
+  </div>
+  <div class="foot"><div>${e.razao || 'OutBox Group Soluções Digitais'}<br><b>${e.dpo || 'felipe@outboxgroup.com.br'}</b></div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
+</div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
+  },
+  visualizarContrato(c) {
+    if (!c) return;
+    const blob = new Blob([this.buildContratoHTML(c)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) { URL.revokeObjectURL(url); UI.toast('Não foi possível abrir', 'Permita pop-ups para visualizar em nova aba.', 'err'); return; }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+  baixarContrato(c) {
+    if (!c) return;
+    const blob = new Blob([this.buildContratoHTML(c)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `Contrato ${c.numero} - ${(c.dados && c.dados.cliente && c.dados.cliente.nome) || 'cliente'}.html`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    UI.toast('Contrato gerado', 'Abra o arquivo para enviar ou imprimir em PDF', 'ok');
+  },
+  copiarLinkAceiteContrato(c) {
+    if (!c || !c.acceptToken) return;
+    const url = `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}`;
+    const msg = `Olá! Segue o contrato dos serviços com a OutBox para leitura e aceite:\n${url}`;
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => UI.toast('Link copiado', 'Cole no WhatsApp/e-mail do cliente', 'ok')).catch(() => {});
+    else UI.toast('Link do contrato', url, 'ok');
+    return msg;
+  },
+  enviarContratoModal(c) {
+    if (!c) return;
+    const url = `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}`;
+    const cli = (c.dados && c.dados.cliente) || {};
+    const zap = (cli.telefone || '').replace(/\D/g, '');
+    const msg = encodeURIComponent(`Olá! Segue o contrato dos serviços com a OutBox para leitura e aceite: ${url}`);
+    UI.modal({
+      title: 'Enviar contrato para aceite', sub: `Contrato nº ${c.numero} · ${cli.nome || ''}`,
+      body: `
+        <div class="field"><label>Link de aceite do cliente</label>
+          <input id="ct-url" readonly value="${url}"/>
+          <div class="hint">O cliente abre o link, lê o contrato e confirma o aceite. A assinatura eletrônica fica registrada com data, hora e IP.</div></div>
+        <button class="btn ghost" id="ct-ver-modal" style="width:100%">${UI.icon('eye',15)} Visualizar o contrato</button>`,
+      footer: `<button class="btn ghost" data-close>Fechar</button>
+        <a class="btn ghost" href="https://wa.me/${zap ? '55' + zap : ''}?text=${msg}" target="_blank" rel="noopener">${UI.icon('chat',15)} WhatsApp</a>
+        <button class="btn brand" id="ct-copy">${UI.icon('share',15)} Copiar link</button>`
+    });
+    document.getElementById('ct-copy').onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(url); UI.toast('Link copiado', 'Cole para o cliente', 'ok'); };
+    document.getElementById('ct-ver-modal').onclick = () => this.visualizarContrato(c);
+  },
+  contratoCardHTML(s) {
+    const cli = OB.clientById(s.clientId);
+    const c = OB.contratoDaVenda(s.id);
+    const nomes = OB.produtosNomes(s);
+    const valor = OB.money(s.valorCliente != null ? s.valorCliente : s.valor, s.moeda);
+    const badge = !c ? `<span class="ct-badge none">Sem contrato</span>`
+      : (c.status === 'aceito' ? `<span class="ct-badge ok">${UI.icon('check',13)} Aceito</span>` : `<span class="ct-badge wait">Aguardando aceite</span>`);
+    const acoes = !c
+      ? `<button class="btn brand" data-ct-ger="${s.id}">${UI.icon('contract',15)} Gerar contrato</button>`
+      : `<button class="btn ghost" data-ct-ver="${c.id}">${UI.icon('eye',15)} Ver</button>
+         <button class="btn ghost" data-ct-bx="${c.id}">${UI.icon('download',15)} Baixar</button>
+         ${c.status !== 'aceito' ? `<button class="btn brand" data-ct-link="${c.id}">${UI.icon('share',15)} Enviar p/ aceite</button>` : ''}`;
+    return `<div class="card ct-card">
+      <div class="ct-main">
+        <div class="ct-cli"><b>${cli ? cli.nome : 'Cliente'}</b>${c ? ` <span class="mut">· nº ${c.numero}</span>` : ''}</div>
+        <div class="ct-svc">${nomes}</div>
+        <div class="ct-meta">${valor} · ${OB.dataBR(s.data)}${c && c.status === 'aceito' && c.aceitoEm ? ' · aceito em ' + OB.dataBR(c.aceitoEm) : ''}</div>
+      </div>
+      <div class="ct-side">${badge}<div class="ct-acoes">${acoes}</div></div>
+    </div>`;
+  },
+  view_contratos() {
+    const u = this.u();
+    const v = document.getElementById('main-view');
+    const vendas = OB.salesOf(u.id).filter(s => s.statusProposta === 'aprovada').sort((a, b) => new Date(b.data) - new Date(a.data));
+    const contratos = OB.contratosDe(u.id);
+    const aceitos = contratos.filter(c => c.status === 'aceito').length;
+    const pend = contratos.filter(c => c.status !== 'aceito').length;
+    const kpis = `<div class="kpis kpis-3">
+      <div class="kpi"><div class="kpi-v">${contratos.length}</div><div class="kpi-l">Contratos gerados</div></div>
+      <div class="kpi"><div class="kpi-v" style="color:#16a34a">${aceitos}</div><div class="kpi-l">Aceitos</div></div>
+      <div class="kpi"><div class="kpi-v" style="color:var(--brand)">${pend}</div><div class="kpi-l">Aguardando aceite</div></div>
+    </div>`;
+    if (!vendas.length) { v.innerHTML = kpis + this.empty('contract', 'Nenhuma venda formalizada ainda', 'Assim que você lançar uma venda aprovada, o contrato do serviço fica disponível aqui para enviar ao cliente com aceite virtual.'); return; }
+    v.innerHTML = kpis + `<div class="ct-list">${vendas.map(s => this.contratoCardHTML(s)).join('')}</div>`;
+    const rerender = () => this.render('contratos');
+    v.querySelectorAll('[data-ct-ger]').forEach(b => b.onclick = () => { const s = OB.db.sales.find(x => x.id === b.dataset.ctGer); if (s) { const c = this.gerarContrato(s); UI.toast('Contrato gerado', 'Nº ' + c.numero, 'ok'); rerender(); } });
+    v.querySelectorAll('[data-ct-ver]').forEach(b => b.onclick = () => this.visualizarContrato(OB.contratoById(b.dataset.ctVer)));
+    v.querySelectorAll('[data-ct-bx]').forEach(b => b.onclick = () => this.baixarContrato(OB.contratoById(b.dataset.ctBx)));
+    v.querySelectorAll('[data-ct-link]').forEach(b => b.onclick = () => this.enviarContratoModal(OB.contratoById(b.dataset.ctLink)));
   },
 
   /* compartilha o orçamento: Web Share API nativa (mobile) com fallback p/ WhatsApp */
