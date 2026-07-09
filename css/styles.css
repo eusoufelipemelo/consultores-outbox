@@ -1394,3 +1394,6 @@ td .strong { color: var(--text); font-weight: 600; }
 
 .iconbtn.danger:hover { background: #fdecec; color: #dc2626; }
 :root[data-theme="dark"] .iconbtn.danger:hover { background: rgba(220,38,38,.16); color: #f87171; }
+
+/* linha divisória discreta abaixo do item inicial (Visão Geral / Painel Geral) */
+.nav-sep { height: 1px; background: var(--line); margin: 7px 12px; opacity: .7; }

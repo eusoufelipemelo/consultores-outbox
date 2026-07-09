@@ -5,6 +5,7 @@
 const Admin = {
   HOME: 'painel',
   NAV: [
+    { id: 'painel',     label: 'Painel Geral',     icon: 'overview', home: true },
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
@@ -13,7 +14,6 @@ const Admin = {
     { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
-    { id: 'painel',     label: 'Painel Geral',     icon: 'overview' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
     { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },

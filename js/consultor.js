@@ -4,6 +4,7 @@
 const Consultor = {
   HOME: 'overview',
   NAV: [
+    { id: 'overview',   label: 'Visão Geral',      icon: 'overview', home: true },
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
@@ -17,8 +18,7 @@ const Consultor = {
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
-    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
-    { id: 'overview',   label: 'Visão Geral',      icon: 'overview' }
+    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' }
   ],
 
   titles: {
