@@ -583,6 +583,7 @@ const OB = {
 
   /* ---------- CONTRATOS por serviço (aceite virtual) ---------- */
   CONTRATO_FORO: 'Comarca de Santa Cruz do Rio Pardo, Estado de São Paulo',
+  ASSINATURA_OUTBOX: '', // base64 (data URI) da assinatura da OutBox — preenchido com o arquivo enviado pelo usuário
   /* cláusula do objeto + prazo por tipo de serviço (contrato-base) */
   CONTRATO_MODELOS: {
     identidade:   { objeto: 'criação de identidade visual, compreendendo logotipo com variações, paleta de cores, tipografia da marca, manual básico de aplicação e entrega dos arquivos em alta resolução para uso digital e impresso', prazo: '10 a 20 dias úteis', revisoes: '2 (duas) rodadas de revisão do conceito aprovado' },
@@ -602,6 +603,9 @@ const OB = {
   contratoById(id) { return (this.db.contratos || []).find(c => c.id === id) || null; },
   addContrato(c) { this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
   updateContrato(c) { const i = this.db.contratos.findIndex(x => x.id === c.id); if (i >= 0) this.db.contratos[i] = c; else this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
+  removeContrato(id) { this.db.contratos = (this.db.contratos || []).filter(c => c.id !== id); this._delete('contratos', id); },
+  /* remove o contrato vinculado a uma venda (ao excluir a venda) */
+  removeContratoDaVenda(saleId) { const c = this.contratoDaVenda(saleId); if (c) this.removeContrato(c.id); return !!c; },
   /* número sequencial do contrato: OB-AAAA-NNNN */
   gerarNumeroContrato() {
     const ano = new Date().getFullYear();

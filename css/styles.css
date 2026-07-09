@@ -1326,3 +1326,8 @@ td .strong { color: var(--text); font-weight: 600; }
 .ctf-date input { width: auto; }
 .kpis-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 @media (max-width: 560px) { .ct-side { align-items: stretch; width: 100%; } .ct-acoes { justify-content: stretch; } .ct-acoes .btn { flex: 1 1 0; } }
+
+/* Biblioteca de contratos (consultor) */
+.lib-head { display: flex; align-items: baseline; gap: 10px; margin: 4px 2px 10px; }
+.lib-head b { font-size: 15px; }
+.lib-head .mut { color: var(--text-mut); font-size: 12.5px; }
