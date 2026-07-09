@@ -1850,25 +1850,35 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   /* catálogo: para publicar um novo e-book, adicione o PDF + capa em
      assets/ebooks/ e inclua um item aqui. Entra sozinho na tela. */
   EBOOKS: [
-    {
-      id: 'energia-dinheiro',
-      titulo: 'Libere a energia do dinheiro dentro de você',
-      autor: 'Mayra Maximiano',
-      desc: 'Entenda o processo emocional que atrai e afasta sua prosperidade.',
-      paginas: 79,
-      capa: 'assets/ebooks/energia-dinheiro-capa.jpg',
-      arquivo: 'assets/ebooks/libere-a-energia-do-dinheiro.pdf'
-    }
+    { id: 'energia-dinheiro', titulo: 'Libere a energia do dinheiro dentro de você', autor: 'Mayra Maximiano', categoria: 'Dinheiro & Prosperidade', desc: 'Entenda o processo emocional que atrai e afasta sua prosperidade.', paginas: 79, capa: 'assets/ebooks/energia-dinheiro-capa.jpg', arquivo: 'assets/ebooks/libere-a-energia-do-dinheiro.pdf' },
+    { id: '4-armas', titulo: '4 Armas Para Ir Pra Guerra', autor: 'Pablo Marçal', categoria: 'Mentalidade & Superação', desc: 'As armas mentais para encarar qualquer batalha da vida.', paginas: 16, capa: 'assets/ebooks/4-armas-capa.jpg', arquivo: 'assets/ebooks/4-armas.pdf' },
+    { id: 'antimedo', titulo: 'Antimedo: Ative a Invencibilidade', autor: 'Pablo Marçal', categoria: 'Inteligência Emocional', desc: 'Transforme o medo em combustível e ative a sua invencibilidade.', paginas: 119, capa: 'assets/ebooks/antimedo-capa.jpg', arquivo: 'assets/ebooks/antimedo.pdf' },
+    { id: 'biblia-nao-leu', titulo: 'A Bíblia Que Você Não Leu', autor: 'Pablo Marçal · Eduardo Reis', categoria: 'Espiritualidade', desc: 'Uma leitura provocadora das escrituras. Proibido para religiosos.', paginas: 93, capa: 'assets/ebooks/biblia-nao-leu-capa.jpg', arquivo: 'assets/ebooks/biblia-nao-leu.pdf' },
+    { id: 'chave-mestra-universo', titulo: 'A Chave Mestra do Universo', autor: 'Pablo Marçal', categoria: 'Mentalidade & Superação', desc: '85% dos seus resultados dependem das suas conexões humanas.', paginas: 150, capa: 'assets/ebooks/chave-mestra-universo-capa.jpg', arquivo: 'assets/ebooks/chave-mestra-universo.pdf' },
+    { id: 'codigos-do-milhao', titulo: 'Os Códigos do Milhão', autor: 'Pablo Marçal', categoria: 'Dinheiro & Prosperidade', desc: 'Como desbloquear as vias neurais da riqueza.', paginas: 161, capa: 'assets/ebooks/codigos-do-milhao-capa.jpg', arquivo: 'assets/ebooks/codigos-do-milhao.pdf' },
+    { id: 'cuidar-da-sua-vida', titulo: 'Vá Cuidar da Sua Vida', autor: 'Pablo Marçal', categoria: 'Mentalidade & Superação', desc: 'Assuma o controle e pare de terceirizar a sua própria vida.', paginas: 173, capa: 'assets/ebooks/cuidar-da-sua-vida-capa.jpg', arquivo: 'assets/ebooks/cuidar-da-sua-vida.pdf' },
+    { id: 'destravar-digital', titulo: 'Destravar Digital', autor: 'Pablo Marçal', categoria: 'Mundo Digital', desc: 'Os caminhos para crescer e monetizar no mundo digital.', paginas: 65, capa: 'assets/ebooks/destravar-digital-capa.jpg', arquivo: 'assets/ebooks/destravar-digital.pdf' },
+    { id: 'destravar-ie', titulo: 'O Destravar da Inteligência Emocional', autor: 'Pablo Marçal', categoria: 'Inteligência Emocional', desc: 'Domine suas emoções e tome decisões melhores todos os dias.', paginas: 202, capa: 'assets/ebooks/destravar-ie-capa.jpg', arquivo: 'assets/ebooks/destravar-ie.pdf' },
+    { id: 'lavagem-cerebral', titulo: 'Lavagem Cerebral', autor: 'Pablo Marçal', categoria: 'Inteligência Emocional', desc: 'Uso diário para a gestão das emoções negativas.', paginas: 125, capa: 'assets/ebooks/lavagem-cerebral-capa.jpg', arquivo: 'assets/ebooks/lavagem-cerebral.pdf' },
+    { id: 'saia-do-caixao', titulo: 'Saia do Caixão', autor: 'Pablo Marçal', categoria: 'Mentalidade & Superação', desc: 'Quebre as regras dos zumbis e ative os princípios do criador.', paginas: 90, capa: 'assets/ebooks/saia-do-caixao-capa.jpg', arquivo: 'assets/ebooks/saia-do-caixao.pdf' },
+    { id: 'saia-do-deserto', titulo: 'Saia do Deserto', autor: 'Pablo Marçal', categoria: 'Dinheiro & Prosperidade', desc: 'Os códigos para vencer a crise financeira.', paginas: 212, capa: 'assets/ebooks/saia-do-deserto-capa.jpg', arquivo: 'assets/ebooks/saia-do-deserto.pdf' },
+    { id: 'sete-camadas-identidade', titulo: 'As Sete Camadas da Identidade', autor: 'Pablo Marçal', categoria: 'Mentalidade & Superação', desc: 'Descubra e reconstrua quem você realmente é.', paginas: 76, capa: 'assets/ebooks/sete-camadas-identidade-capa.jpg', arquivo: 'assets/ebooks/sete-camadas-identidade.pdf' }
   ],
 
   view_ebooks() {
     const v = document.getElementById('main-view');
-    if (!this.EBOOKS.length) { v.innerHTML = this.empty('book', 'Nenhum e-book ainda', 'Os e-books disponibilizados pela OutBox aparecem aqui.'); return; }
+    const itens = this.EBOOKS.slice().sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt', { sensitivity: 'base' }));
+    if (!itens.length) { v.innerHTML = this.empty('book', 'Nenhum e-book ainda', 'Os e-books disponibilizados pela OutBox aparecem aqui.'); return; }
+    const cats = [...new Set(itens.map(e => e.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
     v.innerHTML = `
+      <div class="port-filtros" id="eb-filtros">
+        <button type="button" class="port-chip on" data-cat="">Todos</button>
+        ${cats.map(c => `<button type="button" class="port-chip" data-cat="${c}">${c}</button>`).join('')}
+      </div>
       <div class="ebook-grid">
-        ${this.EBOOKS.map(e => `
-          <div class="card ebook-card">
-            <div class="ebook-capa"><img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/></div>
+        ${itens.map(e => `
+          <div class="card ebook-card" data-cat="${e.categoria || ''}">
+            <div class="ebook-capa"><img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/>${e.categoria ? `<span class="ebook-tag">${e.categoria}</span>` : ''}</div>
             <div class="ebook-info">
               <b>${e.titulo}</b>
               <span class="ebook-autor">${e.autor}${e.paginas ? ' · ' + e.paginas + ' páginas' : ''}</span>
@@ -1880,6 +1890,13 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             </div>
           </div>`).join('')}
       </div>`;
+    const bar = document.getElementById('eb-filtros');
+    const grid = v.querySelector('.ebook-grid');
+    bar.querySelectorAll('.port-chip').forEach(chip => chip.onclick = () => {
+      bar.querySelectorAll('.port-chip').forEach(c => c.classList.toggle('on', c === chip));
+      const cat = chip.dataset.cat;
+      grid.querySelectorAll('.ebook-card').forEach(card => { card.style.display = (!cat || card.dataset.cat === cat) ? '' : 'none'; });
+    });
   },
 
   /* ====================== PROJETOS / BRIEFING / ENTREGA ====================== */
