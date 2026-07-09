@@ -1867,6 +1867,17 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   view_ebooks() {
     const v = document.getElementById('main-view');
+    // regra: e-books só liberam após a primeira venda aprovada
+    if (!OB.fezPrimeiraVenda(this.u().id)) {
+      v.innerHTML = `<div class="card"><div class="ebook-lock">
+        <span class="ebook-lock__ic">${UI.icon('lock',30)}</span>
+        <b>Seus e-books estão a uma venda de distância</b>
+        <p>A biblioteca de e-books é liberada assim que você registra a sua primeira venda. Feche seu primeiro negócio e volte aqui para baixar todo o material de estudo e prospecção.</p>
+        <button class="btn brand" id="eb-vender">${UI.icon('cart',16)} Lançar minha primeira venda</button>
+      </div></div>`;
+      const b = document.getElementById('eb-vender'); if (b) b.onclick = () => App.go('comissao');
+      return;
+    }
     const itens = this.EBOOKS.slice().sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt', { sensitivity: 'base' }));
     if (!itens.length) { v.innerHTML = this.empty('book', 'Nenhum e-book ainda', 'Os e-books disponibilizados pela OutBox aparecem aqui.'); return; }
     const cats = [...new Set(itens.map(e => e.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));

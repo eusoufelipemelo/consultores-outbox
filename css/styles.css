@@ -1283,3 +1283,9 @@ td .strong { color: var(--text); font-weight: 600; }
   .rk-pod__pts b { font-size: 16px; } .rk-pod--1 .rk-pod__pts b { font-size: 19px; }
   .rk-row__pts b { font-size: 15px; }
 }
+
+/* E-Books bloqueados até a primeira venda */
+.ebook-lock { text-align: center; padding: 40px 22px; max-width: 520px; margin: 0 auto; }
+.ebook-lock__ic { display: inline-grid; place-items: center; width: 68px; height: 68px; border-radius: 20px; background: var(--brand-soft); color: var(--brand); margin-bottom: 16px; }
+.ebook-lock b { display: block; font-size: 18px; color: var(--text); margin-bottom: 8px; }
+.ebook-lock p { font-size: 13.5px; color: var(--text-soft); line-height: 1.55; margin-bottom: 20px; }

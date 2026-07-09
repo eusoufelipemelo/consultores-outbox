@@ -521,6 +521,8 @@ const OB = {
   /* ---------- vendas ---------- */
   sales() { return this.db.sales; },
   salesOf(consultorId) { return this.db.sales.filter(s => s.consultorId === consultorId); },
+  /* consultor fez a primeira venda? (≥1 proposta aprovada) — libera os e-books */
+  fezPrimeiraVenda(consultorId) { return this.salesOf(consultorId).some(s => s.statusProposta === 'aprovada'); },
   addSale(s) { this.db.sales.push(s); this._save('sales', this._sOut(s)); return s; },
   updateSale(s) { const i = this.db.sales.findIndex(x => x.id === s.id); if (i >= 0) this.db.sales[i] = s; this._save('sales', this._sOut(s)); return s; },
   removeSale(id) { this.db.sales = this.db.sales.filter(s => s.id !== id); this._delete('sales', id); },
