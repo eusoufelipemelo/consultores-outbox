@@ -842,8 +842,6 @@ const Consultor = {
     const forma = p.forma || 'pix';
     const formaTxt = forma === 'cartao' ? `Cartão de crédito em ${p.parcelas || 1}x` : (forma === 'boleto' ? 'Boleto bancário à vista' : 'PIX à vista');
     const contratantePessoa = (cl.tipo || '').toUpperCase().includes('PJ') || (cl.doc || '').replace(/\D/g, '').length > 11 ? 'pessoa jurídica' : 'pessoa física';
-    const symbol = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 439 439"><g fill="#F15532" fill-opacity="0.09"><path d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></g></svg>`;
-    const wm = `url("data:image/svg+xml;base64,${(typeof btoa !== 'undefined' ? btoa(symbol) : '')}")`;
     const markHead = `<svg viewBox="0 0 439 439" width="34" height="34" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="90" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
     const aceiteUrl = c.acceptToken ? `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}` : '';
     const objetos = (d.servicos || []).map(x => `<li><b>${x.nome}:</b> ${x.objeto}. <span class="mut">Prazo estimado: ${x.prazo}. Revisões: ${x.revisoes}.</span></li>`).join('');
@@ -862,7 +860,7 @@ const Consultor = {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#3c4652;--mut:#8a96a3;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;color:var(--ink);background:#eef1f4;line-height:1.65;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page{position:relative;max-width:820px;margin:0 auto;background-color:#fff;background-image:${wm};background-repeat:repeat;background-size:150px 150px;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.page{position:relative;max-width:820px;margin:0 auto;background-color:#fff;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}
 .head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 46px;border-bottom:3px solid var(--brand)}
 .head .lg{display:flex;align-items:center;gap:11px}.head .lg b{font-size:19px;font-weight:800}.head .lg span{display:block;font-size:11px;color:var(--mut);font-weight:600;letter-spacing:.02em}
 .head .num{text-align:right;font-size:12px;color:var(--mut)}.head .num b{display:block;font-size:15px;color:var(--ink)}
@@ -889,7 +887,7 @@ ul{margin:6px 0 6px 20px}li{margin-bottom:5px}
 .foot{border-top:1px solid var(--line);padding:18px 46px;color:var(--mut);font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .foot b{color:var(--ink)}
 .print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);z-index:5}
-@media print{.print-hint,.cta{display:none}.page{box-shadow:none}.wm{position:fixed}}</style></head>
+@media print{.print-hint,.cta{display:none}.page{box-shadow:none}}</style></head>
 <body><div class="page">
   <div class="head">
     <div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div>
