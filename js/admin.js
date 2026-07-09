@@ -3,20 +3,21 @@
    Acesso a todos os dados · gestão financeira de comissões e prêmios.
    ============================================================ */
 const Admin = {
+  HOME: 'painel',
   NAV: [
-    { id: 'painel',     label: 'Painel Geral',     icon: 'overview' },
-    { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
-    { id: 'consultores',label: 'Consultores',      icon: 'users' },
-    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
-    { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
-    { id: 'vendas',     label: 'Vendas',           icon: 'cart' },
-    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
-    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
-    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
-    { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
-    { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat' },
-    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
+    { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
+    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
+    { id: 'consultores',label: 'Consultores',      icon: 'users' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
+    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' },
+    { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
+    { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
+    { id: 'painel',     label: 'Painel Geral',     icon: 'overview' },
+    { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
+    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
+    { id: 'vendas',     label: 'Vendas',           icon: 'cart' }
   ],
   titles: {
     painel:      ['Painel Geral', 'Visão consolidada de toda a operação'],

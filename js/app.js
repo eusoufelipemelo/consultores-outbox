@@ -418,7 +418,7 @@ const App = {
     this.perfilLock = false;
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.remove('perfil-lock');
-    this.go(this.mod().NAV[0].id);
+    this.go(this.mod().HOME || this.mod().NAV[0].id);
     // se o pop-up ficou pendente por causa do portão de perfil, mostra agora
     if (this._loginFlow) { this._loginFlow = false; this.showCampanha(); }
   },

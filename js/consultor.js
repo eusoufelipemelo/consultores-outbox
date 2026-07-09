@@ -2,22 +2,23 @@
    OutBox Consultores — Painel do Consultor (consultor.js)
    ============================================================ */
 const Consultor = {
+  HOME: 'overview',
   NAV: [
-    { id: 'overview',   label: 'Visão Geral',      icon: 'overview' },
+    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
+    { id: 'documentos', label: 'Documentos',       icon: 'docs' },
+    { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
+    { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
+    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' },
+    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
-    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
-    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
-    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery' },
-    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
     { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
-    { id: 'documentos', label: 'Documentos',       icon: 'docs' },
-    { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
-    { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
-    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' }
+    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' },
+    { id: 'overview',   label: 'Visão Geral',      icon: 'overview' }
   ],
 
   titles: {
