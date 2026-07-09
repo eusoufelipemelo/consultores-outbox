@@ -872,118 +872,136 @@ const Consultor = {
     const assinContratada = assin
       ? `<img class="sig-img" src="${assin}" alt="Assinatura OutBox"/>`
       : `<div class="sig-ph"></div>`;
+    const runHead = `<div class="sheet-head"><div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div><span class="hnum">Contrato ${c.numero} · ${dataBR(d.data)}</span></div>`;
+    const runFoot = `<div class="sheet-foot"><span>${e.razao || 'OutBox Group Soluções Digitais'} · ${e.dpo || 'felipe@outboxgroup.com.br'}</span><span class="pg"></span></div>`;
+    const blocosHTML = `
+      <h1>Contrato de Prestação de Serviços</h1>
+      <div class="sub">${nomes}</div>
+      <div class="parties clause">
+        <div class="party"><div class="tag">Contratada</div><b>${e.razao || 'OutBox Group Soluções Digitais'}</b><br>CNPJ ${e.cnpj || ''}<br>${e.endereco || ''}<br>${e.dpo || ''}</div>
+        <div class="party"><div class="tag">Contratante</div><b>${cl.nome || '—'}</b><br>${cl.doc ? (contratantePessoa === 'pessoa jurídica' ? 'CNPJ ' : 'CPF ') + cl.doc + '<br>' : ''}${cl.endereco || ''}${cl.email ? '<br>' + cl.email : ''}${cl.telefone ? ' · ' + cl.telefone : ''}</div>
+      </div>
+      <p class="clause">Pelo presente instrumento particular de prestação de serviços, de um lado <b>${e.razao || 'OutBox Group Soluções Digitais'}</b>, inscrita no CNPJ sob o nº ${e.cnpj || ''}, com sede na ${e.endereco || ''}, doravante denominada <b>CONTRATADA</b>, e de outro lado <b>${cl.nome || ''}</b>, ${contratantePessoa}${cl.doc ? ', inscrita no ' + (contratantePessoa === 'pessoa jurídica' ? 'CNPJ' : 'CPF') + ' sob o nº ' + cl.doc : ''}${cl.endereco ? ', com endereço em ' + cl.endereco : ''}, doravante denominada <b>CONTRATANTE</b>, têm entre si, de forma justa e acordada, o presente contrato, que se regerá pelas cláusulas e condições a seguir:</p>
+      <div class="clause"><h2>Cláusula 1ª — Do objeto</h2>
+      <p>O presente contrato tem por objeto a prestação, pela CONTRATADA à CONTRATANTE, dos seguintes serviços de desenvolvimento digital:</p>
+      <ul>${objetos}</ul>
+      <p>O escopo detalhado de cada serviço é o descrito acima e o complementado pelo briefing preenchido e aprovado pela CONTRATANTE, que passa a integrar este contrato para todos os fins.</p></div>
+      <div class="clause"><h2>Cláusula 2ª — Do valor</h2>
+      <p>Pela prestação dos serviços descritos na Cláusula 1ª, a CONTRATANTE pagará à CONTRATADA o valor total conforme discriminado abaixo:</p>
+      <table class="paytbl">${payRows}</table></div>
+      <div class="clause"><h2>Cláusula 3ª — Da forma e das condições de pagamento</h2>
+      <p>${condPagamento}</p>
+      <p>O início da execução dos serviços fica condicionado à confirmação do pagamento (ou da primeira parcela, no caso de parcelamento) e ao recebimento do material necessário ao briefing.</p></div>
+      <div class="clause"><h2>Cláusula 4ª — Do prazo de execução</h2>
+      <p>Os prazos estimados de entrega de cada serviço são os indicados na Cláusula 1ª, contados em dias úteis a partir da confirmação do pagamento e do recebimento, pela CONTRATADA, de todo o conteúdo, textos, imagens, acessos e informações necessárias (briefing). Atrasos no fornecimento desse material pela CONTRATANTE prorrogam automaticamente os prazos, na mesma proporção.</p></div>
+      <div class="clause"><h2>Cláusula 5ª — Das revisões e aprovações</h2>
+      <p>Estão incluídas as seguintes rodadas de revisão, por serviço:</p>
+      <ul>${revisoes}</ul>
+      <p>Alterações solicitadas após o esgotamento das revisões incluídas, ou que representem mudança de escopo, serão orçadas à parte e dependem de aprovação prévia da CONTRATANTE. A ausência de manifestação da CONTRATANTE em até 5 (cinco) dias úteis após o envio de uma entrega implica aprovação tácita da etapa.</p></div>
+      <div class="clause"><h2>Cláusula 6ª — Das obrigações da CONTRATADA</h2>
+      <p>Compete à CONTRATADA: (a) executar os serviços com zelo, técnica e qualidade profissional; (b) cumprir os prazos ajustados, ressalvados os atrasos causados pela CONTRATANTE ou por caso fortuito e força maior; (c) realizar as rodadas de revisão previstas; (d) manter a CONTRATANTE informada sobre o andamento; e (e) entregar os arquivos e acessos correspondentes ao serviço contratado após a quitação.</p></div>
+      <div class="clause"><h2>Cláusula 7ª — Das obrigações da CONTRATANTE</h2>
+      <p>Compete à CONTRATANTE: (a) fornecer, em tempo hábil, todo o conteúdo, textos, imagens, logotipos, acessos e aprovações necessárias; (b) efetuar os pagamentos nas condições pactuadas; (c) responsabilizar-se pela veracidade, licitude e titularidade do material entregue à CONTRATADA; e (d) indicar um responsável para aprovar as entregas.</p></div>
+      <div class="clause"><h2>Cláusula 8ª — Da propriedade intelectual e da entrega</h2>
+      <p>Após a quitação integral dos valores, a CONTRATANTE passa a deter os direitos de uso do resultado final entregue, para os fins a que se destina. Ferramentas, bibliotecas, códigos de terceiros, fontes e licenças permanecem regidos por suas próprias condições. A CONTRATADA reserva-se o direito de exibir o trabalho em seu portfólio e materiais de divulgação, salvo manifestação expressa em contrário da CONTRATANTE.</p></div>
+      <div class="clause"><h2>Cláusula 9ª — Da confidencialidade</h2>
+      <p>As partes obrigam-se a manter sigilo sobre as informações confidenciais a que tiverem acesso em razão deste contrato, não as divulgando a terceiros sem autorização, obrigação que subsiste mesmo após o término da relação contratual.</p></div>
+      <div class="clause"><h2>Cláusula 10ª — Da proteção de dados (LGPD)</h2>
+      <p>As partes comprometem-se a tratar os dados pessoais eventualmente acessados em conformidade com a Lei nº 13.709/2018 (LGPD), utilizando-os exclusivamente para a execução deste contrato e adotando medidas de segurança adequadas. O Encarregado de Dados (DPO) da CONTRATADA pode ser contatado pelo e-mail ${e.dpo || 'felipe@outboxgroup.com.br'}.</p></div>
+      <div class="clause"><h2>Cláusula 11ª — Do inadimplemento</h2>
+      <p>O atraso no pagamento sujeitará a CONTRATANTE a multa de 2% (dois por cento) sobre o valor em aberto, juros de mora de 1% (um por cento) ao mês e correção monetária, além de facultar à CONTRATADA a suspensão dos serviços até a regularização.</p></div>
+      <div class="clause"><h2>Cláusula 12ª — Da rescisão</h2>
+      <p>Este contrato poderá ser rescindido por qualquer das partes mediante comunicação escrita com antecedência de 10 (dez) dias, ou imediatamente em caso de descumprimento de cláusula pela outra parte. Havendo serviços já executados, será devida à CONTRATADA a remuneração proporcional à etapa concluída, não havendo devolução de valores referentes a serviços já entregues ou em execução.</p></div>
+      <div class="clause"><h2>Cláusula 13ª — Das disposições gerais</h2>
+      <p>Qualquer alteração a este contrato somente terá validade se formalizada por escrito entre as partes. A tolerância de uma parte quanto ao descumprimento de qualquer obrigação pela outra não implica novação ou renúncia. As comunicações entre as partes poderão ser feitas por e-mail ou aplicativo de mensagens (WhatsApp), reconhecidas como válidas para os fins deste contrato.</p></div>
+      <div class="clause"><h2>Cláusula 14ª — Do aceite eletrônico e do foro</h2>
+      <p>As partes reconhecem a validade da contratação e do aceite por meio eletrônico, nos termos da MP nº 2.200-2/2001 e da Lei nº 14.063/2020, produzindo os mesmos efeitos da assinatura manuscrita. Fica eleito o foro da <b>${d.foro || OB.CONTRATO_FORO}</b>, sede da CONTRATADA, para dirimir eventuais controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.</p></div>
+      ${aceiteBloco}
+      <p class="local clause">${cidadeSede.replace('/', ' - ')}, ${dataExtenso(d.data)}.</p>
+      <div class="sign clause">
+        <div class="col">${assinContratada}<div class="l"><b>${e.razao || 'OutBox Group Soluções Digitais'}</b>CONTRATADA · CNPJ ${e.cnpj || ''}</div></div>
+        <div class="col">${assinCliente}<div class="l"><b>${cl.nome || ''}</b>CONTRATANTE${cl.doc ? ' · ' + cl.doc : ''}</div></div>
+      </div>`;
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Contrato ${c.numero} · ${cl.nome || ''}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#3c4652;--mut:#8a96a3;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}
-@page{size:A4;margin:14mm 0}
+@page{size:A4;margin:0}
 html,body{background:#e9edf1}
-body{font-family:'Inter',sans-serif;color:var(--ink);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:24px 0}
-.page{position:relative;width:210mm;min-height:297mm;margin:0 auto;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.10)}
-.head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16mm 20mm 6mm;border-bottom:3px solid var(--brand)}
-.head .lg{display:flex;align-items:center;gap:11px}.head .lg b{font-size:19px;font-weight:800}.head .lg span{display:block;font-size:11px;color:var(--mut);font-weight:600;letter-spacing:.02em}
-.head .num{text-align:right;font-size:12px;color:var(--mut)}.head .num b{display:block;font-size:15px;color:var(--ink)}
-.body{padding:8mm 20mm 6mm}
+body{font-family:'Inter',sans-serif;color:var(--ink);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc{display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px 12px 90px}
+.sheet{width:210mm;height:297mm;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.10);display:flex;flex-direction:column;padding:13mm 18mm 10mm;overflow:hidden}
+.sheet-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--brand);margin-bottom:12px}
+.sheet-head .lg{display:flex;align-items:center;gap:10px}.sheet-head .lg b{font-size:16px;font-weight:800}.sheet-head .lg span{display:block;font-size:10px;color:var(--mut);font-weight:600;letter-spacing:.02em}
+.sheet-head .hnum{font-size:10.5px;color:var(--mut);text-align:right}
+.sheet-body{flex:1 1 auto;overflow:hidden}
+.sheet-foot{flex:0 0 auto;border-top:1px solid var(--line);padding-top:7px;margin-top:8px;display:flex;justify-content:space-between;gap:10px;font-size:9.5px;color:var(--mut)}
+.sheet-foot .pg{font-weight:700}
 h1{font-size:20px;font-weight:800;text-align:center;letter-spacing:-.01em;margin-bottom:3px}
 .sub{text-align:center;color:var(--mut);font-size:12px;margin-bottom:18px}
-.parties{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
 .party{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--soft)}
 .party .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);font-weight:700;margin-bottom:5px}
 .party b{color:var(--ink)}
-.clause{break-inside:avoid;page-break-inside:avoid}
-h2{font-size:13px;font-weight:800;margin:15px 0 5px;color:var(--ink);break-after:avoid;page-break-after:avoid}
+.clause{break-inside:avoid;margin-bottom:4px}
+h2{font-size:13px;font-weight:800;margin:13px 0 5px;color:var(--ink)}
 p,li{font-size:11.8px;color:var(--soft);text-align:justify}
 ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
 .mut{color:var(--mut)}
-.paytbl{width:100%;border-collapse:collapse;margin:6px 0 4px;break-inside:avoid;page-break-inside:avoid}
+.paytbl{width:100%;border-collapse:collapse;margin:6px 0 4px}
 .paytbl td{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--soft)}
 .paytbl td.r{text-align:right}.paytbl tr.tot td{border-top:2px solid var(--line);border-bottom:none;color:var(--ink);font-size:13.5px}
 .paytbl tr.tot td b{color:var(--brand)}
-.aceite{margin:18px 0 6px;padding:14px 16px;border-radius:10px;font-size:12px}
+.aceite{margin:16px 0 6px;padding:14px 16px;border-radius:10px;font-size:12px}
 .aceite.ok{background:#e8f7ee;border:1px solid #b7e4c7;color:#15803d}.aceite.ok b{display:block;font-size:13.5px;margin-bottom:4px}
-.cta{margin:18px 0 6px;text-align:center}.cta .accept{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;padding:14px 28px;border-radius:11px;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 8px 20px rgba(241,85,50,.28)}
-.local{margin:26px 0 6px;font-size:12px;color:var(--soft)}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:8px 0 6px;break-inside:avoid;page-break-inside:avoid}
+.cta{margin:16px 0 6px;text-align:center}.cta .accept{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#fff;padding:14px 28px;border-radius:11px;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 8px 20px rgba(241,85,50,.28)}
+.local{margin:22px 0 6px;font-size:12px;color:var(--soft)}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:8px 0 6px}
 .sign .col{text-align:center}
 .sign .sig-img{height:66px;object-fit:contain;margin:0 auto 2px;display:block}
 .sign .sig-e{height:66px;display:flex;align-items:flex-end;justify-content:center;color:#15803d;font-size:11px;font-weight:600;line-height:1.3}
 .sign .sig-ph{height:66px}
 .sign .l{border-top:1.5px solid var(--ink);padding-top:6px;font-size:11px;color:var(--soft)}.sign .l b{display:block;color:var(--ink);font-size:12px}
-.foot{border-top:1px solid var(--line);padding:8mm 20mm;color:var(--mut);font-size:11px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.foot b{color:var(--ink)}
-.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);z-index:5}
-@media print{.print-hint,.cta{display:none}.page{width:auto;min-height:0;box-shadow:none;margin:0}html,body{background:#fff}body{padding:0}}</style></head>
-<body><div class="page">
-  <div class="head">
-    <div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div>
-    <div class="num">Contrato nº<b>${c.numero}</b>${dataBR(d.data)}</div>
-  </div>
-  <div class="body">
-    <h1>Contrato de Prestação de Serviços</h1>
-    <div class="sub">${nomes}</div>
-    <div class="parties clause">
-      <div class="party"><div class="tag">Contratada</div><b>${e.razao || 'OutBox Group Soluções Digitais'}</b><br>CNPJ ${e.cnpj || ''}<br>${e.endereco || ''}<br>${e.dpo || ''}</div>
-      <div class="party"><div class="tag">Contratante</div><b>${cl.nome || '—'}</b><br>${cl.doc ? (contratantePessoa === 'pessoa jurídica' ? 'CNPJ ' : 'CPF ') + cl.doc + '<br>' : ''}${cl.endereco || ''}${cl.email ? '<br>' + cl.email : ''}${cl.telefone ? ' · ' + cl.telefone : ''}</div>
-    </div>
-    <p>Pelo presente instrumento particular de prestação de serviços, de um lado <b>${e.razao || 'OutBox Group Soluções Digitais'}</b>, inscrita no CNPJ sob o nº ${e.cnpj || ''}, com sede na ${e.endereco || ''}, doravante denominada <b>CONTRATADA</b>, e de outro lado <b>${cl.nome || ''}</b>, ${contratantePessoa}${cl.doc ? ', inscrita no ' + (contratantePessoa === 'pessoa jurídica' ? 'CNPJ' : 'CPF') + ' sob o nº ' + cl.doc : ''}${cl.endereco ? ', com endereço em ' + cl.endereco : ''}, doravante denominada <b>CONTRATANTE</b>, têm entre si, de forma justa e acordada, o presente contrato, que se regerá pelas cláusulas e condições a seguir:</p>
-
-    <div class="clause"><h2>Cláusula 1ª — Do objeto</h2>
-    <p>O presente contrato tem por objeto a prestação, pela CONTRATADA à CONTRATANTE, dos seguintes serviços de desenvolvimento digital:</p>
-    <ul>${objetos}</ul>
-    <p>O escopo detalhado de cada serviço é o descrito acima e o complementado pelo briefing preenchido e aprovado pela CONTRATANTE, que passa a integrar este contrato para todos os fins.</p></div>
-
-    <div class="clause"><h2>Cláusula 2ª — Do valor</h2>
-    <p>Pela prestação dos serviços descritos na Cláusula 1ª, a CONTRATANTE pagará à CONTRATADA o valor total conforme discriminado abaixo:</p>
-    <table class="paytbl">${payRows}</table></div>
-
-    <div class="clause"><h2>Cláusula 3ª — Da forma e das condições de pagamento</h2>
-    <p>${condPagamento}</p>
-    <p>O início da execução dos serviços fica condicionado à confirmação do pagamento (ou da primeira parcela, no caso de parcelamento) e ao recebimento do material necessário ao briefing.</p></div>
-
-    <div class="clause"><h2>Cláusula 4ª — Do prazo de execução</h2>
-    <p>Os prazos estimados de entrega de cada serviço são os indicados na Cláusula 1ª, contados em dias úteis a partir da confirmação do pagamento e do recebimento, pela CONTRATADA, de todo o conteúdo, textos, imagens, acessos e informações necessárias (briefing). Atrasos no fornecimento desse material pela CONTRATANTE prorrogam automaticamente os prazos, na mesma proporção.</p></div>
-
-    <div class="clause"><h2>Cláusula 5ª — Das revisões e aprovações</h2>
-    <p>Estão incluídas as seguintes rodadas de revisão, por serviço:</p>
-    <ul>${revisoes}</ul>
-    <p>Alterações solicitadas após o esgotamento das revisões incluídas, ou que representem mudança de escopo, serão orçadas à parte e dependem de aprovação prévia da CONTRATANTE. A ausência de manifestação da CONTRATANTE em até 5 (cinco) dias úteis após o envio de uma entrega implica aprovação tácita da etapa.</p></div>
-
-    <div class="clause"><h2>Cláusula 6ª — Das obrigações da CONTRATADA</h2>
-    <p>Compete à CONTRATADA: (a) executar os serviços com zelo, técnica e qualidade profissional; (b) cumprir os prazos ajustados, ressalvados os atrasos causados pela CONTRATANTE ou por caso fortuito e força maior; (c) realizar as rodadas de revisão previstas; (d) manter a CONTRATANTE informada sobre o andamento; e (e) entregar os arquivos e acessos correspondentes ao serviço contratado após a quitação.</p></div>
-
-    <div class="clause"><h2>Cláusula 7ª — Das obrigações da CONTRATANTE</h2>
-    <p>Compete à CONTRATANTE: (a) fornecer, em tempo hábil, todo o conteúdo, textos, imagens, logotipos, acessos e aprovações necessárias; (b) efetuar os pagamentos nas condições pactuadas; (c) responsabilizar-se pela veracidade, licitude e titularidade do material entregue à CONTRATADA; e (d) indicar um responsável para aprovar as entregas.</p></div>
-
-    <div class="clause"><h2>Cláusula 8ª — Da propriedade intelectual e da entrega</h2>
-    <p>Após a quitação integral dos valores, a CONTRATANTE passa a deter os direitos de uso do resultado final entregue, para os fins a que se destina. Ferramentas, bibliotecas, códigos de terceiros, fontes e licenças permanecem regidos por suas próprias condições. A CONTRATADA reserva-se o direito de exibir o trabalho em seu portfólio e materiais de divulgação, salvo manifestação expressa em contrário da CONTRATANTE.</p></div>
-
-    <div class="clause"><h2>Cláusula 9ª — Da confidencialidade</h2>
-    <p>As partes obrigam-se a manter sigilo sobre as informações confidenciais a que tiverem acesso em razão deste contrato, não as divulgando a terceiros sem autorização, obrigação que subsiste mesmo após o término da relação contratual.</p></div>
-
-    <div class="clause"><h2>Cláusula 10ª — Da proteção de dados (LGPD)</h2>
-    <p>As partes comprometem-se a tratar os dados pessoais eventualmente acessados em conformidade com a Lei nº 13.709/2018 (LGPD), utilizando-os exclusivamente para a execução deste contrato e adotando medidas de segurança adequadas. O Encarregado de Dados (DPO) da CONTRATADA pode ser contatado pelo e-mail ${e.dpo || 'felipe@outboxgroup.com.br'}.</p></div>
-
-    <div class="clause"><h2>Cláusula 11ª — Do inadimplemento</h2>
-    <p>O atraso no pagamento sujeitará a CONTRATANTE a multa de 2% (dois por cento) sobre o valor em aberto, juros de mora de 1% (um por cento) ao mês e correção monetária, além de facultar à CONTRATADA a suspensão dos serviços até a regularização.</p></div>
-
-    <div class="clause"><h2>Cláusula 12ª — Da rescisão</h2>
-    <p>Este contrato poderá ser rescindido por qualquer das partes mediante comunicação escrita com antecedência de 10 (dez) dias, ou imediatamente em caso de descumprimento de cláusula pela outra parte. Havendo serviços já executados, será devida à CONTRATADA a remuneração proporcional à etapa concluída, não havendo devolução de valores referentes a serviços já entregues ou em execução.</p></div>
-
-    <div class="clause"><h2>Cláusula 13ª — Das disposições gerais</h2>
-    <p>Qualquer alteração a este contrato somente terá validade se formalizada por escrito entre as partes. A tolerância de uma parte quanto ao descumprimento de qualquer obrigação pela outra não implica novação ou renúncia. As comunicações entre as partes poderão ser feitas por e-mail ou aplicativo de mensagens (WhatsApp), reconhecidas como válidas para os fins deste contrato.</p></div>
-
-    <div class="clause"><h2>Cláusula 14ª — Do aceite eletrônico e do foro</h2>
-    <p>As partes reconhecem a validade da contratação e do aceite por meio eletrônico, nos termos da MP nº 2.200-2/2001 e da Lei nº 14.063/2020, produzindo os mesmos efeitos da assinatura manuscrita. Fica eleito o foro da <b>${d.foro || OB.CONTRATO_FORO}</b>, sede da CONTRATADA, para dirimir eventuais controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.</p></div>
-
-    ${aceiteBloco}
-    <p class="local clause">${cidadeSede.replace('/', ' - ')}, ${dataExtenso(d.data)}.</p>
-    <div class="sign clause">
-      <div class="col">${assinContratada}<div class="l"><b>${e.razao || 'OutBox Group Soluções Digitais'}</b>CONTRATADA · CNPJ ${e.cnpj || ''}</div></div>
-      <div class="col">${assinCliente}<div class="l"><b>${cl.nome || ''}</b>CONTRATANTE${cl.doc ? ' · ' + cl.doc : ''}</div></div>
-    </div>
-  </div>
-  <div class="foot"><div>${e.razao || 'OutBox Group Soluções Digitais'}<br><b>${e.dpo || 'felipe@outboxgroup.com.br'}</b></div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
-</div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
+.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:11px 18px;border-radius:11px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);z-index:5;font-family:inherit;font-size:13px}
+@media print{.print-hint,.cta{display:none}html,body{background:#fff}.doc{gap:0;padding:0}.sheet{box-shadow:none;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}}</style></head>
+<body>
+<div class="doc" id="doc"></div>
+<template id="tpl-head">${runHead}</template>
+<template id="tpl-foot">${runFoot}</template>
+<template id="tpl-blocks">${blocosHTML}</template>
+<button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button>
+<script>
+(function(){
+  function build(){
+    var doc=document.getElementById('doc');
+    if(!doc||doc.getAttribute('data-done'))return; doc.setAttribute('data-done','1');
+    var headT=document.getElementById('tpl-head'), footT=document.getElementById('tpl-foot');
+    var blocks=[].slice.call(document.getElementById('tpl-blocks').content.children);
+    function newSheet(){
+      var s=document.createElement('div'); s.className='sheet';
+      s.appendChild(headT.content.cloneNode(true));
+      var b=document.createElement('div'); b.className='sheet-body'; s.appendChild(b);
+      s.appendChild(footT.content.cloneNode(true));
+      doc.appendChild(s); return b;
+    }
+    var body=newSheet();
+    for(var i=0;i<blocks.length;i++){
+      var blk=blocks[i].cloneNode(true);
+      body.appendChild(blk);
+      if(body.scrollHeight>body.clientHeight+1){
+        body.removeChild(blk);
+        if(body.children.length===0){ body.appendChild(blk); continue; }
+        body=newSheet(); body.appendChild(blk);
+      }
+    }
+    var sheets=doc.querySelectorAll('.sheet');
+    for(var j=0;j<sheets.length;j++){ var pg=sheets[j].querySelector('.pg'); if(pg) pg.textContent='Página '+(j+1)+' de '+sheets.length; }
+  }
+  if(document.fonts&&document.fonts.ready){document.fonts.ready.then(build);setTimeout(build,700);}
+  else{window.addEventListener('load',build);setTimeout(build,300);}
+})();
+</script>
+</body></html>`;
   },
   visualizarContrato(c) {
     if (!c) return;
@@ -1033,23 +1051,30 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
   /* card de um contrato na biblioteca */
   contratoLibCard(c) {
     const cli = OB.clientById(c.clientId) || (c.dados && c.dados.cliente) || {};
-    const svc = ((c.dados && c.dados.servicos) || []).map(x => x.nome).join(' + ');
+    const servicos = (c.dados && c.dados.servicos) || [];
+    const svc = servicos.map(x => x.nome).join(' + ');
     const val = (c.dados && c.dados.pagamento) ? OB.money(c.dados.pagamento.valorCliente, c.dados.pagamento.moeda) : '';
-    const badge = c.status === 'aceito' ? `<span class="ct-badge ok">${UI.icon('check',13)} Aceito</span>` : `<span class="ct-badge wait">Aguardando aceite</span>`;
-    return `<div class="card ct-card" data-cli="${(cli.nome || '').toLowerCase()}" data-svc="${((c.dados && c.dados.servicos) || []).map(x => x.id).join(',')}" data-per="${(c.criadoEm || '').slice(0, 7)}">
-      <div class="ct-main">
-        <div class="ct-cli"><b>${cli.nome || 'Cliente'}</b> <span class="mut">· nº ${c.numero}</span></div>
-        <div class="ct-svc">${svc}</div>
-        <div class="ct-meta">${val} · ${OB.dataBR(c.criadoEm)}${c.status === 'aceito' && c.aceitoEm ? ' · aceito em ' + OB.dataBR(c.aceitoEm) : ''}</div>
+    const aceito = c.status === 'aceito';
+    const badge = aceito ? `<span class="ctl-badge ok">${UI.icon('check',12)} Aceito</span>` : `<span class="ctl-badge wait">Aguardando</span>`;
+    return `<div class="ctl-card" data-cli="${(cli.nome || '').toLowerCase()}" data-num="${(c.numero || '').toLowerCase()}" data-svc="${servicos.map(x => x.id).join(',')}" data-per="${(c.criadoEm || '').slice(0, 7)}" data-status="${aceito ? 'aceito' : 'pendente'}">
+      <div class="ctl-ic">${UI.icon('contract',20)}</div>
+      <div class="ctl-info">
+        <div class="ctl-top"><b>${cli.nome || 'Cliente'}</b><span class="ctl-num">${c.numero}</span></div>
+        <div class="ctl-svc">${svc || 'Serviço'}</div>
+        <div class="ctl-meta"><span class="ctl-val">${val}</span><span class="ctl-dot">·</span>${OB.dataBR(c.criadoEm)}${aceito && c.aceitoEm ? ` <span class="ctl-dot">·</span> aceito ${OB.dataBR(c.aceitoEm)}` : ''}</div>
       </div>
-      <div class="ct-side">${badge}<div class="ct-acoes">
-        <button class="btn ghost" data-ct-ver="${c.id}">${UI.icon('eye',15)} Ver</button>
-        <button class="btn ghost" data-ct-bx="${c.id}">${UI.icon('download',15)} Baixar</button>
-        ${c.status !== 'aceito' ? `<button class="btn brand" data-ct-link="${c.id}">${UI.icon('share',15)} Enviar</button>` : ''}
-      </div></div>
+      <div class="ctl-right">
+        ${badge}
+        <div class="ctl-acts">
+          <button class="icob" data-ct-ver="${c.id}" title="Visualizar" aria-label="Visualizar contrato">${UI.icon('eye',16)}</button>
+          <button class="icob" data-ct-bx="${c.id}" title="Baixar em PDF" aria-label="Baixar contrato">${UI.icon('download',16)}</button>
+          ${!aceito ? `<button class="icob brand" data-ct-link="${c.id}" title="Enviar para aceite" aria-label="Enviar para aceite">${UI.icon('share',16)}</button>` : ''}
+          <button class="icob danger" data-ct-del="${c.id}" title="Excluir contrato" aria-label="Excluir contrato">${UI.icon('trash',16)}</button>
+        </div>
+      </div>
     </div>`;
   },
-  _ctLibFiltro: { periodo: '', servico: '', cliente: '' },
+  _ctLibFiltro: { periodo: '', servico: '', cliente: '', status: '' },
   view_contratos() {
     const u = this.u();
     const v = document.getElementById('main-view');
@@ -1064,45 +1089,67 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       <div class="kpi"><div class="kpi-v" style="color:var(--brand)">${pend}</div><div class="kpi-l">Aguardando aceite</div></div>
     </div>`;
     if (!contratos.length) { v.innerHTML = kpis + this.empty('contract', 'Nenhum contrato ainda', 'Assim que você formalizar uma venda (proposta aprovada), o contrato do serviço é gerado automaticamente e aparece aqui na sua biblioteca.'); return; }
-    // opções de filtro
     const periodos = [...new Set(contratos.map(c => (c.criadoEm || '').slice(0, 7)).filter(Boolean))].sort().reverse();
-    const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     const perLabel = ym => { const [a, mo] = ym.split('-'); return `${MES[parseInt(mo, 10) - 1]}/${a}`; };
     const servs = [...new Set(contratos.flatMap(c => ((c.dados && c.dados.servicos) || []).map(x => x.id)))];
     const f = this._ctLibFiltro;
     v.innerHTML = kpis + `
-      <div class="lib-head"><b>Biblioteca de contratos</b><span class="mut">${contratos.length} no total</span></div>
-      <div class="cons-filtros" id="ctl-filtros">
-        <input id="ctl-cliente" placeholder="Buscar cliente / nº" value="${f.cliente}"/>
-        <select id="ctl-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.filter(p => servs.includes(p.id)).map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
-        <select id="ctl-periodo"><option value="">Todos os períodos</option>${periodos.map(ym => `<option value="${ym}" ${f.periodo === ym ? 'selected' : ''}>${perLabel(ym)}</option>`).join('')}</select>
-        <button class="btn ghost" id="ctl-limpar">Limpar</button>
+      <div class="lib-head"><b>Biblioteca de contratos</b><span class="lib-count" id="ctl-count">${contratos.length} contratos</span></div>
+      <div class="ctl-toolbar">
+        <div class="ctl-search">${UI.icon('search',16)}<input id="ctl-cliente" placeholder="Buscar por cliente ou nº do contrato" value="${f.cliente}"/></div>
+        <div class="ctl-seg" id="ctl-seg">
+          <button type="button" data-st="" class="${!f.status ? 'on' : ''}">Todos <i>${contratos.length}</i></button>
+          <button type="button" data-st="pendente" class="${f.status === 'pendente' ? 'on' : ''}">Aguardando <i>${pend}</i></button>
+          <button type="button" data-st="aceito" class="${f.status === 'aceito' ? 'on' : ''}">Aceitos <i>${aceitos}</i></button>
+        </div>
+        <div class="ctl-selrow">
+          <div class="ctl-sel"><label for="ctl-servico">Serviço</label>
+            <select id="ctl-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.filter(p => servs.includes(p.id)).map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label for="ctl-periodo">Período</label>
+            <select id="ctl-periodo"><option value="">Todos os períodos</option>${periodos.map(ym => `<option value="${ym}" ${f.periodo === ym ? 'selected' : ''}>${perLabel(ym)}</option>`).join('')}</select></div>
+          <button type="button" class="ctl-clear" id="ctl-limpar">${UI.icon('x',14)} Limpar filtros</button>
+        </div>
       </div>
-      <div class="ct-list" id="ctl-list">${contratos.map(c => this.contratoLibCard(c)).join('')}</div>
-      <div class="ct-empty" id="ctl-empty" hidden>${this.empty('contract', 'Nada neste filtro', 'Ajuste os filtros para encontrar o contrato.')}</div>`;
+      <div class="ctl-list" id="ctl-list">${contratos.map(c => this.contratoLibCard(c)).join('')}</div>
+      <div id="ctl-empty" hidden>${this.empty('contract', 'Nenhum contrato encontrado', 'Ajuste a busca ou os filtros para encontrar o contrato.')}</div>`;
     const aplicar = () => {
       const q = (document.getElementById('ctl-cliente').value || '').toLowerCase().trim();
       const sv = document.getElementById('ctl-servico').value;
       const per = document.getElementById('ctl-periodo').value;
-      this._ctLibFiltro = { cliente: q, servico: sv, periodo: per };
+      const st = (v.querySelector('#ctl-seg button.on') || {}).dataset ? v.querySelector('#ctl-seg button.on').dataset.st : '';
+      this._ctLibFiltro = { cliente: q, servico: sv, periodo: per, status: st };
       let vis = 0;
-      v.querySelectorAll('#ctl-list .ct-card').forEach(card => {
-        const okCli = !q || (card.dataset.cli || '').includes(q) || card.textContent.toLowerCase().includes(q);
+      v.querySelectorAll('#ctl-list .ctl-card').forEach(card => {
+        const okCli = !q || (card.dataset.cli || '').includes(q) || (card.dataset.num || '').includes(q);
         const okSvc = !sv || (card.dataset.svc || '').split(',').includes(sv);
         const okPer = !per || card.dataset.per === per;
-        const show = okCli && okSvc && okPer; card.style.display = show ? '' : 'none'; if (show) vis++;
+        const okSt = !st || card.dataset.status === st;
+        const show = okCli && okSvc && okPer && okSt; card.style.display = show ? '' : 'none'; if (show) vis++;
       });
+      const cnt = document.getElementById('ctl-count'); if (cnt) cnt.textContent = `${vis} de ${contratos.length} contratos`;
       document.getElementById('ctl-empty').hidden = vis > 0;
       document.getElementById('ctl-list').hidden = vis === 0;
     };
+    v.querySelectorAll('#ctl-seg button').forEach(b => b.onclick = () => { v.querySelectorAll('#ctl-seg button').forEach(x => x.classList.remove('on')); b.classList.add('on'); aplicar(); });
     document.getElementById('ctl-servico').onchange = aplicar;
     document.getElementById('ctl-periodo').onchange = aplicar;
     let t; document.getElementById('ctl-cliente').oninput = () => { clearTimeout(t); t = setTimeout(aplicar, 250); };
-    document.getElementById('ctl-limpar').onclick = () => { this._ctLibFiltro = { periodo: '', servico: '', cliente: '' }; this.render('contratos'); };
+    document.getElementById('ctl-limpar').onclick = () => { this._ctLibFiltro = { periodo: '', servico: '', cliente: '', status: '' }; this.render('contratos'); };
     v.querySelectorAll('[data-ct-ver]').forEach(b => b.onclick = () => this.visualizarContrato(OB.contratoById(b.dataset.ctVer)));
     v.querySelectorAll('[data-ct-bx]').forEach(b => b.onclick = () => this.baixarContrato(OB.contratoById(b.dataset.ctBx)));
     v.querySelectorAll('[data-ct-link]').forEach(b => b.onclick = () => this.enviarContratoModal(OB.contratoById(b.dataset.ctLink)));
-    if (f.cliente || f.servico || f.periodo) aplicar();
+    v.querySelectorAll('[data-ct-del]').forEach(b => b.onclick = () => this.excluirContrato(OB.contratoById(b.dataset.ctDel)));
+    if (f.cliente || f.servico || f.periodo || f.status) aplicar();
+  },
+  excluirContrato(c) {
+    if (!c) return;
+    const cli = OB.clientById(c.clientId) || (c.dados && c.dados.cliente) || {};
+    UI.confirm('Excluir contrato', `Remover definitivamente o contrato <b>${c.numero}</b> de <b>${cli.nome || 'cliente'}</b>? Esta ação não pode ser desfeita.`, () => {
+      OB.removeContrato(c.id);
+      UI.toast('Contrato excluído', c.numero, 'ok');
+      this.render('contratos');
+    }, 'Excluir contrato');
   },
 
   /* compartilha o orçamento: Web Share API nativa (mobile) com fallback p/ WhatsApp */

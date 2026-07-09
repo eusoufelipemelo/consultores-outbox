@@ -857,11 +857,12 @@ const Admin = {
           return `<tr><td class="strong nowrap">${c.numero || '-'}</td><td class="nowrap">${OB.dataBR(c.criadoEm)}</td>
             <td>${cl.nome || '-'}</td><td>${svc}</td><td>${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</td>
             <td class="nowrap">${cl.uf ? (this.UF_NOMES[cl.uf] || cl.uf) : '-'}</td><td class="strong nowrap">${val}</td><td>${st}</td>
-            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ct-ver="${c.id}" title="Visualizar">${UI.icon('eye',15)}</button><button class="iconbtn" data-ct-bx="${c.id}" title="Baixar">${UI.icon('download',15)}</button></td></tr>`;
+            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ct-ver="${c.id}" title="Visualizar">${UI.icon('eye',15)}</button><button class="iconbtn" data-ct-bx="${c.id}" title="Baixar">${UI.icon('download',15)}</button><button class="iconbtn danger" data-ct-del="${c.id}" title="Excluir contrato">${UI.icon('trash',15)}</button></td></tr>`;
         }).join('')}
       </tbody></table></div>`;
       el.querySelectorAll('[data-ct-ver]').forEach(b => b.onclick = () => Consultor.visualizarContrato(OB.contratoById(b.dataset.ctVer)));
       el.querySelectorAll('[data-ct-bx]').forEach(b => b.onclick = () => Consultor.baixarContrato(OB.contratoById(b.dataset.ctBx)));
+      el.querySelectorAll('[data-ct-del]').forEach(b => b.onclick = () => { const c = OB.contratoById(b.dataset.ctDel); if (!c) return; const cli = OB.clientById(c.clientId) || (c.dados && c.dados.cliente) || {}; UI.confirm('Excluir contrato', `Remover definitivamente o contrato <b>${c.numero}</b> de <b>${cli.nome || 'cliente'}</b>?`, () => { OB.removeContrato(c.id); UI.toast('Contrato excluído', c.numero, 'ok'); this.view_contratos(); }, 'Excluir contrato'); });
     };
     const capt = () => { this._ctFiltro = {
       cliente: document.getElementById('ctf-cliente').value,
