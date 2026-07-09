@@ -360,9 +360,14 @@ const Consultor = {
     s.statusProposta = status;
     if (status !== 'aprovada' && s.statusComissao === 'disponivel') { /* mantém disponivel; só não conta */ }
     OB.updateSale(s);
+    this.autoContrato(s); // formalizou a venda -> gera o contrato
     UI.toast('Proposta atualizada', OB.STATUS_PROPOSTA[status].nome, 'ok');
     App.refreshCommission(true);
     this.render('comissao');
+  },
+  /* gera o contrato automaticamente ao formalizar a venda (aprovada, sem contrato ainda) */
+  autoContrato(s) {
+    if (s && s.statusProposta === 'aprovada' && !OB.contratoDaVenda(s.id)) { try { this.gerarContrato(s); } catch (e) {} }
   },
 
   /* editar apenas desconto + forma de pagamento (o valor de tabela é fixo) */
@@ -631,6 +636,7 @@ const Consultor = {
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
       });
+      this.autoContrato(OB.db.sales[OB.db.sales.length - 1]); // formalizou a venda -> gera o contrato
       UI.closeModal();
       UI.toast(orcamento ? 'Orçamento criado!' : 'Venda lançada!', '', 'ok');
       App.refreshCommission(true);
@@ -997,6 +1003,8 @@ ul{margin:6px 0 6px 20px}li{margin-bottom:5px}
     const u = this.u();
     const v = document.getElementById('main-view');
     const vendas = OB.salesOf(u.id).filter(s => s.statusProposta === 'aprovada').sort((a, b) => new Date(b.data) - new Date(a.data));
+    // garante o contrato de toda venda formalizada (inclui as aprovadas pelo próprio cliente)
+    vendas.forEach(s => this.autoContrato(s));
     const contratos = OB.contratosDe(u.id);
     const aceitos = contratos.filter(c => c.status === 'aceito').length;
     const pend = contratos.filter(c => c.status !== 'aceito').length;
