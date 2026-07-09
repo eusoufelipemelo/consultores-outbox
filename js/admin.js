@@ -11,7 +11,6 @@ const Admin = {
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
-    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },

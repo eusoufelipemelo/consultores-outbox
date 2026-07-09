@@ -10,7 +10,6 @@ const Consultor = {
     { id: 'documentos', label: 'Documentos',       icon: 'docs' },
     { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
     { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
-    { id: 'perfil',     label: 'Editar Perfil',    icon: 'profile' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },

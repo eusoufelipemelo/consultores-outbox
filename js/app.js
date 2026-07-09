@@ -595,7 +595,9 @@ const App = {
     const box = document.getElementById('side-user-box');
     if (!box) return;
     const av = u.foto ? `<img src="${u.foto}" alt="">` : (u.nome ? u.nome[0].toUpperCase() : '?');
-    box.innerHTML = `<div class="side-user"><div class="av">${av}</div><div class="grow" style="min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome} ${u.sobrenome||''}</b><span>${u.role === 'admin' ? 'Administrador' : 'Consultor'}</span></div></div>`;
+    box.innerHTML = `<button type="button" class="side-user" id="side-user-btn" title="Editar meu perfil" aria-label="Editar meu perfil"><div class="av">${av}</div><div class="grow" style="min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome} ${u.sobrenome||''}</b><span>${u.role === 'admin' ? 'Administrador' : 'Consultor'}</span></div><span class="side-user-edit">${UI.icon('edit',16)}</span></button>`;
+    const btn = document.getElementById('side-user-btn');
+    if (btn) btn.onclick = () => this.go('perfil');
   },
 
   /* ---------- Ranking de consultores (vendas + treinamentos) — visão premium ---------- */
