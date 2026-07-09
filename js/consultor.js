@@ -1884,7 +1884,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const acoes = e => liberado
       ? `<a class="btn ghost" href="${e.arquivo}" target="_blank" rel="noopener" title="Ler agora em nova aba">${UI.icon('eye',15)} Ler</a>
          <a class="btn brand grow" href="${e.arquivo}" download title="Baixar o PDF">${UI.icon('download',15)} Baixar e-book</a>`
-      : `<button class="btn brand grow" data-lock title="Libere fazendo a sua primeira venda">${UI.icon('lock',15)} Liberar na 1ª venda</button>`;
+      : `<button class="btn ghost" disabled title="Liberado após a sua primeira venda">${UI.icon('eye',15)} Ler</button>
+         <button class="btn brand grow" disabled title="Liberado após a sua primeira venda">${UI.icon('lock',15)} Baixar e-book</button>`;
     v.innerHTML = `
       ${aviso}
       <div class="port-filtros" id="eb-filtros">
@@ -1897,7 +1898,6 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             <div class="ebook-capa">
               <img src="${e.capa}" alt="Capa do e-book ${e.titulo}" loading="lazy"/>
               ${e.categoria ? `<span class="ebook-tag">${e.categoria}</span>` : ''}
-              ${liberado ? '' : `<span class="ebook-cadeado">${UI.icon('lock',22)}</span>`}
             </div>
             <div class="ebook-info">
               <b>${e.titulo}</b>
@@ -1917,9 +1917,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       grid.querySelectorAll('.ebook-card').forEach(card => { card.style.display = (!cat || card.dataset.cat === cat) ? '' : 'none'; });
     });
     if (!liberado) {
-      const ir = () => App.go('comissao');
-      const b = document.getElementById('eb-vender'); if (b) b.onclick = ir;
-      grid.querySelectorAll('[data-lock]').forEach(btn => btn.onclick = ir);
+      const b = document.getElementById('eb-vender'); if (b) b.onclick = () => App.go('comissao');
     }
   },
 

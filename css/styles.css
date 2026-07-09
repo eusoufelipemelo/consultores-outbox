@@ -1291,8 +1291,5 @@ td .strong { color: var(--text); font-weight: 600; }
 .ebook-aviso__txt b { font-size: 14.5px; color: var(--text); }
 .ebook-aviso__txt span { font-size: 12.5px; color: var(--text-soft); line-height: 1.4; }
 .ebook-aviso .btn { flex: 0 0 auto; }
-.ebook-card.locked .ebook-capa img { filter: grayscale(.35) brightness(.82); }
-.ebook-card.locked .ebook-cadeado { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(10,10,10,.28); backdrop-filter: blur(1px); }
-.ebook-card.locked .ebook-cadeado svg { padding: 12px; border-radius: 50%; background: rgba(241,85,50,.92); box-shadow: 0 6px 18px rgba(0,0,0,.28); }
-.ebook-card.locked .btn[data-lock] { opacity: .95; }
+.ebook-card.locked .btn[disabled] { opacity: .5; cursor: not-allowed; pointer-events: none; }
 @media (max-width: 560px) { .ebook-aviso { flex-wrap: wrap; } .ebook-aviso .btn { width: 100%; justify-content: center; } }
