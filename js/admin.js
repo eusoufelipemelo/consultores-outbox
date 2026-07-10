@@ -952,7 +952,8 @@ const Admin = {
         const f = file.files && file.files[0]; if (!f) return;
         if (!/image\/(png|jpeg)/.test(f.type)) return UI.toast('Formato inválido', 'Envie um PNG ou JPG', 'err');
         const rd = new FileReader();
-        rd.onload = async () => { const comp = await OB._comprimirCriativo(rd.result); this._criUp[tipo] = comp; prev.src = comp; prev.hidden = false; const ph = drop.querySelector('.cri-drop-ph'); if (ph) ph.style.display = 'none'; };
+        // sem compressão: a arte é guardada no formato e tamanho ORIGINAIS (qualidade máxima)
+        rd.onload = () => { const src = rd.result; this._criUp[tipo] = src; prev.src = src; prev.hidden = false; const ph = drop.querySelector('.cri-drop-ph'); if (ph) ph.style.display = 'none'; };
         rd.readAsDataURL(f);
       };
     });
