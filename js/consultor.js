@@ -2446,24 +2446,31 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       <span class="cri-copy-ic">${UI.icon('docs',14)}</span></button>`;
   },
   criativoCard(c) {
-    const f = OB.criativoFormato(c.formato);
     const novo = c.criadoEm && (Date.now() - new Date(c.criadoEm).getTime()) < 7 * 864e5;
     const cats = OB.criativoCategorias(c);
-    return `<div class="cri-card" data-fmt="${c.formato}" data-cat="${cats.map(x => x.toLowerCase()).join('|')}">
-      <div class="cri-thumb loading" style="aspect-ratio:${f.ratio}">
-        <img data-cri="${c.id}" alt="Criativo ${c.titulo || ''}" loading="lazy"/>
-        <span class="cri-badge">${c.formato} · ${f.desc}</span>
-        ${novo ? '<span class="cri-novo">Novo</span>' : ''}
-      </div>
+    return `<div class="cri-card" data-cat="${cats.map(x => x.toLowerCase()).join('|')}">
       <div class="cri-info">
-        <div class="cri-head"><b>${c.titulo || 'Criativo OutBox'}</b></div>
+        <div class="cri-head"><b>${c.titulo || 'Criativo OutBox'}</b>${novo ? '<span class="cri-novo-tag">Novo</span>' : ''}</div>
         ${cats.length ? `<div class="cri-cats">${cats.map(x => `<span class="cri-cat">${x}</span>`).join('')}</div>` : ''}
-        <button class="btn brand grow" data-cri-dl="${c.id}">${UI.icon('download',15)} Baixar arte</button>
+      </div>
+      <div class="cri-slot">
+        <div class="cri-thumb loading" style="aspect-ratio:4 / 5">
+          <img data-cri="${c.id}|feed" alt="Arte de feed ${c.titulo || ''}" loading="lazy"/>
+          <span class="cri-badge">4:5 · Feed</span>
+        </div>
+        <button class="btn brand grow" data-cri-dl="${c.id}|feed">${UI.icon('download',15)} Baixar arte do feed</button>
         <div class="cri-copies">
           ${this.criCopyRow('Título', c.titulo)}
           ${this.criCopyRow('Legenda', c.legenda)}
           ${this.criCopyRow('Hashtags', c.hashtags)}
         </div>
+      </div>
+      <div class="cri-slot cri-slot-stories">
+        <div class="cri-thumb loading" style="aspect-ratio:9 / 16">
+          <img data-cri="${c.id}|stories" alt="Arte de stories ${c.titulo || ''}" loading="lazy"/>
+          <span class="cri-badge">9:16 · Stories</span>
+        </div>
+        <button class="btn brand grow" data-cri-dl="${c.id}|stories">${UI.icon('download',15)} Baixar arte de stories</button>
       </div>
     </div>`;
   },
@@ -2471,40 +2478,34 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const v = document.getElementById('main-view');
     const itens = OB.criativosAtivos();
     if (!itens.length) { v.innerHTML = this.empty('creative', 'Nenhum criativo ainda', 'Assim que a OutBox publicar novas artes para você postar, elas aparecem aqui prontas para baixar em cada formato (feed, stories e mais).'); return; }
-    const fmts = OB.CRIATIVO_FORMATOS.filter(f => itens.some(c => c.formato === f.id));
     const cats = OB.CRIATIVO_CATEGORIAS.filter(ct => itens.some(c => OB.criativoCategorias(c).includes(ct)));
     v.innerHTML = `
       <div class="cri-hero">
         <div class="cri-hero-ic">${UI.icon('creative',22)}</div>
-        <div><b>Criativos para as suas redes</b><p>Baixe as artes oficiais da OutBox e publique no seu Instagram, WhatsApp e demais canais. Cada arte indica o formato ideal.</p></div>
-      </div>
-      <div class="port-filtros" id="cri-fmt">
-        <button type="button" class="port-chip on" data-fmt="">Todos</button>
-        ${fmts.map(f => `<button type="button" class="port-chip" data-fmt="${f.id}">${f.id} · ${f.nome}</button>`).join('')}
+        <div><b>Criativos para as suas redes</b><p>Baixe as artes oficiais da OutBox nos formatos feed (4:5) e stories (9:16) e publique no seu Instagram, WhatsApp e demais canais.</p></div>
       </div>
       ${cats.length > 1 ? `<div class="port-filtros" id="cri-cat"><button type="button" class="port-chip on" data-cat="">Todas as categorias</button>${cats.map(ct => `<button type="button" class="port-chip" data-cat="${ct.toLowerCase()}">${ct}</button>`).join('')}</div>` : ''}
       <div class="cri-grid" id="cri-grid">${itens.map(c => this.criativoCard(c)).join('')}</div>
       <div id="cri-empty" hidden>${this.empty('creative', 'Nada neste filtro', 'Ajuste os filtros para ver os criativos.')}</div>`;
-    // carrega as imagens sob demanda (thumb = arquivo do download)
-    itens.forEach(c => OB.getCriativoImagem(c.id).then(src => {
+    // carrega as imagens (feed + stories) sob demanda
+    const carregarImg = (id, tipo) => OB.getCriativoImagem(id, tipo).then(src => {
       if (!src) return;
-      const img = v.querySelector(`img[data-cri="${c.id}"]`);
+      const img = v.querySelector(`img[data-cri="${id}|${tipo}"]`);
       if (img) { img.src = src; const t = img.closest('.cri-thumb'); if (t) t.classList.remove('loading'); }
-    }));
-    // filtros
+    });
+    itens.forEach(c => { carregarImg(c.id, 'feed'); carregarImg(c.id, 'stories'); });
+    // filtro por categoria
     const aplicar = () => {
-      const fmt = (v.querySelector('#cri-fmt .port-chip.on') || {}).dataset ? v.querySelector('#cri-fmt .port-chip.on').dataset.fmt : '';
       const catEl = v.querySelector('#cri-cat .port-chip.on');
       const cat = catEl ? catEl.dataset.cat : '';
       let vis = 0;
       v.querySelectorAll('#cri-grid .cri-card').forEach(card => {
-        const ok = (!fmt || card.dataset.fmt === fmt) && (!cat || (card.dataset.cat || '').split('|').includes(cat));
+        const ok = (!cat || (card.dataset.cat || '').split('|').includes(cat));
         card.style.display = ok ? '' : 'none'; if (ok) vis++;
       });
       const emp = document.getElementById('cri-empty'); if (emp) emp.hidden = vis > 0;
       const grid = document.getElementById('cri-grid'); if (grid) grid.hidden = vis === 0;
     };
-    v.querySelectorAll('#cri-fmt .port-chip').forEach(b => b.onclick = () => { v.querySelectorAll('#cri-fmt .port-chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); aplicar(); });
     v.querySelectorAll('#cri-cat .port-chip').forEach(b => b.onclick = () => { v.querySelectorAll('#cri-cat .port-chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); aplicar(); });
     // baixar + copiar (título / legenda / hashtags)
     v.querySelectorAll('[data-cri-dl]').forEach(b => b.onclick = () => this.baixarCriativo(b.dataset.criDl));
@@ -2515,14 +2516,17 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
     });
   },
-  async baixarCriativo(id) {
+  async baixarCriativo(ref) {
+    const [id, tipoRaw] = String(ref).split('|');
+    const tipo = tipoRaw === 'stories' ? 'stories' : 'feed';
     const c = OB.criativoById(id); if (!c) return;
-    let src = OB._criImg[id]; if (!src) src = await OB.getCriativoImagem(id);
+    let src = OB._criImg[id + '|' + tipo]; if (!src) src = await OB.getCriativoImagem(id, tipo);
     if (!src) return UI.toast('Imagem indisponível', 'Tente novamente em instantes', 'err');
     const ext = /^data:image\/png/.test(src) ? 'png' : 'jpg';
-    const nome = `OutBox - ${(c.titulo || 'criativo').replace(/[\\/:*?"<>|]/g, '')} - ${c.formato.replace(':', 'x')}.${ext}`;
+    const fmt = tipo === 'stories' ? '9x16' : '4x5';
+    const nome = `OutBox - ${(c.titulo || 'criativo').replace(/[\\/:*?"<>|]/g, '')} - ${fmt}.${ext}`;
     const a = document.createElement('a'); a.href = src; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
-    UI.toast('Criativo baixado', 'Agora é só compartilhar nas suas redes', 'ok');
+    UI.toast('Arte baixada', 'Agora é só compartilhar nas suas redes', 'ok');
   },
 
   /* formato do bloco laranja (referência Itaú): topo-esquerda + swoosh branco no canto inferior direito (viewBox 210x340) */

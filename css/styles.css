@@ -1464,3 +1464,21 @@ td .strong { color: var(--text); font-weight: 600; }
 .chip-opt:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
 /* categorias (várias) no card do consultor */
 .cri-cats { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* Criativos v2 — feed (4:5) + stories (9:16) no mesmo card */
+.cri-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.cri-card { padding: 14px; gap: 12px; }
+.cri-card .cri-info { padding: 0; gap: 6px; }
+.cri-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cri-novo-tag { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #fff; background: var(--brand); padding: 2px 8px; border-radius: 999px; }
+.cri-slot { display: flex; flex-direction: column; gap: 9px; }
+.cri-slot-stories { border-top: 1px dashed var(--line); padding-top: 12px; }
+.cri-slot .cri-thumb { height: 300px; width: auto; max-width: 100%; margin: 0 auto; border-radius: 12px; }
+.cri-slot .btn.grow { width: 100%; }
+.cri-slot .cri-copies { margin-top: 2px; }
+@media (max-width: 480px) { .cri-slot .cri-thumb { height: 260px; } }
+/* admin: dois uploads lado a lado */
+.cri-drop-2 { align-items: start; }
+.cri-drop-2 .cri-drop { min-height: 130px; }
+.cri-drop-2 .cri-drop img { max-height: 220px; }
+@media (max-width: 560px) { .cri-drop-2 { grid-template-columns: 1fr; } }

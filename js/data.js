@@ -647,28 +647,40 @@ const OB = {
       } catch (e) { res(dataUrl); }
     });
   },
-  _criIn(r) { return { id: r.id, titulo: r.titulo || '', formato: r.formato || '4:5', categoria: r.categoria || '', legenda: r.legenda || '', hashtags: r.hashtags || '', ativo: r.ativo !== false, criadoEm: r.criado_em }; },
-  _criOut(c) { return { id: c.id, titulo: c.titulo || null, formato: c.formato || '4:5', categoria: c.categoria || null, legenda: c.legenda || null, hashtags: c.hashtags || null, imagem: c.imagem || null, ativo: c.ativo !== false, criado_em: c.criadoEm }; },
+  _criIn(r) { return { id: r.id, titulo: r.titulo || '', categoria: r.categoria || '', legenda: r.legenda || '', hashtags: r.hashtags || '', ativo: r.ativo !== false, criadoEm: r.criado_em }; },
+  _criOut(c) { return { id: c.id, titulo: c.titulo || null, categoria: c.categoria || null, legenda: c.legenda || null, hashtags: c.hashtags || null, imagem_feed: c.imagemFeed || null, imagem_stories: c.imagemStories || null, ativo: c.ativo !== false, criado_em: c.criadoEm }; },
   criativos() { return this.db.criativos || []; },
   criativosAtivos() { return (this.db.criativos || []).filter(c => c.ativo); },
   criativoById(id) { return (this.db.criativos || []).find(c => c.id === id) || null; },
-  _criImg: {}, // cache das imagens carregadas sob demanda
-  async getCriativoImagem(id) {
-    if (this._criImg[id] !== undefined) return this._criImg[id];
-    try { const { data } = await SB.from('criativos').select('imagem').eq('id', id).maybeSingle(); const img = (data && data.imagem) || ''; this._criImg[id] = img; return img; }
-    catch (e) { this._criImg[id] = ''; return ''; }
+  _criImg: {}, // cache das imagens (chave `${id}|feed` ou `${id}|stories`)
+  _criCol(tipo) { return tipo === 'stories' ? 'imagem_stories' : 'imagem_feed'; },
+  async getCriativoImagem(id, tipo) {
+    tipo = tipo === 'stories' ? 'stories' : 'feed';
+    const key = id + '|' + tipo;
+    if (this._criImg[key] !== undefined) return this._criImg[key];
+    try {
+      const col = this._criCol(tipo);
+      const { data } = await SB.from('criativos').select(col + ', imagem').eq('id', id).maybeSingle();
+      const img = (data && (data[col] || (tipo === 'feed' ? data.imagem : ''))) || ''; // fallback p/ coluna antiga 'imagem'
+      this._criImg[key] = img; return img;
+    } catch (e) { this._criImg[key] = ''; return ''; }
   },
-  addCriativo(c) { const meta = this._criIn(this._criOut(c)); this.db.criativos.unshift(meta); if (c.imagem) this._criImg[c.id] = c.imagem; this._save('criativos', this._criOut(c)); return meta; },
-  /* atualiza SÓ os metadados (não toca na imagem) — usado em editar/ativar-desativar */
+  addCriativo(c) { const meta = this._criIn(this._criOut(c)); this.db.criativos.unshift(meta); if (c.imagemFeed) this._criImg[c.id + '|feed'] = c.imagemFeed; if (c.imagemStories) this._criImg[c.id + '|stories'] = c.imagemStories; this._save('criativos', this._criOut(c)); return meta; },
+  /* atualiza SÓ os metadados (não toca nas imagens) — usado em editar/ativar-desativar */
   async updateCriativoMeta(c) {
-    const i = this.db.criativos.findIndex(x => x.id === c.id); const meta = this._criIn({ id: c.id, titulo: c.titulo, formato: c.formato, categoria: c.categoria, legenda: c.legenda, hashtags: c.hashtags, ativo: c.ativo, criado_em: c.criadoEm });
+    const i = this.db.criativos.findIndex(x => x.id === c.id); const meta = this._criIn({ id: c.id, titulo: c.titulo, categoria: c.categoria, legenda: c.legenda, hashtags: c.hashtags, ativo: c.ativo, criado_em: c.criadoEm });
     if (i >= 0) this.db.criativos[i] = meta;
-    try { await SB.from('criativos').update({ titulo: c.titulo || null, formato: c.formato || '4:5', categoria: c.categoria || null, legenda: c.legenda || null, hashtags: c.hashtags || null, ativo: c.ativo !== false }).eq('id', c.id); } catch (e) { this._err(e); }
+    try { await SB.from('criativos').update({ titulo: c.titulo || null, categoria: c.categoria || null, legenda: c.legenda || null, hashtags: c.hashtags || null, ativo: c.ativo !== false }).eq('id', c.id); } catch (e) { this._err(e); }
     return meta;
   },
-  /* troca a imagem de um criativo existente */
-  async setCriativoImagem(id, imagem) { this._criImg[id] = imagem; try { await SB.from('criativos').update({ imagem: imagem || null }).eq('id', id); } catch (e) { this._err(e); } },
-  removeCriativo(id) { this.db.criativos = (this.db.criativos || []).filter(c => c.id !== id); delete this._criImg[id]; this._delete('criativos', id); },
+  /* troca uma das imagens (feed|stories) de um criativo existente */
+  async setCriativoImagem(id, tipo, imagem) {
+    tipo = tipo === 'stories' ? 'stories' : 'feed';
+    this._criImg[id + '|' + tipo] = imagem;
+    const col = this._criCol(tipo);
+    try { await SB.from('criativos').update({ [col]: imagem || null }).eq('id', id); } catch (e) { this._err(e); }
+  },
+  removeCriativo(id) { this.db.criativos = (this.db.criativos || []).filter(c => c.id !== id); delete this._criImg[id + '|feed']; delete this._criImg[id + '|stories']; this._delete('criativos', id); },
 
   /* ---------- aviso/comunicado ---------- */
   getAviso() { return this.db.aviso || { id: this.AVISO_ID, texto: '', tipo: 'info', ativo: false, inicio: null, fim: null }; },
