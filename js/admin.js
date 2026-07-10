@@ -11,6 +11,7 @@ const Admin = {
     { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
     { id: 'consultores',label: 'Consultores',      icon: 'users' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
+    { id: 'criativos',  label: 'Criativos',        icon: 'creative' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
@@ -877,6 +878,96 @@ const Admin = {
     const busca = document.getElementById('ctf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
     document.getElementById('ctf-limpar').onclick = () => { this._ctFiltro = { cliente: '', servico: '', uf: '', consultor: '', de: '', ate: '', status: 'todos' }; this.view_contratos(); };
     draw();
+  },
+
+  /* ====================== CRIATIVOS (admin publica as artes) ====================== */
+  criativoAdminCard(c) {
+    const f = OB.criativoFormato(c.formato);
+    return `<div class="card cri-admin-card">
+      <div class="cri-thumb loading" style="aspect-ratio:${f.ratio}">
+        <img data-cri="${c.id}" alt="Criativo ${c.titulo || ''}"/>
+        <span class="cri-badge">${c.formato} · ${f.desc}</span>
+        ${!c.ativo ? '<span class="cri-off">Oculto</span>' : ''}
+      </div>
+      <div class="cri-info">
+        <b>${c.titulo || 'Criativo'}</b>
+        ${c.categoria ? `<span class="cri-cat">${c.categoria}</span>` : ''}
+        <div class="cri-acts">
+          <button class="btn ghost sm" data-cri-toggle="${c.id}" title="${c.ativo ? 'Ocultar dos consultores' : 'Mostrar aos consultores'}">${UI.icon(c.ativo ? 'eye' : 'eyeoff', 15)}<span>${c.ativo ? 'Ativo' : 'Oculto'}</span></button>
+          <button class="btn ghost sm" data-cri-edit="${c.id}" title="Editar">${UI.icon('edit',15)}</button>
+          <button class="btn ghost sm danger" data-cri-del="${c.id}" title="Excluir">${UI.icon('trash',15)}</button>
+        </div>
+      </div>
+    </div>`;
+  },
+  view_criativos() {
+    const v = document.getElementById('main-view');
+    const itens = OB.criativos();
+    const ativos = itens.filter(c => c.ativo).length;
+    v.innerHTML = `
+      <div class="row between alc" style="gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <div><b style="font-size:16px">Criativos</b><p class="mut" style="font-size:12.5px;margin-top:2px">Publique artes para os consultores baixarem e postarem nas redes. ${ativos} ativo(s) de ${itens.length}.</p></div>
+        <button class="btn brand" id="cri-add">${UI.icon('plus',16)} Novo criativo</button>
+      </div>
+      ${itens.length ? `<div class="cri-admin-grid">${itens.map(c => this.criativoAdminCard(c)).join('')}</div>` : Consultor.empty('creative', 'Nenhum criativo publicado', 'Clique em "Novo criativo" para enviar a primeira arte que os consultores vão baixar.')}`;
+    document.getElementById('cri-add').onclick = () => this.criativoModal();
+    itens.forEach(c => OB.getCriativoImagem(c.id).then(src => { if (!src) return; const img = v.querySelector(`img[data-cri="${c.id}"]`); if (img) { img.src = src; const t = img.closest('.cri-thumb'); if (t) t.classList.remove('loading'); } }));
+    v.querySelectorAll('[data-cri-edit]').forEach(b => b.onclick = () => this.criativoModal(OB.criativoById(b.dataset.criEdit)));
+    v.querySelectorAll('[data-cri-toggle]').forEach(b => b.onclick = async () => { const c = OB.criativoById(b.dataset.criToggle); if (!c) return; await OB.updateCriativoMeta(Object.assign({}, c, { ativo: !c.ativo })); this.view_criativos(); });
+    v.querySelectorAll('[data-cri-del]').forEach(b => b.onclick = () => { const c = OB.criativoById(b.dataset.criDel); if (!c) return; UI.confirm('Excluir criativo', `Remover <b>${c.titulo || 'criativo'}</b>? Os consultores deixam de ver esta arte.`, () => { OB.removeCriativo(c.id); UI.toast('Criativo excluído', '', 'ok'); this.view_criativos(); }, 'Excluir'); });
+  },
+  criativoModal(existing) {
+    const c = existing || null;
+    this._criUpload = c ? undefined : undefined; // imagem nova (data URL) — undefined = não trocou
+    UI.modal({
+      title: c ? 'Editar criativo' : 'Novo criativo',
+      sub: c ? 'Atualize os dados ou troque a arte' : 'Envie a arte e defina o formato',
+      body: `
+        <div class="field"><label>Arte ${c ? '<span style="font-weight:400;color:var(--text-mut)">(deixe como está para manter)</span>' : '<span class="req">*</span>'}</label>
+          <div class="cri-drop" id="cri-drop"><div class="cri-drop-ph">${UI.icon('creative',22)}<span>Clique para enviar a imagem (PNG ou JPG)</span></div><img id="cri-prev" alt="" hidden/></div>
+          <input type="file" id="cri-file" accept="image/png,image/jpeg" hidden/></div>
+        <div class="field"><label>Título <span class="req">*</span></label><input id="cri-tit" maxlength="80" placeholder="Ex.: Promo de fim de ano" value="${c ? (c.titulo || '').replace(/"/g, '&quot;') : ''}"/></div>
+        <div class="grid-2">
+          <div class="field"><label>Formato <span class="req">*</span></label>
+            <select id="cri-fmt">${OB.CRIATIVO_FORMATOS.map(f => `<option value="${f.id}" ${c && c.formato === f.id ? 'selected' : ''}>${f.id} · ${f.desc}</option>`).join('')}</select></div>
+          <div class="field"><label>Categoria <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label><input id="cri-cat" maxlength="40" placeholder="Ex.: Institucional" value="${c ? (c.categoria || '').replace(/"/g, '&quot;') : ''}"/></div>
+        </div>
+        <div class="field"><label>Legenda sugerida <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <textarea id="cri-leg" rows="3" placeholder="Texto pronto para o consultor colar na publicação">${c ? (c.legenda || '') : ''}</textarea></div>
+        <label class="pix-check"><input type="checkbox" id="cri-ativo" ${!c || c.ativo ? 'checked' : ''}/> <span>Visível para os consultores</span></label>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="cri-save">${c ? 'Salvar' : 'Publicar criativo'}</button>`
+    });
+    const file = document.getElementById('cri-file');
+    const drop = document.getElementById('cri-drop');
+    const prev = document.getElementById('cri-prev');
+    if (c) OB.getCriativoImagem(c.id).then(src => { if (src) { prev.src = src; prev.hidden = false; drop.querySelector('.cri-drop-ph').style.display = 'none'; } });
+    drop.onclick = () => file.click();
+    file.onchange = () => {
+      const f = file.files && file.files[0]; if (!f) return;
+      if (!/image\/(png|jpeg)/.test(f.type)) return UI.toast('Formato inválido', 'Envie um PNG ou JPG', 'err');
+      const rd = new FileReader();
+      rd.onload = async () => { const comp = await OB._comprimirCriativo(rd.result); this._criUpload = comp; prev.src = comp; prev.hidden = false; drop.querySelector('.cri-drop-ph').style.display = 'none'; };
+      rd.readAsDataURL(f);
+    };
+    document.getElementById('cri-save').onclick = async () => {
+      const titulo = (document.getElementById('cri-tit').value || '').trim();
+      const formato = document.getElementById('cri-fmt').value;
+      const categoria = (document.getElementById('cri-cat').value || '').trim();
+      const legenda = (document.getElementById('cri-leg').value || '').trim();
+      const ativo = document.getElementById('cri-ativo').checked;
+      if (!titulo) return UI.toast('Informe o título', '', 'err');
+      if (!c && !this._criUpload) return UI.toast('Envie a arte', 'Selecione a imagem do criativo', 'err');
+      const btn = document.getElementById('cri-save'); btn.disabled = true; btn.textContent = 'Salvando…';
+      try {
+        if (!c) {
+          OB.addCriativo({ id: OB.uid(), titulo, formato, categoria, legenda, ativo, imagem: this._criUpload, criadoEm: new Date().toISOString() });
+        } else {
+          await OB.updateCriativoMeta({ id: c.id, titulo, formato, categoria, legenda, ativo, criadoEm: c.criadoEm });
+          if (this._criUpload) await OB.setCriativoImagem(c.id, this._criUpload);
+        }
+        UI.closeModal(); UI.toast(c ? 'Criativo atualizado' : 'Criativo publicado', '', 'ok'); this.view_criativos();
+      } catch (e) { btn.disabled = false; btn.textContent = c ? 'Salvar' : 'Publicar criativo'; UI.toast('Erro ao salvar', (e && e.message) || '', 'err'); }
+    };
   },
 
   /* ====================== AVISOS (barra de comunicado) ====================== */

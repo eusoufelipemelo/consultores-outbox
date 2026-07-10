@@ -263,7 +263,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -331,7 +331,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -345,7 +345,8 @@ const OB = {
       SB.from('campanhas').select('id,ativo,inicio,fim,dias_semana,hora_inicio,hora_fim,atualizado_em').eq('id', this.CAMPANHA_ID).maybeSingle(),
       SB.rpc('ranking_geral'),
       SB.from('chat_mensagens').select('*').order('criado_em'),
-      SB.from('contratos').select('*').order('criado_em', { ascending: false })
+      SB.from('contratos').select('*').order('criado_em', { ascending: false }),
+      SB.from('criativos').select('id,titulo,formato,categoria,legenda,ativo,criado_em').order('criado_em', { ascending: false })
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -375,9 +376,10 @@ const OB = {
     this.db.ranking = (rk && rk.data) ? rk.data : [];
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
     this.db.contratos = (ctr && ctr.data) ? ctr.data.map(r => this._ctIn(r)) : [];
+    this.db.criativos = (cri && cri.data) ? cri.data.map(r => this._criIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -613,6 +615,56 @@ const OB = {
     const seq = String(doAno.length + 1).padStart(4, '0');
     return `OB-${ano}-${seq}`;
   },
+
+  /* ---------- CRIATIVOS (artes p/ os consultores baixarem e postarem) ---------- */
+  CRIATIVO_FORMATOS: [
+    { id: '4:5',  nome: 'Feed',      desc: 'Arte para feed',              ratio: '4 / 5'  },
+    { id: '9:16', nome: 'Stories',   desc: 'Arte para stories e reels',   ratio: '9 / 16' },
+    { id: '1:1',  nome: 'Quadrado',  desc: 'Arte quadrada para feed',     ratio: '1 / 1'  },
+    { id: '16:9', nome: 'Horizontal',desc: 'Arte horizontal / capa',      ratio: '16 / 9' }
+  ],
+  criativoFormato(id) { return this.CRIATIVO_FORMATOS.find(f => f.id === id) || { id: id || '4:5', nome: 'Feed', desc: 'Arte para feed', ratio: '4 / 5' }; },
+  /* comprime a arte mantendo boa qualidade p/ download (lado maior até 1600px, JPEG 0.86) */
+  _comprimirCriativo(dataUrl) {
+    return new Promise((res) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1600; let w = img.width, h = img.height;
+          if (Math.max(w, h) > MAX) { const k = MAX / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let out; try { out = cv.toDataURL('image/jpeg', 0.86); } catch (e) { return res(dataUrl); }
+          if (/^data:image\/png/.test(dataUrl) && dataUrl.length < 700000) out = dataUrl; // PNG pequeno (transparência) preserva
+          res(out);
+        };
+        img.onerror = () => res(dataUrl);
+        img.src = dataUrl;
+      } catch (e) { res(dataUrl); }
+    });
+  },
+  _criIn(r) { return { id: r.id, titulo: r.titulo || '', formato: r.formato || '4:5', categoria: r.categoria || '', legenda: r.legenda || '', ativo: r.ativo !== false, criadoEm: r.criado_em }; },
+  _criOut(c) { return { id: c.id, titulo: c.titulo || null, formato: c.formato || '4:5', categoria: c.categoria || null, legenda: c.legenda || null, imagem: c.imagem || null, ativo: c.ativo !== false, criado_em: c.criadoEm }; },
+  criativos() { return this.db.criativos || []; },
+  criativosAtivos() { return (this.db.criativos || []).filter(c => c.ativo); },
+  criativoById(id) { return (this.db.criativos || []).find(c => c.id === id) || null; },
+  _criImg: {}, // cache das imagens carregadas sob demanda
+  async getCriativoImagem(id) {
+    if (this._criImg[id] !== undefined) return this._criImg[id];
+    try { const { data } = await SB.from('criativos').select('imagem').eq('id', id).maybeSingle(); const img = (data && data.imagem) || ''; this._criImg[id] = img; return img; }
+    catch (e) { this._criImg[id] = ''; return ''; }
+  },
+  addCriativo(c) { const meta = this._criIn(this._criOut(c)); this.db.criativos.unshift(meta); if (c.imagem) this._criImg[c.id] = c.imagem; this._save('criativos', this._criOut(c)); return meta; },
+  /* atualiza SÓ os metadados (não toca na imagem) — usado em editar/ativar-desativar */
+  async updateCriativoMeta(c) {
+    const i = this.db.criativos.findIndex(x => x.id === c.id); const meta = this._criIn({ id: c.id, titulo: c.titulo, formato: c.formato, categoria: c.categoria, legenda: c.legenda, ativo: c.ativo, criado_em: c.criadoEm });
+    if (i >= 0) this.db.criativos[i] = meta;
+    try { await SB.from('criativos').update({ titulo: c.titulo || null, formato: c.formato || '4:5', categoria: c.categoria || null, legenda: c.legenda || null, ativo: c.ativo !== false }).eq('id', c.id); } catch (e) { this._err(e); }
+    return meta;
+  },
+  /* troca a imagem de um criativo existente */
+  async setCriativoImagem(id, imagem) { this._criImg[id] = imagem; try { await SB.from('criativos').update({ imagem: imagem || null }).eq('id', id); } catch (e) { this._err(e); } },
+  removeCriativo(id) { this.db.criativos = (this.db.criativos || []).filter(c => c.id !== id); delete this._criImg[id]; this._delete('criativos', id); },
 
   /* ---------- aviso/comunicado ---------- */
   getAviso() { return this.db.aviso || { id: this.AVISO_ID, texto: '', tipo: 'info', ativo: false, inicio: null, fim: null }; },
