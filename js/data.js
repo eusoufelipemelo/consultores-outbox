@@ -624,6 +624,10 @@ const OB = {
     { id: '16:9', nome: 'Horizontal',desc: 'Arte horizontal / capa',      ratio: '16 / 9' }
   ],
   criativoFormato(id) { return this.CRIATIVO_FORMATOS.find(f => f.id === id) || { id: id || '4:5', nome: 'Feed', desc: 'Arte para feed', ratio: '4 / 5' }; },
+  /* categorias predefinidas (múltipla escolha no admin) */
+  CRIATIVO_CATEGORIAS: ['Institucional', 'Promoções e ofertas', 'Serviços', 'Provas sociais', 'Dicas e conteúdo', 'Datas comemorativas', 'Cases e resultados', 'Captação de clientes'],
+  /* categorias de um criativo (armazenadas como texto separado por vírgula) */
+  criativoCategorias(c) { return String((c && c.categoria) || '').split(',').map(s => s.trim()).filter(Boolean); },
   /* comprime a arte mantendo boa qualidade p/ download (lado maior até 1600px, JPEG 0.86) */
   _comprimirCriativo(dataUrl) {
     return new Promise((res) => {

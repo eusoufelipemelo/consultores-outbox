@@ -1454,3 +1454,13 @@ td .strong { color: var(--text); font-weight: 600; }
 .cri-copy.copied { border-color: #16a34a; background: #e8f7ee; }
 .cri-copy.copied .cri-copy-ic { background: #16a34a; color: #fff; border-color: transparent; }
 :root[data-theme="dark"] .cri-copy.copied { background: rgba(22,163,74,.16); }
+
+/* Multi-seleção de categorias (chips) no modal de criativo */
+.chips-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); font-size: 12.5px; font-weight: 600; color: var(--text-soft); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.chip-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip-opt:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); color: var(--text); }
+.chip-opt:has(input:checked) { background: var(--brand); border-color: var(--brand); color: #fff; }
+.chip-opt:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
+/* categorias (várias) no card do consultor */
+.cri-cats { display: flex; flex-wrap: wrap; gap: 5px; }

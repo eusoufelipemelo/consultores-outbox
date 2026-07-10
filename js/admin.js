@@ -927,11 +927,10 @@ const Admin = {
           <div class="cri-drop" id="cri-drop"><div class="cri-drop-ph">${UI.icon('creative',22)}<span>Clique para enviar a imagem (PNG ou JPG)</span></div><img id="cri-prev" alt="" hidden/></div>
           <input type="file" id="cri-file" accept="image/png,image/jpeg" hidden/></div>
         <div class="field"><label>Título <span class="req">*</span></label><input id="cri-tit" maxlength="80" placeholder="Ex.: Promo de fim de ano" value="${c ? (c.titulo || '').replace(/"/g, '&quot;') : ''}"/></div>
-        <div class="grid-2">
-          <div class="field"><label>Formato <span class="req">*</span></label>
-            <select id="cri-fmt">${OB.CRIATIVO_FORMATOS.map(f => `<option value="${f.id}" ${c && c.formato === f.id ? 'selected' : ''}>${f.id} · ${f.desc}</option>`).join('')}</select></div>
-          <div class="field"><label>Categoria <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label><input id="cri-cat" maxlength="40" placeholder="Ex.: Institucional" value="${c ? (c.categoria || '').replace(/"/g, '&quot;') : ''}"/></div>
-        </div>
+        <div class="field"><label>Formato <span class="req">*</span></label>
+          <select id="cri-fmt">${OB.CRIATIVO_FORMATOS.map(f => `<option value="${f.id}" ${c && c.formato === f.id ? 'selected' : ''}>${f.id} · ${f.desc}</option>`).join('')}</select></div>
+        <div class="field"><label>Categorias <span style="font-weight:400;color:var(--text-mut)">(múltipla escolha)</span></label>
+          <div class="chips-pick" id="cri-cats">${OB.CRIATIVO_CATEGORIAS.map(ct => { const sel = c ? OB.criativoCategorias(c).includes(ct) : false; return `<label class="chip-opt"><input type="checkbox" value="${ct}" ${sel ? 'checked' : ''}/><span>${ct}</span></label>`; }).join('')}</div></div>
         <div class="field"><label>Legenda sugerida <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <textarea id="cri-leg" rows="3" placeholder="Texto pronto para o consultor colar na publicação">${c ? (c.legenda || '') : ''}</textarea></div>
         <div class="field"><label>Hashtags <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
@@ -954,7 +953,7 @@ const Admin = {
     document.getElementById('cri-save').onclick = async () => {
       const titulo = (document.getElementById('cri-tit').value || '').trim();
       const formato = document.getElementById('cri-fmt').value;
-      const categoria = (document.getElementById('cri-cat').value || '').trim();
+      const categoria = [...document.querySelectorAll('#cri-cats input:checked')].map(i => i.value).join(', ');
       const legenda = (document.getElementById('cri-leg').value || '').trim();
       const hashtags = (document.getElementById('cri-hash').value || '').trim();
       const ativo = document.getElementById('cri-ativo').checked;

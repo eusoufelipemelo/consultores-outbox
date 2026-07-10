@@ -2448,17 +2448,16 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   criativoCard(c) {
     const f = OB.criativoFormato(c.formato);
     const novo = c.criadoEm && (Date.now() - new Date(c.criadoEm).getTime()) < 7 * 864e5;
-    return `<div class="cri-card" data-fmt="${c.formato}" data-cat="${(c.categoria || '').toLowerCase()}">
+    const cats = OB.criativoCategorias(c);
+    return `<div class="cri-card" data-fmt="${c.formato}" data-cat="${cats.map(x => x.toLowerCase()).join('|')}">
       <div class="cri-thumb loading" style="aspect-ratio:${f.ratio}">
         <img data-cri="${c.id}" alt="Criativo ${c.titulo || ''}" loading="lazy"/>
         <span class="cri-badge">${c.formato} · ${f.desc}</span>
         ${novo ? '<span class="cri-novo">Novo</span>' : ''}
       </div>
       <div class="cri-info">
-        <div class="cri-head">
-          <b>${c.titulo || 'Criativo OutBox'}</b>
-          ${c.categoria ? `<span class="cri-cat">${c.categoria}</span>` : ''}
-        </div>
+        <div class="cri-head"><b>${c.titulo || 'Criativo OutBox'}</b></div>
+        ${cats.length ? `<div class="cri-cats">${cats.map(x => `<span class="cri-cat">${x}</span>`).join('')}</div>` : ''}
         <button class="btn brand grow" data-cri-dl="${c.id}">${UI.icon('download',15)} Baixar arte</button>
         <div class="cri-copies">
           ${this.criCopyRow('Título', c.titulo)}
@@ -2473,7 +2472,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const itens = OB.criativosAtivos();
     if (!itens.length) { v.innerHTML = this.empty('creative', 'Nenhum criativo ainda', 'Assim que a OutBox publicar novas artes para você postar, elas aparecem aqui prontas para baixar em cada formato (feed, stories e mais).'); return; }
     const fmts = OB.CRIATIVO_FORMATOS.filter(f => itens.some(c => c.formato === f.id));
-    const cats = [...new Set(itens.map(c => c.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    const cats = OB.CRIATIVO_CATEGORIAS.filter(ct => itens.some(c => OB.criativoCategorias(c).includes(ct)));
     v.innerHTML = `
       <div class="cri-hero">
         <div class="cri-hero-ic">${UI.icon('creative',22)}</div>
@@ -2499,7 +2498,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       const cat = catEl ? catEl.dataset.cat : '';
       let vis = 0;
       v.querySelectorAll('#cri-grid .cri-card').forEach(card => {
-        const ok = (!fmt || card.dataset.fmt === fmt) && (!cat || card.dataset.cat === cat);
+        const ok = (!fmt || card.dataset.fmt === fmt) && (!cat || (card.dataset.cat || '').split('|').includes(cat));
         card.style.display = ok ? '' : 'none'; if (ok) vis++;
       });
       const emp = document.getElementById('cri-empty'); if (emp) emp.hidden = vis > 0;
