@@ -2437,6 +2437,14 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   },
 
   /* ====================== CRIATIVOS (artes p/ redes sociais) ====================== */
+  _attr(s) { return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
+  criCopyRow(label, text) {
+    if (!text) return '';
+    const a = this._attr(text);
+    return `<button type="button" class="cri-copy" data-copy="${a}" data-label="${this._attr(label)}" title="Copiar ${label.toLowerCase()}">
+      <span class="cri-copy-txt"><span class="cri-copy-lbl">${label}</span><span class="cri-copy-val">${a}</span></span>
+      <span class="cri-copy-ic">${UI.icon('docs',14)}</span></button>`;
+  },
   criativoCard(c) {
     const f = OB.criativoFormato(c.formato);
     const novo = c.criadoEm && (Date.now() - new Date(c.criadoEm).getTime()) < 7 * 864e5;
@@ -2447,11 +2455,15 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         ${novo ? '<span class="cri-novo">Novo</span>' : ''}
       </div>
       <div class="cri-info">
-        <b>${c.titulo || 'Criativo OutBox'}</b>
-        ${c.categoria ? `<span class="cri-cat">${c.categoria}</span>` : ''}
-        <div class="cri-acts">
-          <button class="btn brand grow" data-cri-dl="${c.id}">${UI.icon('download',15)} Baixar arte</button>
-          ${c.legenda ? `<button class="btn ghost" data-cri-cap="${c.id}" title="Copiar legenda sugerida" aria-label="Copiar legenda">${UI.icon('docs',15)}</button>` : ''}
+        <div class="cri-head">
+          <b>${c.titulo || 'Criativo OutBox'}</b>
+          ${c.categoria ? `<span class="cri-cat">${c.categoria}</span>` : ''}
+        </div>
+        <button class="btn brand grow" data-cri-dl="${c.id}">${UI.icon('download',15)} Baixar arte</button>
+        <div class="cri-copies">
+          ${this.criCopyRow('Título', c.titulo)}
+          ${this.criCopyRow('Legenda', c.legenda)}
+          ${this.criCopyRow('Hashtags', c.hashtags)}
         </div>
       </div>
     </div>`;
@@ -2495,9 +2507,14 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     };
     v.querySelectorAll('#cri-fmt .port-chip').forEach(b => b.onclick = () => { v.querySelectorAll('#cri-fmt .port-chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); aplicar(); });
     v.querySelectorAll('#cri-cat .port-chip').forEach(b => b.onclick = () => { v.querySelectorAll('#cri-cat .port-chip').forEach(x => x.classList.remove('on')); b.classList.add('on'); aplicar(); });
-    // baixar + copiar legenda
+    // baixar + copiar (título / legenda / hashtags)
     v.querySelectorAll('[data-cri-dl]').forEach(b => b.onclick = () => this.baixarCriativo(b.dataset.criDl));
-    v.querySelectorAll('[data-cri-cap]').forEach(b => b.onclick = () => { const c = OB.criativoById(b.dataset.criCap); if (c && c.legenda && navigator.clipboard) navigator.clipboard.writeText(c.legenda).then(() => UI.toast('Legenda copiada', 'Cole na sua publicação', 'ok')).catch(() => {}); });
+    v.querySelectorAll('.cri-copy').forEach(b => b.onclick = () => {
+      const txt = b.dataset.copy || ''; const label = b.dataset.label || 'Texto';
+      const done = () => { UI.toast(label + ' copiado', 'Cole na sua publicação', 'ok'); b.classList.add('copied'); setTimeout(() => b.classList.remove('copied'), 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(() => {});
+      else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+    });
   },
   async baixarCriativo(id) {
     const c = OB.criativoById(id); if (!c) return;

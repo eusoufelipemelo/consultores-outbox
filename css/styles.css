@@ -1437,3 +1437,20 @@ td .strong { color: var(--text); font-weight: 600; }
 .cri-drop-ph { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-mut); font-size: 12.5px; padding: 20px; text-align: center; }
 .cri-drop img { max-width: 100%; max-height: 320px; display: block; border-radius: 10px; }
 :root[data-theme="dark"] .cri-acts .btn.sm.danger:hover { background: rgba(220,38,38,.16); border-color: rgba(220,38,38,.4); color: #f87171; }
+
+/* Criativos — campos de copiar (título / legenda / hashtags) */
+.cri-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+.cri-head > b { font-size: 13.5px; line-height: 1.25; min-width: 0; }
+.cri-info > .btn.grow { width: 100%; margin-top: 2px; }
+.cri-copies { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.cri-copy { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s; }
+.cri-copy:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); background: var(--surface); }
+.cri-copy:focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
+.cri-copy-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cri-copy-lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--brand); }
+.cri-copy-val { font-size: 12px; color: var(--text-soft); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+.cri-copy-ic { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: var(--text-mut); background: var(--surface); border: 1px solid var(--line); transition: background .15s, color .15s; }
+.cri-copy:hover .cri-copy-ic { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+.cri-copy.copied { border-color: #16a34a; background: #e8f7ee; }
+.cri-copy.copied .cri-copy-ic { background: #16a34a; color: #fff; border-color: transparent; }
+:root[data-theme="dark"] .cri-copy.copied { background: rgba(22,163,74,.16); }

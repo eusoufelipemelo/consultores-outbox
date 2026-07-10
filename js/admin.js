@@ -934,6 +934,8 @@ const Admin = {
         </div>
         <div class="field"><label>Legenda sugerida <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <textarea id="cri-leg" rows="3" placeholder="Texto pronto para o consultor colar na publicação">${c ? (c.legenda || '') : ''}</textarea></div>
+        <div class="field"><label>Hashtags <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <textarea id="cri-hash" rows="2" placeholder="#outbox #sitesprofissionais #marketingdigital">${c ? (c.hashtags || '') : ''}</textarea></div>
         <label class="pix-check"><input type="checkbox" id="cri-ativo" ${!c || c.ativo ? 'checked' : ''}/> <span>Visível para os consultores</span></label>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="cri-save">${c ? 'Salvar' : 'Publicar criativo'}</button>`
     });
@@ -954,15 +956,16 @@ const Admin = {
       const formato = document.getElementById('cri-fmt').value;
       const categoria = (document.getElementById('cri-cat').value || '').trim();
       const legenda = (document.getElementById('cri-leg').value || '').trim();
+      const hashtags = (document.getElementById('cri-hash').value || '').trim();
       const ativo = document.getElementById('cri-ativo').checked;
       if (!titulo) return UI.toast('Informe o título', '', 'err');
       if (!c && !this._criUpload) return UI.toast('Envie a arte', 'Selecione a imagem do criativo', 'err');
       const btn = document.getElementById('cri-save'); btn.disabled = true; btn.textContent = 'Salvando…';
       try {
         if (!c) {
-          OB.addCriativo({ id: OB.uid(), titulo, formato, categoria, legenda, ativo, imagem: this._criUpload, criadoEm: new Date().toISOString() });
+          OB.addCriativo({ id: OB.uid(), titulo, formato, categoria, legenda, hashtags, ativo, imagem: this._criUpload, criadoEm: new Date().toISOString() });
         } else {
-          await OB.updateCriativoMeta({ id: c.id, titulo, formato, categoria, legenda, ativo, criadoEm: c.criadoEm });
+          await OB.updateCriativoMeta({ id: c.id, titulo, formato, categoria, legenda, hashtags, ativo, criadoEm: c.criadoEm });
           if (this._criUpload) await OB.setCriativoImagem(c.id, this._criUpload);
         }
         UI.closeModal(); UI.toast(c ? 'Criativo atualizado' : 'Criativo publicado', '', 'ok'); this.view_criativos();
