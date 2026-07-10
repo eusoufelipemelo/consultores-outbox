@@ -2438,20 +2438,21 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   /* ====================== CRIATIVOS (artes p/ redes sociais) ====================== */
   _attr(s) { return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
-  criCopyRow(label, text) {
+  criCopyRow(label, text, lines) {
     if (!text) return '';
     const a = this._attr(text);
     return `<button type="button" class="cri-copy" data-copy="${a}" data-label="${this._attr(label)}" title="Copiar ${label.toLowerCase()}">
-      <span class="cri-copy-txt"><span class="cri-copy-lbl">${label}</span><span class="cri-copy-val">${a}</span></span>
+      <span class="cri-copy-txt"><span class="cri-copy-lbl">${label}</span><span class="cri-copy-val" style="--l:${lines || 2}">${a}</span></span>
       <span class="cri-copy-ic">${UI.icon('docs',14)}</span></button>`;
   },
   criativoCard(c) {
     const novo = c.criadoEm && (Date.now() - new Date(c.criadoEm).getTime()) < 7 * 864e5;
     const cats = OB.criativoCategorias(c);
     return `<div class="cri-card" data-cat="${cats.map(x => x.toLowerCase()).join('|')}">
+      ${novo ? '<span class="cri-novo">Novo</span>' : ''}
       <div class="cri-info">
-        <div class="cri-head"><b>${c.titulo || 'Criativo OutBox'}</b>${novo ? '<span class="cri-novo-tag">Novo</span>' : ''}</div>
-        ${cats.length ? `<div class="cri-cats">${cats.map(x => `<span class="cri-cat">${x}</span>`).join('')}</div>` : ''}
+        <div class="cri-head"><b>${c.titulo || 'Criativo OutBox'}</b></div>
+        <div class="cri-cats">${cats.map(x => `<span class="cri-cat">${x}</span>`).join('')}</div>
       </div>
       <div class="cri-slot">
         <div class="cri-thumb loading" style="aspect-ratio:4 / 5">
@@ -2460,9 +2461,9 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         </div>
         <button class="btn brand grow" data-cri-dl="${c.id}|feed">${UI.icon('download',15)} Baixar arte do feed</button>
         <div class="cri-copies">
-          ${this.criCopyRow('Título', c.titulo)}
-          ${this.criCopyRow('Legenda', c.legenda)}
-          ${this.criCopyRow('Hashtags', c.hashtags)}
+          ${this.criCopyRow('Título', c.titulo, 1)}
+          ${this.criCopyRow('Legenda', c.legenda, 2)}
+          ${this.criCopyRow('Hashtags', c.hashtags, 2)}
         </div>
       </div>
       <div class="cri-slot cri-slot-stories">
