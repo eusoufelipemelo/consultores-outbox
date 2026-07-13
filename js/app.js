@@ -797,10 +797,10 @@ const App = {
       p.classList.remove('show'); setTimeout(() => p.setAttribute('hidden', ''), 200);
     }
   },
-  chatBubble(m, mine, themAv) {
+  chatBubble(m, mine, themAv, arch) {
     const hora = new Date(m.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const txt = (m.texto || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
-    return `<div class="chat-b ${mine ? 'me' : 'them'}">${!mine ? (themAv || this.manuAvatar('chat-b__av')) : ''}<div class="chat-b__body">${m.urgente ? '<span class="chat-urg-tag">Urgente</span>' : ''}<p>${txt}</p><time>${hora}</time></div></div>`;
+    return `<div class="chat-b ${mine ? 'me' : 'them'}${arch ? ' arch' : ''}">${!mine ? (themAv || this.manuAvatar('chat-b__av')) : ''}<div class="chat-b__body">${m.urgente ? '<span class="chat-urg-tag">Urgente</span>' : ''}<p>${txt}</p><time>${hora}</time></div></div>`;
   },
   renderChatPanel() {
     const box = document.getElementById('chat-msgs'); if (!box) return;

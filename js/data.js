@@ -290,8 +290,8 @@ const OB = {
   _campIn(r) { return r && { id: r.id, ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null, diasSemana: r.dias_semana || [], horaInicio: r.hora_inicio || '', horaFim: r.hora_fim || '', atualizadoEm: r.atualizado_em, imagem: (typeof r.imagem === 'string' ? r.imagem : undefined) }; },
   _campOut(c) { return { id: this.CAMPANHA_ID, imagem: c.imagem || null, ativo: !!c.ativo, inicio: c.inicio || null, fim: c.fim || null, dias_semana: Array.isArray(c.diasSemana) ? c.diasSemana : [], hora_inicio: c.horaInicio || null, hora_fim: c.horaFim || null, atualizado_em: new Date().toISOString() }; },
   /* chat Manu: mensagens */
-  _msgIn(r) { return { id: r.id, consultorId: r.consultor_id, autor: r.autor || 'consultor', texto: r.texto || '', urgente: !!r.urgente, lido: !!r.lido, criadoEm: r.criado_em }; },
-  _msgOut(m) { return { id: m.id, consultor_id: m.consultorId, autor: m.autor || 'consultor', texto: m.texto || '', urgente: !!m.urgente, lido: !!m.lido, criado_em: m.criadoEm || new Date().toISOString() }; },
+  _msgIn(r) { return { id: r.id, consultorId: r.consultor_id, autor: r.autor || 'consultor', texto: r.texto || '', urgente: !!r.urgente, lido: !!r.lido, arquivada: !!r.arquivada, criadoEm: r.criado_em }; },
+  _msgOut(m) { return { id: m.id, consultor_id: m.consultorId, autor: m.autor || 'consultor', texto: m.texto || '', urgente: !!m.urgente, lido: !!m.lido, arquivada: !!m.arquivada, criado_em: m.criadoEm || new Date().toISOString() }; },
 
   /* comprime a arte enviada (máx 1080px de largura; PNG, cai p/ JPEG se ficar pesado) */
   _comprimirArte(dataUrl) {
@@ -756,24 +756,29 @@ const OB = {
   fmtNum(n) { return Number(n || 0).toLocaleString('pt-BR'); },
 
   /* ---------- chat Manu (atendimento consultor ↔ admin) ---------- */
-  chatDoConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id).sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm)); },
+  /* conversa ATUAL do consultor (não arquivada) — usada no widget do consultor */
+  chatDoConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id && !m.arquivada).sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm)); },
+  /* histórico COMPLETO (arquivadas + atual) — usado pelo admin e na exportação */
+  chatHistorico(id) { return (this.db.chat || []).filter(m => m.consultorId === id).sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm)); },
+  chatTemAberta(id) { return (this.db.chat || []).some(m => m.consultorId === id && !m.arquivada); },
   chatThreads() {
     const by = {};
     (this.db.chat || []).forEach(m => { (by[m.consultorId] = by[m.consultorId] || []).push(m); });
     return Object.keys(by).map(cid => {
       const msgs = by[cid].sort((a, b) => new Date(a.criadoEm) - new Date(b.criadoEm));
+      const abertas = msgs.filter(m => !m.arquivada);
       const ultima = msgs[msgs.length - 1];
-      const naoLidas = msgs.filter(m => m.autor === 'consultor' && !m.lido).length;
-      const urgente = msgs.some(m => m.autor === 'consultor' && !m.lido && m.urgente);
+      const naoLidas = abertas.filter(m => m.autor === 'consultor' && !m.lido).length;
+      const urgente = abertas.some(m => m.autor === 'consultor' && !m.lido && m.urgente);
       const c = this.userById(cid);
-      return { consultorId: cid, nome: c ? ((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || 'Consultor' : 'Consultor', ultima, naoLidas, urgente, msgs };
-    }).sort((a, b) => (b.urgente - a.urgente) || (new Date(b.ultima.criadoEm) - new Date(a.ultima.criadoEm)));
+      return { consultorId: cid, nome: c ? ((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || 'Consultor' : 'Consultor', ultima, naoLidas, urgente, aberta: abertas.length > 0, msgs };
+    }).sort((a, b) => (b.aberta - a.aberta) || (b.urgente - a.urgente) || (new Date(b.ultima.criadoEm) - new Date(a.ultima.criadoEm)));
   },
-  chatNaoLidasAdmin() { return (this.db.chat || []).filter(m => m.autor === 'consultor' && !m.lido).length; },
-  chatUrgentesAdmin() { return (this.db.chat || []).some(m => m.autor === 'consultor' && !m.lido && m.urgente); },
-  chatNaoLidasConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id && m.autor === 'admin' && !m.lido).length; },
+  chatNaoLidasAdmin() { return (this.db.chat || []).filter(m => m.autor === 'consultor' && !m.lido && !m.arquivada).length; },
+  chatUrgentesAdmin() { return (this.db.chat || []).some(m => m.autor === 'consultor' && !m.lido && !m.arquivada && m.urgente); },
+  chatNaoLidasConsultor(id) { return (this.db.chat || []).filter(m => m.consultorId === id && m.autor === 'admin' && !m.lido && !m.arquivada).length; },
   async enviarMensagem({ consultorId, autor, texto, urgente }) {
-    const m = { id: this.uid(), consultorId, autor: autor || 'consultor', texto: (texto || '').trim(), urgente: !!urgente, lido: false, criadoEm: new Date().toISOString() };
+    const m = { id: this.uid(), consultorId, autor: autor || 'consultor', texto: (texto || '').trim(), urgente: !!urgente, lido: false, arquivada: false, criadoEm: new Date().toISOString() };
     if (!this.db.chat) this.db.chat = [];
     this.db.chat.push(m);
     await this._save('chat_mensagens', this._msgOut(m));
@@ -784,6 +789,26 @@ const OB = {
     if (!alvo.length) return;
     alvo.forEach(m => m.lido = true);
     try { await SB.from('chat_mensagens').update({ lido: true }).eq('consultor_id', consultorId).eq('autor', autorDasMsgs).eq('lido', false); } catch (e) {}
+  },
+  /* encerra o atendimento: arquiva a conversa atual (some p/ o consultor, fica salva p/ o admin) */
+  async encerrarConversa(consultorId) {
+    const abertas = (this.db.chat || []).filter(m => m.consultorId === consultorId && !m.arquivada);
+    if (!abertas.length) return 0;
+    abertas.forEach(m => { m.arquivada = true; });
+    try { await SB.from('chat_mensagens').update({ arquivada: true }).eq('consultor_id', consultorId).eq('arquivada', false); } catch (e) { this._err(e); }
+    return abertas.length;
+  },
+  /* transcrição completa da conversa (para exportar em caso de contestação) */
+  chatExportTexto(consultorId) {
+    const c = this.userById(consultorId);
+    const nome = c ? (((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || 'Consultor') : 'Consultor';
+    const msgs = this.chatHistorico(consultorId);
+    const linhas = msgs.map(m => {
+      const dt = new Date(m.criadoEm).toLocaleString('pt-BR');
+      const quem = m.autor === 'admin' ? 'OutBox (Manu)' : nome;
+      return `[${dt}] ${quem}${m.urgente ? ' [URGENTE]' : ''}: ${m.texto || ''}`;
+    });
+    return `Atendimento OutBox | Consultor: ${nome}\nExportado em: ${new Date().toLocaleString('pt-BR')}\nTotal de mensagens: ${msgs.length}\n${'='.repeat(48)}\n\n${linhas.join('\n')}\n`;
   },
   saveTreino(id, nota) {
     const cur = this.treinoProgress(id);

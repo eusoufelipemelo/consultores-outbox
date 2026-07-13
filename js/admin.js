@@ -1083,18 +1083,30 @@ const Admin = {
     const listHTML = threads.map(t => {
       const prev = (t.ultima.texto || '').slice(0, 46).replace(/</g, '&lt;') || '...';
       const quem = t.ultima.autor === 'admin' ? 'Você: ' : '';
-      return `<button type="button" class="atend-item${t.consultorId === this._atendSel ? ' on' : ''}" data-thread="${t.consultorId}">
+      return `<button type="button" class="atend-item${t.consultorId === this._atendSel ? ' on' : ''}${!t.aberta ? ' fechado' : ''}" data-thread="${t.consultorId}">
         ${this._consAv(t.consultorId, t.nome)}
-        <span class="atend-info"><b>${t.nome}${t.urgente ? ' <span class="atend-urg">urgente</span>' : ''}</b><span>${quem}${prev}</span></span>
+        <span class="atend-info"><b>${t.nome}${t.urgente ? ' <span class="atend-urg">urgente</span>' : ''}${!t.aberta ? ' <span class="atend-fechado">encerrado</span>' : ''}</b><span>${quem}${prev}</span></span>
         ${t.naoLidas ? `<span class="atend-count">${t.naoLidas}</span>` : ''}
       </button>`;
     }).join('');
-    const conv = sel.msgs.map(m => App.chatBubble(m, m.autor === 'admin', consAv)).join('');
+    // conversa completa (histórico + atual); mensagens arquivadas ficam esmaecidas, com divisória antes da conversa atual
+    const firstOpen = sel.msgs.findIndex(m => !m.arquivada);
+    let conv = '';
+    sel.msgs.forEach((m, idx) => {
+      if (idx === firstOpen && firstOpen > 0) conv += `<div class="atend-divider"><span>Conversa atual</span></div>`;
+      conv += App.chatBubble(m, m.autor === 'admin', consAv, m.arquivada);
+    });
+    if (firstOpen === -1) conv += `<div class="atend-divider"><span>Atendimento encerrado</span></div>`;
 
     v.innerHTML = `<div class="atend-grid">
       <div class="atend-list">${listHTML}</div>
       <div class="atend-conv">
-        <div class="atend-conv__head">${consAv}<div class="atend-conv__nm"><b>${sel.nome}</b><span>Você responde como <b>Manu</b></span></div></div>
+        <div class="atend-conv__head">${consAv}<div class="atend-conv__nm"><b>${sel.nome}</b><span>Você responde como <b>Manu</b></span></div>
+          <div class="atend-conv__acts">
+            <button class="btn ghost sm" id="atend-export" title="Baixar a conversa completa (registro)">${UI.icon('download',15)}<span>Exportar</span></button>
+            ${sel.aberta ? `<button class="btn ghost sm" id="atend-close" title="Encerrar: a conversa some para o consultor e fica salva aqui">${UI.icon('check',15)}<span>Encerrar</span></button>` : '<span class="atend-encerrado-tag">Encerrado</span>'}
+          </div>
+        </div>
         <div class="atend-msgs" id="atend-msgs">${conv}</div>
         <div class="atend-reply">
           <textarea id="atend-text" rows="1" placeholder="Responder como Manu..."></textarea>
@@ -1102,6 +1114,17 @@ const Admin = {
         </div>
       </div>
     </div>`;
+
+    document.getElementById('atend-export').onclick = () => {
+      const txt = OB.chatExportTexto(sel.consultorId);
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `Atendimento OutBox - ${sel.nome}.txt`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+      UI.toast('Conversa exportada', 'Arquivo salvo para o seu registro', 'ok');
+    };
+    const closeBtn = document.getElementById('atend-close');
+    if (closeBtn) closeBtn.onclick = () => UI.confirm('Encerrar atendimento', `Encerrar a conversa com <b>${sel.nome}</b>? Ela some para o consultor (que poderá iniciar uma nova) e <b>fica salva aqui</b> para o seu registro.`, async () => { await OB.encerrarConversa(sel.consultorId); UI.toast('Atendimento encerrado', 'A conversa foi arquivada', 'ok'); App.refreshChatBadges(); this.render('atendimento'); }, 'Encerrar');
 
     OB.marcarChatLido(sel.consultorId, 'consultor').then(() => App.refreshChatBadges());
     OB.carregarFotos().then(() => v.querySelectorAll('.atend-av[data-av]').forEach(el => { const f = OB.fotos[el.dataset.av]; if (f) el.innerHTML = `<img src="${f}" alt="">`; })).catch(() => {});

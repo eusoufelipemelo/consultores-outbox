@@ -1489,3 +1489,13 @@ td .strong { color: var(--text); font-weight: 600; }
 .cri-card .cri-head { padding-right: 56px; }
 .cri-card .cri-head b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; line-height: 1.25; }
 .cri-card .cri-cats { min-height: 24px; }
+
+/* Atendimento — encerrar/arquivar conversa + exportar */
+.atend-conv__acts { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.atend-encerrado-tag { font-size: 11px; font-weight: 700; color: var(--text-mut); background: var(--surface-2); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
+.atend-fechado { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-mut); background: var(--surface-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
+.atend-item.fechado { opacity: .72; }
+.atend-divider { display: flex; align-items: center; gap: 10px; margin: 14px 2px; color: var(--text-mut); font-size: 11px; font-weight: 600; }
+.atend-divider::before, .atend-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.chat-b.arch { opacity: .55; }
+.chat-b.arch .chat-b__body { filter: grayscale(.25); }
