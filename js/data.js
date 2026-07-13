@@ -29,13 +29,22 @@ const OB = {
     { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9500,  media: 16900, grande: 24500, industria: 33000 },
       incluso: 'Loja virtual completa: cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gerenciar pedidos.' },
     { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 19000, media: 45000, grande: 82000, industria: 130000 },
-      incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' }
+      incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' },
+    { id: 'hospedagem',   nome: 'Hospedagem de Site',  anual: true, maxParcelas: 12,
+      precoFixo: { pix: 900, cartao: 1200 }, // preço único para todos os portes (plano anual)
+      precos: { pequena: 1200, media: 1200, grande: 1200, industria: 1200 },
+      incluso: 'Hospedagem anual do site em servidor de alta disponibilidade: domínio conectado, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico. Renovação anual: R$1.200 no cartão em até 12x ou R$900 à vista no PIX.' }
   ],
   /* preço de tabela conforme produto + porte do cliente */
   precoTabela(produtoId, porteId) {
     const p = this.PRODUTOS.find(x => x.id === produtoId);
     if (!p || !p.precos) return 0;
     return p.precos[porteId] || p.precos.pequena || 0;
+  },
+  /* produto com preço único/plano anual (independe do porte) */
+  produtoPrecoFixo(produtoId) {
+    const p = this.PRODUTOS.find(x => x.id === produtoId);
+    return (p && p.precoFixo) ? p.precoFixo : null;
   },
   /* ---------- tabela FIXA de descontos comerciais (o consultor escolhe, o sistema limita) ---------- */
   DESC_LIMIAR: 15000, // a partir deste valor de orçamento libera a faixa maior de desconto
@@ -54,6 +63,16 @@ const OB = {
   calcPagamento(valorNegociado, forma, opts) {
     opts = opts || {};
     const base = Math.max(0, Number(valorNegociado) || 0);
+    // plano de preço fixo (ex.: hospedagem anual) — valor por forma de pagamento, sem grossup nem desconto
+    if (opts.precoFixo) {
+      const pf = opts.precoFixo;
+      if (forma === 'cartao') {
+        const n = Math.min(12, Math.max(1, parseInt(opts.parcelas, 10) || 1));
+        return { forma, valorServico: pf.cartao, valorCliente: pf.cartao, parcelas: n, valorParcela: Math.round((pf.cartao / n) * 100) / 100, jurosPct: 0, pixDesconto: false, precoFixo: true };
+      }
+      // qualquer outra forma cai no valor à vista (PIX)
+      return { forma: 'pix', valorServico: pf.pix, valorCliente: pf.pix, parcelas: 1, valorParcela: pf.pix, jurosPct: 0, pixDesconto: false, precoFixo: true };
+    }
     if (forma === 'pix') {
       const pixOn = !!opts.pixDesconto;
       const servico = pixOn ? Math.round(base * (1 - this.PIX_DESCONTO / 100)) : base;
@@ -593,7 +612,8 @@ const OB = {
     onepage:      { objeto: 'desenvolvimento de site em página única (one page), contemplando apresentação da empresa, serviços, diferenciais, depoimentos, mapa de localização, botão de WhatsApp e otimização para dispositivos móveis e para mecanismos de busca', prazo: '10 a 20 dias úteis', revisoes: '2 (duas) rodadas de revisão' },
     institucional:{ objeto: 'desenvolvimento de site institucional com múltiplas páginas (início, sobre, serviços e contato), formulário de contato, botão de WhatsApp, otimização para dispositivos móveis e SEO básico', prazo: '20 a 35 dias úteis', revisoes: '3 (três) rodadas de revisão' },
     ecommerce:    { objeto: 'desenvolvimento de loja virtual (e-commerce) com cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gestão de pedidos', prazo: '30 a 45 dias úteis', revisoes: '3 (três) rodadas de revisão' },
-    sistemas:     { objeto: 'desenvolvimento de sistema sob medida, contemplando levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação', prazo: 'conforme cronograma aprovado no levantamento de requisitos', revisoes: 'as previstas no escopo aprovado' }
+    sistemas:     { objeto: 'desenvolvimento de sistema sob medida, contemplando levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação', prazo: 'conforme cronograma aprovado no levantamento de requisitos', revisoes: 'as previstas no escopo aprovado' },
+    hospedagem:   { objeto: 'prestação de serviço de hospedagem anual do site em servidor de alta disponibilidade, contemplando conexão do domínio, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico durante a vigência', prazo: 'vigência de 12 (doze) meses, com ativação em até 3 (três) dias úteis a contar da confirmação do pagamento', revisoes: 'não se aplica (serviço de hospedagem)' }
   },
   contratoModelo(produtoId) { return this.CONTRATO_MODELOS[produtoId] || this.CONTRATO_MODELOS.institucional; },
   _ctIn(r) { let dados = {}; try { dados = r.dados ? (typeof r.dados === 'string' ? JSON.parse(r.dados) : r.dados) : {}; } catch (e) { dados = {}; }

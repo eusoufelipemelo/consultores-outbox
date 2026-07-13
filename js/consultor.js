@@ -409,11 +409,34 @@ const Consultor = {
     const edParcWrap = document.getElementById('ed-parc-wrap');
     const edParcelas = document.getElementById('ed-parcelas');
     const payBox = document.getElementById('ed-paybox');
+    const pfEdit = ((s.produtos || [s.produto]).length === 1) ? OB.produtoPrecoFixo(s.produto) : null;
+    const edBoletoOpt = edPgto.querySelector('option[value="boleto"]');
     const perms = OB.descontosPermitidos(valorBase);
     const descAtual = (s.descontoTipo === 'percent' ? s.descontoValor : 0) || 0;
     edDesc.innerHTML = perms.map(p => `<option value="${p}" ${p === descAtual ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('');
     document.getElementById('ed-desc-hint').innerHTML = `Desconto de até <b>${perms[perms.length - 1]}%</b> para este valor de orçamento.`;
     const recalcular = () => {
+      // plano de preço fixo (hospedagem anual): sem desconto, sem 5% extra, sem boleto
+      if (pfEdit) {
+        edDesc.closest('.field').hidden = true;
+        edPixWrap.style.display = 'none'; edPixDesc.checked = false;
+        if (edBoletoOpt) edBoletoOpt.disabled = true;
+        if (edPgto.value === 'boleto') edPgto.value = 'pix';
+        const forma = edPgto.value === 'cartao' ? 'cartao' : 'pix';
+        edParcWrap.hidden = forma !== 'cartao';
+        const calc = OB.calcPagamento(0, forma, { precoFixo: pfEdit, parcelas: parseInt(edParcelas.value, 10) || 1 });
+        let linhas = `<div class="row"><span>Plano anual</span><b>${OB.money(calc.valorServico, moeda)}</b></div>`;
+        if (forma === 'cartao') {
+          linhas += `<div class="row total"><span>Total no cartão · até 12x</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+          linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, moeda)}</b></div>`;
+        } else {
+          linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+        }
+        linhas += `<div class="pay-note">Comissão sobre ${OB.money(calc.valorServico, moeda)}.</div>`;
+        payBox.innerHTML = linhas;
+        payBox._calc = calc; payBox._desc = 0;
+        return;
+      }
       const desc = parseInt(edDesc.value, 10) || 0;
       const negociado = Math.round(valorBase * (1 - desc / 100));
       const forma = edPgto.value;
@@ -443,7 +466,7 @@ const Consultor = {
     document.getElementById('ed-save').onclick = () => {
       const calc = payBox._calc; const desc = payBox._desc || 0;
       Object.assign(s, {
-        valorBruto: valorBase, descontoTipo: desc ? 'percent' : null, descontoValor: desc,
+        valorBruto: pfEdit ? calc.valorServico : valorBase, descontoTipo: desc ? 'percent' : null, descontoValor: desc,
         valor: calc.valorServico, valorCliente: calc.valorCliente,
         formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
         linkPagamento: (document.getElementById('ed-link').value || '').trim()
@@ -577,6 +600,36 @@ const Consultor = {
       const porte = sPorte.value;
       const m = sMoeda.value;
       const sel = prodsSel();
+      const descField = sDesc.closest('.field');
+      const porteField = sPorte.closest('.field');
+      const boletoOpt = sPgto.querySelector('option[value="boleto"]');
+      // plano de preço fixo (hospedagem anual): sem porte, sem desconto comercial, sem 5% extra, sem boleto
+      const pf = sel.length === 1 ? OB.produtoPrecoFixo(sel[0]) : null;
+      if (pf) {
+        if (porteField) porteField.hidden = true;
+        if (descField) descField.hidden = true;
+        sPixWrap.style.display = 'none'; sPixDesc.checked = false;
+        if (boletoOpt) boletoOpt.disabled = true;
+        if (sPgto.value === 'boleto') sPgto.value = 'pix';
+        const forma = sPgto.value === 'cartao' ? 'cartao' : 'pix';
+        sParcWrap.hidden = forma !== 'cartao';
+        const calc = OB.calcPagamento(0, forma, { precoFixo: pf, parcelas: parseInt(sParcelas.value, 10) || 1 });
+        const nome = (OB.PRODUTOS.find(x => x.id === sel[0]) || {}).nome || 'Plano';
+        let linhas = `<div class="row"><span>${nome} · plano anual</span><b>${OB.money(calc.valorServico, m)}</b></div>`;
+        if (forma === 'cartao') {
+          linhas += `<div class="row total"><span>Total no cartão · até 12x</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+          linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, m)}</b></div>`;
+        } else {
+          linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+        }
+        linhas += `<div class="pay-note">Preço único para todos os portes. Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)}.</div>`;
+        payBox.innerHTML = linhas;
+        payBox._valorBase = calc.valorServico; payBox._negociado = calc.valorServico; payBox._calc = calc;
+        return;
+      }
+      if (porteField) porteField.hidden = false;
+      if (descField) descField.hidden = false;
+      if (boletoOpt) boletoOpt.disabled = false;
       const valorBase = sel.reduce((t, id) => t + (OB.precoTabela(id, porte) || 0), 0);
       fillDescontos(valorBase);
       const desc = parseInt(sDesc.value, 10) || 0;
@@ -613,7 +666,15 @@ const Consultor = {
         if (b) b.onclick = () => { UI.closeModal(); App.go('treinamentos'); setTimeout(() => this.treinoIntro(pend.id), 60); };
       } else { box.innerHTML = ''; }
     };
-    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { recalcular(); updateTreinoAviso(); });
+    // hospedagem (plano anual) é vendida sozinha — exclusividade mútua com os demais serviços
+    const prodInputs = [...document.querySelectorAll('#s-prods input')];
+    prodInputs.forEach(cb => cb.onchange = () => {
+      if (cb.checked) {
+        if (cb.value === 'hospedagem') prodInputs.forEach(o => { if (o !== cb) o.checked = false; });
+        else { const h = prodInputs.find(o => o.value === 'hospedagem'); if (h) h.checked = false; }
+      }
+      recalcular(); updateTreinoAviso();
+    });
     sCli.onchange = () => { sincPorteComCliente(); recalcular(); };
     sPorte.onchange = recalcular;
     sDesc.onchange = recalcular;
@@ -629,7 +690,8 @@ const Consultor = {
       if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço', 'err'); }
       const valorBase = payBox._valorBase || 0;
       if (!valorBase) return UI.toast('Selecione os serviços', 'O valor de tabela ficou zerado', 'err');
-      const desc = parseInt(sDesc.value, 10) || 0;
+      const pfSave = produtos.length === 1 ? OB.produtoPrecoFixo(produtos[0]) : null;
+      const desc = pfSave ? 0 : (parseInt(sDesc.value, 10) || 0);
       const calc = payBox._calc;
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: sCli.value,
@@ -755,7 +817,7 @@ const Consultor = {
       let rows = `<div class="row"><span>Valor de tabela</span><span>${OB.money(base, m)}</span></div>`;
       if (desc) rows += `<div class="row"><span>Desconto comercial (${desc}%)</span><span>- ${OB.money(base - negociado, m)}</span></div>`;
       if (forma === 'pix' && s.pixDesconto) rows += `<div class="row"><span>Desconto PIX à vista (5%)</span><span>- ${OB.money(negociado - s.valor, m)}</span></div>`;
-      if (forma === 'cartao') rows += `<div class="row"><span>Juros do cartão (${parcelas}x)</span><span>+ ${OB.money(cliente - negociado, m)}</span></div>`;
+      if (forma === 'cartao' && cliente > negociado) rows += `<div class="row"><span>Juros do cartão (${parcelas}x)</span><span>+ ${OB.money(cliente - negociado, m)}</span></div>`;
       rows += `<div class="row grand"><span>Total ${forma === 'cartao' ? 'no cartão' : 'à vista'}</span><b>${OB.money(cliente, m)}</b></div>`;
       if (forma === 'cartao') rows += `<div class="row"><span>Parcelamento</span><b>${parcelas}x de ${OB.money(Math.round((cliente / parcelas) * 100) / 100, m)}</b></div>`;
       return `<div class="tot"><div class="box">${rows}</div></div>`;
@@ -860,11 +922,12 @@ const Consultor = {
     let payRows = `<tr><td>Valor dos serviços (tabela)</td><td class="r">${money(p.valorBase)}</td></tr>`;
     if (p.desconto) payRows += `<tr><td>Desconto comercial (${p.desconto}%)</td><td class="r">- ${money((p.valorBase || 0) - negociado)}</td></tr>`;
     if (forma === 'pix' && p.pixDesconto) payRows += `<tr><td>Desconto PIX à vista (5%)</td><td class="r">- ${money(negociado - p.valorServico)}</td></tr>`;
-    if (forma === 'cartao') payRows += `<tr><td>Juros do parcelamento (${p.parcelas}x)</td><td class="r">+ ${money((p.valorCliente || 0) - negociado)}</td></tr>`;
+    const temJuros = forma === 'cartao' && (p.valorCliente || 0) > negociado;
+    if (temJuros) payRows += `<tr><td>Juros do parcelamento (${p.parcelas}x)</td><td class="r">+ ${money((p.valorCliente || 0) - negociado)}</td></tr>`;
     payRows += `<tr class="tot"><td><b>Total ${forma === 'cartao' ? 'no cartão' : 'à vista'}</b></td><td class="r"><b>${money(p.valorCliente)}</b></td></tr>`;
     if (forma === 'cartao') payRows += `<tr><td>Parcelamento</td><td class="r"><b>${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}</b></td></tr>`;
     const condPagamento = forma === 'cartao'
-      ? `O pagamento será realizado por cartão de crédito, parcelado em ${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}, totalizando ${money(p.valorCliente)}. Os juros do parcelamento são cobrados pela operadora do cartão e já estão incluídos no valor total.`
+      ? `O pagamento será realizado por cartão de crédito, parcelado em ${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}, totalizando ${money(p.valorCliente)}.${temJuros ? ' Os juros do parcelamento são cobrados pela operadora do cartão e já estão incluídos no valor total.' : ''}`
       : (forma === 'boleto'
         ? `O pagamento será realizado à vista, por boleto bancário, no valor de ${money(p.valorCliente)}, com vencimento em até 3 (três) dias úteis a contar da assinatura deste contrato.`
         : `O pagamento será realizado à vista, via PIX, no valor de ${money(p.valorCliente)}${p.pixDesconto ? ' (já aplicado o desconto de 5% para pagamento à vista)' : ''}, em até 3 (três) dias úteis a contar da assinatura deste contrato.`);
