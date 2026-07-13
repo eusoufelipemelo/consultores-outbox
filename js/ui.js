@@ -89,9 +89,30 @@ const UI = {
     bg.classList.add('show');
     bg.querySelectorAll('[data-close]').forEach(b => b.onclick = () => this.closeModal());
     bg.onclick = (e) => { if (e.target === bg) this.closeModal(); };
+    this.bindSegp(bg);
     return bg;
   },
   closeModal() { const bg = document.getElementById('modal-bg'); bg.classList.remove('show'); bg.innerHTML = ''; },
+
+  /* ---------- controle segmentado (moderno, substitui selects de poucas opções) ----------
+     uso: UI.segp('meu-id', [{v:'a',label:'A'},{v:'b',label:'B',sub:'detalhe'}], 'a')
+     ler valor: document.getElementById('meu-id').dataset.value
+     ouvir: el.addEventListener('segpchange', e => e.detail) */
+  segp(id, options, value, extraClass) {
+    return `<div class="segp ${extraClass || ''}" id="${id}" data-value="${value != null ? value : ''}" role="tablist">${options.map(o => `<button type="button" class="segp-opt${o.v === value ? ' on' : ''}" data-v="${o.v}" role="tab" aria-selected="${o.v === value}">${o.label}${o.sub ? `<small>${o.sub}</small>` : ''}</button>`).join('')}</div>`;
+  },
+  bindSegp(root) {
+    (root || document).querySelectorAll('.segp').forEach(g => {
+      if (g._segpBound) return; g._segpBound = true;
+      g.addEventListener('click', e => {
+        const b = e.target.closest('.segp-opt'); if (!b || b.classList.contains('on')) return;
+        g.querySelectorAll('.segp-opt').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-selected', 'false'); });
+        b.classList.add('on'); b.setAttribute('aria-selected', 'true');
+        g.dataset.value = b.dataset.v;
+        g.dispatchEvent(new CustomEvent('segpchange', { detail: b.dataset.v, bubbles: true }));
+      });
+    });
+  },
 
   /* ---------- confirm ---------- */
   confirm(title, msg, onYes, yesLabel) {

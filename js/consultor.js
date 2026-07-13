@@ -153,7 +153,7 @@ const Consultor = {
           <td>${c.contato || '-'}<br><span class="mut" style="font-size:12px">${c.email || ''}</span></td>
           <td>${pt ? `<span class="chip gray">${pt.nome}</span>` : '-'}</td>
           <td>${c.telefone || '-'}</td>
-          <td><span class="chip ${c.tipo==='recorrente'?'green':'gray'}">${c.tipo==='recorrente'?'Recorrente':'Pontual'}</span></td>
+          <td><span class="chip ${c.tipo==='recorrente'?'green':'gray'}">${c.tipo==='recorrente'?('Recorrente'+(c.recorrenciaMeses?' · '+c.recorrenciaMeses+'m':'')):'Pontual'}</span></td>
           <td class="row" style="gap:6px;justify-content:flex-end">
             <button class="iconbtn" data-edit="${c.id}">${UI.icon('edit',16)}</button>
             <button class="iconbtn" data-del="${c.id}">${UI.icon('trash',16)}</button>
@@ -210,10 +210,11 @@ const Consultor = {
 
         <div class="nav-label" style="padding-left:0">Negócio</div>
         <div class="field"><label>Tipo de cliente <span class="req">*</span></label>
-          <select id="c-tipo">
-            <option value="pontual" ${edit && c.tipo === 'pontual' ? 'selected' : ''}>Pontual (compra única)</option>
-            <option value="recorrente" ${edit && c.tipo === 'recorrente' ? 'selected' : ''}>Recorrente (gera comissão recorrente)</option>
-          </select>
+          ${UI.segp('c-tipo', [{ v: 'pontual', label: 'Pontual', sub: 'compra única' }, { v: 'recorrente', label: 'Recorrente', sub: 'comissão recorrente' }], edit ? (c.tipo || 'pontual') : 'pontual')}
+        </div>
+        <div class="field" id="c-rec-wrap"${edit && c.tipo === 'recorrente' ? '' : ' hidden'}><label>Duração da recorrência <span class="req">*</span></label>
+          ${UI.segp('c-rec', [{ v: '3', label: '3 meses' }, { v: '6', label: '6 meses' }, { v: '12', label: '12 meses' }, { v: '24', label: '24 meses' }], String((edit && c.recorrenciaMeses) || 12))}
+          <div class="hint">Por quantos meses este cliente gera comissão recorrente.</div>
         </div>
         <div class="field"><label>Porte da empresa <span class="req">*</span></label>
           <select id="c-porte">${OB.PORTES.map(p => `<option value="${p.id}" ${edit ? (c.porte === p.id ? 'selected' : '') : (p.id === 'pequena' ? 'selected' : '')}>${p.nome}</option>`).join('')}</select>
@@ -230,6 +231,9 @@ const Consultor = {
     cep.onblur = () => this.buscarCEPCliente(cep.value);
     const cPorte = document.getElementById('c-porte');
     cPorte.onchange = () => { document.getElementById('c-porte-hint').textContent = (OB.PORTES.find(p => p.id === cPorte.value) || OB.PORTES[0]).faixa; };
+    // recorrência: mostra a duração só quando o cliente é recorrente
+    const cTipo = document.getElementById('c-tipo');
+    cTipo.addEventListener('segpchange', e => { document.getElementById('c-rec-wrap').hidden = e.detail !== 'recorrente'; });
 
     document.getElementById('c-save').onclick = () => {
       const val = id => document.getElementById(id).value.trim();
@@ -252,7 +256,8 @@ const Consultor = {
         nome: val('c-nome'), contato: val('c-contato'), doc: val('c-doc'), telefone: val('c-tel'),
         instagram: val('c-insta'), email: val('c-email'), cep: val('c-cep'), numero: val('c-num'),
         complemento: val('c-comp'), logradouro: val('c-log'), bairro: val('c-bairro'),
-        cidade: val('c-cidade'), uf: val('c-uf').toUpperCase(), tipo: document.getElementById('c-tipo').value,
+        cidade: val('c-cidade'), uf: val('c-uf').toUpperCase(), tipo: document.getElementById('c-tipo').dataset.value,
+        recorrenciaMeses: document.getElementById('c-tipo').dataset.value === 'recorrente' ? (parseInt(document.getElementById('c-rec').dataset.value, 10) || 12) : null,
         porte: document.getElementById('c-porte').value, obs: val('c-obs')
       });
       OB.upsertClient(obj);

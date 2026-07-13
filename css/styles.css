@@ -1505,3 +1505,21 @@ td .strong { color: var(--text); font-weight: 600; }
 .chat-confirm { padding: 11px 13px; background: var(--brand-soft); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 9px; }
 .chat-confirm > span { font-size: 12px; color: var(--text-soft); line-height: 1.4; }
 .chat-confirm__btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ===== Controle segmentado (escolhas de poucas opções, moderno) ===== */
+.segp { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-2); width: 100%; box-sizing: border-box; }
+.segp-opt { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 8px 10px; min-height: 44px; border: none; border-radius: 10px; background: transparent; color: var(--text-soft); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background .16s, color .16s, box-shadow .16s; -webkit-tap-highlight-color: transparent; }
+.segp-opt small { font-size: 10.5px; font-weight: 500; opacity: .82; }
+.segp-opt:hover { color: var(--text); }
+.segp-opt.on { background: var(--surface); color: var(--brand); box-shadow: 0 1px 4px rgba(16,24,40,.14); }
+.segp-opt:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
+:root[data-theme="dark"] .segp-opt.on { box-shadow: 0 1px 5px rgba(0,0,0,.4); }
+
+/* ===== Selects modernos em todo o sistema (seta customizada, sem visual nativo dos anos 90) ===== */
+select, .field select, .cons-filtros select, .cons-filtros-grid select, .ctl-sel select, select.input, .ctf-date select {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%238a96a3'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%209l6%206%206-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 13px center; background-size: 16px 16px; padding-right: 40px; cursor: pointer;
+}
+select:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+select:disabled { cursor: not-allowed; opacity: .6; }
