@@ -757,9 +757,16 @@ const App = {
       <div class="chat-panel" id="chat-panel" hidden>
         <div class="chat-head">
           <div class="chat-head__id">${this.manuAvatar('chat-head__av')}<div class="chat-head__nm"><b>${OB.MANU.nome}</b><span>${OB.MANU.cargo}</span></div></div>
-          <button class="chat-close" id="chat-close" type="button" aria-label="Fechar">${UI.icon('x',18)}</button>
+          <div class="chat-head__acts">
+            <button class="chat-close" id="chat-new" type="button" title="Encerrar esta conversa e iniciar uma nova" aria-label="Nova conversa" hidden>${UI.icon('plus',18)}</button>
+            <button class="chat-close" id="chat-close" type="button" aria-label="Fechar">${UI.icon('x',18)}</button>
+          </div>
         </div>
         <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-confirm" id="chat-confirm" hidden>
+          <span>Encerrar esta conversa e começar uma nova? O histórico fica salvo com a OutBox.</span>
+          <div class="chat-confirm__btns"><button type="button" class="btn ghost sm" id="chat-cancel">Cancelar</button><button type="button" class="btn brand sm" id="chat-do">Encerrar</button></div>
+        </div>
         <div class="chat-inputbar">
           <label class="chat-urg"><input type="checkbox" id="chat-urg"><span>Marcar como urgente</span></label>
           <div class="chat-inputrow">
@@ -777,6 +784,16 @@ const App = {
     document.getElementById('chat-fab').onclick = () => this.toggleChat();
     document.getElementById('chat-close').onclick = () => this.toggleChat(false);
     document.getElementById('chat-send').onclick = () => this.sendChatMsg();
+    // encerrar a conversa atual (some para o consultor, fica salva com o admin) e começar uma nova
+    const cfEl = () => document.getElementById('chat-confirm');
+    document.getElementById('chat-new').onclick = () => { const cf = cfEl(); if (cf) cf.hidden = false; };
+    document.getElementById('chat-cancel').onclick = () => { const cf = cfEl(); if (cf) cf.hidden = true; };
+    document.getElementById('chat-do').onclick = async () => {
+      const cf = cfEl(); if (cf) cf.hidden = true;
+      await OB.encerrarConversa(OB.session().id);
+      this.renderChatPanel(); this.refreshChatBadges();
+      UI.toast('Conversa encerrada', 'Pode iniciar uma nova quando quiser', 'ok');
+    };
     const ta = document.getElementById('chat-text');
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChatMsg(); } });
     ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 110) + 'px'; });
@@ -807,6 +824,8 @@ const App = {
     const u = OB.session(); const msgs = OB.chatDoConsultor(u.id);
     box.innerHTML = msgs.length ? msgs.map(m => this.chatBubble(m, m.autor === 'consultor')).join('')
       : `<div class="chat-empty">${this.manuAvatar('chat-empty__av')}<p>Oi! Eu sou a <b>Manu</b> 👋<br>Me conta sua dúvida, peça algo ou mande uma sugestão. Se for urgente, marque a caixinha antes de enviar.</p></div>`;
+    const nb = document.getElementById('chat-new'); if (nb) nb.hidden = !msgs.length;
+    const cf = document.getElementById('chat-confirm'); if (cf) cf.hidden = true;
     box.scrollTop = box.scrollHeight;
   },
   async sendChatMsg() {

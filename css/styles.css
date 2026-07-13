@@ -1499,3 +1499,9 @@ td .strong { color: var(--text); font-weight: 600; }
 .atend-divider::before, .atend-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .chat-b.arch { opacity: .55; }
 .chat-b.arch .chat-b__body { filter: grayscale(.25); }
+
+/* Chat consultor — encerrar conversa (botão no header + confirmação inline) */
+.chat-head__acts { display: flex; align-items: center; gap: 6px; }
+.chat-confirm { padding: 11px 13px; background: var(--brand-soft); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 9px; }
+.chat-confirm > span { font-size: 12px; color: var(--text-soft); line-height: 1.4; }
+.chat-confirm__btns { display: flex; gap: 8px; justify-content: flex-end; }
