@@ -813,21 +813,32 @@ const Admin = {
     const ufs = [...new Set(all.map(c => (c.dados && c.dados.cliente && c.dados.cliente.uf) || '').filter(Boolean))].sort();
     const f = this._ctFiltro;
     const aceitos = all.filter(c => c.status === 'aceito').length;
+    const pend = all.length - aceitos;
     v.innerHTML = `
-      <div class="kpis kpis-3" style="margin-bottom:14px">
-        <div class="kpi"><div class="kpi-v">${all.length}</div><div class="kpi-l">Contratos</div></div>
-        <div class="kpi"><div class="kpi-v" style="color:#16a34a">${aceitos}</div><div class="kpi-l">Aceitos</div></div>
-        <div class="kpi"><div class="kpi-v" style="color:var(--brand)">${all.length - aceitos}</div><div class="kpi-l">Aguardando aceite</div></div>
+      <div class="kpis-3" style="margin-bottom:16px">
+        <div class="card kpi"><div class="ic">${UI.icon('contract', 20)}</div><div class="k-val">${all.length}</div><div class="k-lbl">Contratos</div></div>
+        <div class="card kpi"><div class="ic ic-ok">${UI.icon('check', 20)}</div><div class="k-val" style="color:#16a34a">${aceitos}</div><div class="k-lbl">Aceitos</div></div>
+        <div class="card kpi"><div class="ic ic-warn">${UI.icon('clock', 20)}</div><div class="k-val" style="color:var(--brand)">${pend}</div><div class="k-lbl">Aguardando aceite</div></div>
       </div>
-      <div class="cons-filtros" id="ct-filtros">
-        <input id="ctf-cliente" placeholder="Buscar cliente / nº" value="${f.cliente}"/>
-        <select id="ctf-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
-        <select id="ctf-uf"><option value="">Todas as regiões</option>${ufs.map(u => `<option value="${u}" ${f.uf === u ? 'selected' : ''}>${this.UF_NOMES[u] || u}</option>`).join('')}</select>
-        <select id="ctf-cons"><option value="">Todos os consultores</option>${consultores.map(c => `<option value="${c.id}" ${f.consultor === c.id ? 'selected' : ''}>${c.nome} ${c.sobrenome || ''}</option>`).join('')}</select>
-        <select id="ctf-status"><option value="todos">Todos os status</option><option value="aceito" ${f.status === 'aceito' ? 'selected' : ''}>Aceitos</option><option value="pendente" ${f.status === 'pendente' ? 'selected' : ''}>Aguardando</option></select>
-        <label class="ctf-date">De <input type="date" id="ctf-de" value="${f.de}"/></label>
-        <label class="ctf-date">Até <input type="date" id="ctf-ate" value="${f.ate}"/></label>
-        <button class="btn ghost" id="ctf-limpar">Limpar</button>
+      <div class="lib-head"><b>Contratos</b><span class="lib-count" id="ctf-count">${all.length} contratos</span></div>
+      <div class="ctl-toolbar">
+        <div class="ctl-search">${UI.icon('search', 16)}<input id="ctf-cliente" placeholder="Buscar por cliente ou nº do contrato" value="${f.cliente}"/></div>
+        <div class="ctl-seg" id="ctf-seg">
+          <button type="button" data-st="todos" class="${f.status === 'todos' ? 'on' : ''}">Todos <i>${all.length}</i></button>
+          <button type="button" data-st="pendente" class="${f.status === 'pendente' ? 'on' : ''}">Aguardando <i>${pend}</i></button>
+          <button type="button" data-st="aceito" class="${f.status === 'aceito' ? 'on' : ''}">Aceitos <i>${aceitos}</i></button>
+        </div>
+        <div class="ctl-selrow">
+          <div class="ctl-sel"><label for="ctf-servico">Serviço</label>
+            <select id="ctf-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label for="ctf-uf">Região</label>
+            <select id="ctf-uf"><option value="">Todas as regiões</option>${ufs.map(u => `<option value="${u}" ${f.uf === u ? 'selected' : ''}>${this.UF_NOMES[u] || u}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label for="ctf-cons">Consultor</label>
+            <select id="ctf-cons"><option value="">Todos os consultores</option>${consultores.map(c => `<option value="${c.id}" ${f.consultor === c.id ? 'selected' : ''}>${c.nome} ${c.sobrenome || ''}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label>Período (data)</label>
+            <div class="ctl-daterange"><input type="date" id="ctf-de" value="${f.de}" aria-label="Data inicial"/><span>até</span><input type="date" id="ctf-ate" value="${f.ate}" aria-label="Data final"/></div></div>
+          <button type="button" class="ctl-clear" id="ctf-limpar">${UI.icon('x', 14)} Limpar filtros</button>
+        </div>
       </div>
       <div class="card" style="padding:0" id="ct-table"></div>`;
     const draw = () => {
@@ -845,6 +856,7 @@ const Admin = {
         if (ff.ate && dia > ff.ate) return false;
         return true;
       });
+      const cnt = document.getElementById('ctf-count'); if (cnt) cnt.textContent = `${rows.length} de ${all.length} contratos`;
       const el = document.getElementById('ct-table');
       if (!rows.length) { el.innerHTML = Consultor.empty('contract', 'Nada neste filtro', 'Ajuste os filtros para ver os contratos.'); return; }
       el.innerHTML = `<div class="table-wrap"><table><thead><tr>
@@ -865,16 +877,17 @@ const Admin = {
       el.querySelectorAll('[data-ct-bx]').forEach(b => b.onclick = () => Consultor.baixarContrato(OB.contratoById(b.dataset.ctBx)));
       el.querySelectorAll('[data-ct-del]').forEach(b => b.onclick = () => { const c = OB.contratoById(b.dataset.ctDel); if (!c) return; const cli = OB.clientById(c.clientId) || (c.dados && c.dados.cliente) || {}; UI.confirm('Excluir contrato', `Remover definitivamente o contrato <b>${c.numero}</b> de <b>${cli.nome || 'cliente'}</b>?`, () => { OB.removeContrato(c.id); UI.toast('Contrato excluído', c.numero, 'ok'); this.view_contratos(); }, 'Excluir contrato'); });
     };
-    const capt = () => { this._ctFiltro = {
+    const capt = () => { const st = (v.querySelector('#ctf-seg button.on') || {}).dataset; this._ctFiltro = {
       cliente: document.getElementById('ctf-cliente').value,
       servico: document.getElementById('ctf-servico').value,
       uf: document.getElementById('ctf-uf').value,
       consultor: document.getElementById('ctf-cons').value,
-      status: document.getElementById('ctf-status').value,
+      status: st ? st.st : 'todos',
       de: document.getElementById('ctf-de').value,
       ate: document.getElementById('ctf-ate').value
     }; draw(); };
-    ['ctf-servico', 'ctf-uf', 'ctf-cons', 'ctf-status', 'ctf-de', 'ctf-ate'].forEach(id => { const el = document.getElementById(id); if (el) el.onchange = capt; });
+    ['ctf-servico', 'ctf-uf', 'ctf-cons', 'ctf-de', 'ctf-ate'].forEach(id => { const el = document.getElementById(id); if (el) el.onchange = capt; });
+    v.querySelectorAll('#ctf-seg button').forEach(b => b.onclick = () => { v.querySelectorAll('#ctf-seg button').forEach(x => x.classList.remove('on')); b.classList.add('on'); capt(); });
     const busca = document.getElementById('ctf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
     document.getElementById('ctf-limpar').onclick = () => { this._ctFiltro = { cliente: '', servico: '', uf: '', consultor: '', de: '', ate: '', status: 'todos' }; this.view_contratos(); };
     draw();

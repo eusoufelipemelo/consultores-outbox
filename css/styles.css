@@ -1365,6 +1365,15 @@ td .strong { color: var(--text); font-weight: 600; }
 .ctl-sel select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
 .ctl-clear { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; margin-left: auto; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text-soft); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
 .ctl-clear:hover { background: var(--surface-2); color: var(--text); border-color: var(--text-mut); }
+/* intervalo de datas (De/Até) agrupado num controle único, no mesmo estilo dos selects */
+.ctl-daterange { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+.ctl-daterange:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); background: var(--surface); }
+.ctl-daterange input[type="date"] { border: none; background: transparent; color: var(--text); font-size: 13px; font-family: inherit; height: 100%; outline: none; padding: 0; min-width: 116px; cursor: pointer; }
+.ctl-daterange span { color: var(--text-mut); font-size: 12px; font-weight: 600; flex: 0 0 auto; }
+[data-theme="dark"] .ctl-daterange input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.7); }
+/* ícone colorido dos KPIs de status */
+.kpi .ic.ic-ok { background: rgba(22,163,74,.14); color: #16a34a; }
+.kpi .ic.ic-warn { background: var(--brand-soft); color: var(--brand); }
 
 .ctl-list { display: flex; flex-direction: column; gap: 10px; }
 .ctl-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); transition: box-shadow .18s, transform .18s, border-color .18s; }
