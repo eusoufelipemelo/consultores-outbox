@@ -202,9 +202,11 @@ const App = {
     catch (e) { host.innerHTML = this._ctMsg('#dc2626', 'Erro ao carregar', 'Tente novamente em instantes. (' + ((e && e.message) || 'falha') + ')'); return; }
     if (!info) { host.innerHTML = this._ctMsg('#dc2626', 'Contrato não encontrado', 'Confira o link com o seu consultor.'); return; }
     const jaAceito = info.status === 'aceito';
-    const c = { id, numero: info.numero, dados: info.dados, status: info.status, acceptToken: '', aceiteNome: info.aceite_nome, aceiteDoc: info.aceite_doc, aceitoEm: info.aceito_em, aceiteIp: info.aceite_ip, criadoEm: info.criado_em };
+    // dados pode vir como string (jsonb duplo-encodado) via RPC — normaliza para objeto
+    let dados = info.dados; if (typeof dados === 'string') { try { dados = JSON.parse(dados); } catch (_e) { dados = {}; } }
+    const c = { id, numero: info.numero, dados, status: info.status, acceptToken: '', aceiteNome: info.aceite_nome, aceiteDoc: info.aceite_doc, aceitoEm: info.aceito_em, aceiteIp: info.aceite_ip, criadoEm: info.criado_em };
     const docHtml = Consultor.buildContratoHTML(c);
-    const cli = (info.dados && info.dados.cliente) || {};
+    const cli = (dados && dados.cliente) || {};
     host.innerHTML = `
       <div style="max-width:900px;margin:0 auto;padding:16px 12px 150px">
         <div style="display:flex;align-items:center;gap:10px;padding:12px 4px;color:#0A0A0A">

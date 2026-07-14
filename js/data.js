@@ -620,7 +620,7 @@ const OB = {
   contratoModelo(produtoId) { return this.CONTRATO_MODELOS[produtoId] || this.CONTRATO_MODELOS.institucional; },
   _ctIn(r) { let dados = {}; try { dados = r.dados ? (typeof r.dados === 'string' ? JSON.parse(r.dados) : r.dados) : {}; } catch (e) { dados = {}; }
     return { id: r.id, numero: r.numero || '', saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, dados, status: r.status || 'pendente', acceptToken: r.accept_token || '', aceiteNome: r.aceite_nome || '', aceiteDoc: r.aceite_doc || '', aceiteIp: r.aceite_ip || '', aceitoEm: r.aceito_em || null, criadoEm: r.criado_em }; },
-  _ctOut(c) { return { id: c.id, numero: c.numero || null, sale_id: c.saleId || null, consultor_id: c.consultorId, client_id: c.clientId || null, dados: JSON.stringify(c.dados || {}), status: c.status || 'pendente', accept_token: c.acceptToken || null, aceite_nome: c.aceiteNome || null, aceite_doc: c.aceiteDoc || null, aceite_ip: c.aceiteIp || null, aceito_em: c.aceitoEm || null, criado_em: c.criadoEm }; },
+  _ctOut(c) { return { id: c.id, numero: c.numero || null, sale_id: c.saleId || null, consultor_id: c.consultorId, client_id: c.clientId || null, dados: c.dados || {}, status: c.status || 'pendente', accept_token: c.acceptToken || null, aceite_nome: c.aceiteNome || null, aceite_doc: c.aceiteDoc || null, aceite_ip: c.aceiteIp || null, aceito_em: c.aceitoEm || null, criado_em: c.criadoEm }; },
   contratos() { return this.db.contratos || []; },
   contratosDe(consultorId) { return (this.db.contratos || []).filter(c => c.consultorId === consultorId); },
   contratoDaVenda(saleId) { return (this.db.contratos || []).find(c => c.saleId === saleId) || null; },

@@ -904,7 +904,9 @@ const Consultor = {
   },
   /* HTML do contrato (branded, logo + marca d'água em todas as páginas, aceite virtual) */
   buildContratoHTML(c) {
-    const d = c.dados || {}; const e = d.empresa || {}; const p = d.pagamento || {}; const cl = d.cliente || {};
+    let d = c.dados || {};
+    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_e) { d = {}; } } // dados pode chegar como string (jsonb duplo-encodado, ex.: via RPC pública)
+    const e = d.empresa || {}; const p = d.pagamento || {}; const cl = d.cliente || {};
     const m = p.moeda || 'BRL';
     const money = v => OB.money(v, m);
     // datas robustas: nunca renderiza "Invalid Date"/"NaN"
