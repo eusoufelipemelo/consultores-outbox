@@ -907,8 +907,12 @@ const Consultor = {
     const d = c.dados || {}; const e = d.empresa || {}; const p = d.pagamento || {}; const cl = d.cliente || {};
     const m = p.moeda || 'BRL';
     const money = v => OB.money(v, m);
-    const dataBR = iso => { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch (x) { return ''; } };
-    const dataExtenso = iso => { try { const dt = new Date(iso); return `${dt.getDate()} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][dt.getMonth()]} de ${dt.getFullYear()}`; } catch (x) { return dataBR(iso); } };
+    // datas robustas: nunca renderiza "Invalid Date"/"NaN"
+    const parseData = iso => { if (!iso) return null; const dt = new Date(iso); return isNaN(dt.getTime()) ? null : dt; };
+    const dataBR = iso => { const dt = parseData(iso); return dt ? dt.toLocaleDateString('pt-BR') : ''; };
+    // data do contrato: usa a do snapshot; se faltar/for inválida, cai para a data de criação do registro
+    const dataDoc = parseData(d.data) || parseData(c.criadoEm) || new Date();
+    const dataExtenso = () => `${dataDoc.getDate()} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][dataDoc.getMonth()]} de ${dataDoc.getFullYear()}`;
     const nomes = (d.servicos || []).map(x => x.nome).join(', ');
     const negociado = Math.round((p.valorBase || 0) * (1 - (p.desconto || 0) / 100));
     const forma = p.forma || 'pix';
@@ -943,7 +947,7 @@ const Consultor = {
     const assinContratada = assin
       ? `<img class="sig-img" src="${assin}" alt="Assinatura OutBox"/>`
       : `<div class="sig-ph"></div>`;
-    const runHead = `<div class="sheet-head"><div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div><span class="hnum">Contrato ${c.numero} · ${dataBR(d.data)}</span></div>`;
+    const runHead = `<div class="sheet-head"><div class="lg">${markHead}<div><b>OutBox</b><span>Soluções Digitais</span></div></div><span class="hnum">Contrato ${c.numero} · ${dataDoc.toLocaleDateString('pt-BR')}</span></div>`;
     const runFoot = `<div class="sheet-foot"><span>${e.razao || 'OutBox Group Soluções Digitais'} · ${e.dpo || 'felipe@outboxgroup.com.br'}</span><span class="pg"></span></div>`;
     const blocosHTML = `
       <h1>Contrato de Prestação de Serviços</h1>
@@ -988,7 +992,7 @@ const Consultor = {
       <div class="clause"><h2>Cláusula 14ª — Do aceite eletrônico e do foro</h2>
       <p>As partes reconhecem a validade da contratação e do aceite por meio eletrônico, nos termos da MP nº 2.200-2/2001 e da Lei nº 14.063/2020, produzindo os mesmos efeitos da assinatura manuscrita. Fica eleito o foro da <b>${d.foro || OB.CONTRATO_FORO}</b>, sede da CONTRATADA, para dirimir eventuais controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.</p></div>
       ${aceiteBloco}
-      <p class="local clause">${cidadeSede.replace('/', ' - ')}, ${dataExtenso(d.data)}.</p>
+      <p class="local clause">${cidadeSede.replace('/', ' - ')}, ${dataExtenso()}.</p>
       <div class="sign clause">
         <div class="col">${assinContratada}<div class="l"><b>${e.razao || 'OutBox Group Soluções Digitais'}</b>CONTRATADA · CNPJ ${e.cnpj || ''}</div></div>
         <div class="col">${assinCliente}<div class="l"><b>${cl.nome || ''}</b>CONTRATANTE${cl.doc ? ' · ' + cl.doc : ''}</div></div>

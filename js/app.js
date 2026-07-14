@@ -202,7 +202,7 @@ const App = {
     catch (e) { host.innerHTML = this._ctMsg('#dc2626', 'Erro ao carregar', 'Tente novamente em instantes. (' + ((e && e.message) || 'falha') + ')'); return; }
     if (!info) { host.innerHTML = this._ctMsg('#dc2626', 'Contrato não encontrado', 'Confira o link com o seu consultor.'); return; }
     const jaAceito = info.status === 'aceito';
-    const c = { id, numero: info.numero, dados: info.dados, status: info.status, acceptToken: '', aceiteNome: info.aceite_nome, aceiteDoc: info.aceite_doc, aceitoEm: info.aceito_em, aceiteIp: info.aceite_ip };
+    const c = { id, numero: info.numero, dados: info.dados, status: info.status, acceptToken: '', aceiteNome: info.aceite_nome, aceiteDoc: info.aceite_doc, aceitoEm: info.aceito_em, aceiteIp: info.aceite_ip, criadoEm: info.criado_em };
     const docHtml = Consultor.buildContratoHTML(c);
     const cli = (info.dados && info.dados.cliente) || {};
     host.innerHTML = `
