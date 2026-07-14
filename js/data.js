@@ -63,12 +63,14 @@ const OB = {
   calcPagamento(valorNegociado, forma, opts) {
     opts = opts || {};
     const base = Math.max(0, Number(valorNegociado) || 0);
-    // plano de preço fixo (ex.: hospedagem anual) — valor por forma de pagamento, sem grossup nem desconto
+    // plano de preço fixo (ex.: hospedagem anual) — valor base por forma; no cartão aplica o grossup dos juros
     if (opts.precoFixo) {
       const pf = opts.precoFixo;
       if (forma === 'cartao') {
         const n = Math.min(12, Math.max(1, parseInt(opts.parcelas, 10) || 1));
-        return { forma, valorServico: pf.cartao, valorCliente: pf.cartao, parcelas: n, valorParcela: Math.round((pf.cartao / n) * 100) / 100, jurosPct: 0, pixDesconto: false, precoFixo: true };
+        const j = this.jurosCartao(n);
+        const total = Math.round(pf.cartao / (1 - j / 100)); // repassa os juros do parcelamento ao cliente
+        return { forma, valorServico: pf.cartao, valorCliente: total, parcelas: n, valorParcela: Math.round((total / n) * 100) / 100, jurosPct: j, pixDesconto: false, precoFixo: true };
       }
       // qualquer outra forma cai no valor à vista (PIX)
       return { forma: 'pix', valorServico: pf.pix, valorCliente: pf.pix, parcelas: 1, valorParcela: pf.pix, jurosPct: 0, pixDesconto: false, precoFixo: true };

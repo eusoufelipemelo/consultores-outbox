@@ -427,12 +427,13 @@ const Consultor = {
         const calc = OB.calcPagamento(0, forma, { precoFixo: pfEdit, parcelas: parseInt(edParcelas.value, 10) || 1 });
         let linhas = `<div class="row"><span>Plano anual</span><b>${OB.money(calc.valorServico, moeda)}</b></div>`;
         if (forma === 'cartao') {
-          linhas += `<div class="row total"><span>Total no cartão · até 12x</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+          linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - calc.valorServico, moeda)}</span></div>`;
+          linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
           linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, moeda)}</b></div>`;
         } else {
           linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
         }
-        linhas += `<div class="pay-note">Comissão sobre ${OB.money(calc.valorServico, moeda)}.</div>`;
+        linhas += `<div class="pay-note">Comissão sobre ${OB.money(calc.valorServico, moeda)} (valor do serviço, sem juros).</div>`;
         payBox.innerHTML = linhas;
         payBox._calc = calc; payBox._desc = 0;
         return;
@@ -617,12 +618,13 @@ const Consultor = {
         const nome = (OB.PRODUTOS.find(x => x.id === sel[0]) || {}).nome || 'Plano';
         let linhas = `<div class="row"><span>${nome} · plano anual</span><b>${OB.money(calc.valorServico, m)}</b></div>`;
         if (forma === 'cartao') {
-          linhas += `<div class="row total"><span>Total no cartão · até 12x</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+          linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - calc.valorServico, m)}</span></div>`;
+          linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
           linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, m)}</b></div>`;
         } else {
           linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
         }
-        linhas += `<div class="pay-note">Preço único para todos os portes. Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)}.</div>`;
+        linhas += `<div class="pay-note">Preço único para todos os portes. Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)} (valor do serviço, sem juros).</div>`;
         payBox.innerHTML = linhas;
         payBox._valorBase = calc.valorServico; payBox._negociado = calc.valorServico; payBox._calc = calc;
         return;
