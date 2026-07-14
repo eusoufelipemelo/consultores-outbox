@@ -1034,6 +1034,30 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
 .sign .sig-ph{height:66px}
 .sign .l{border-top:1.5px solid var(--ink);padding-top:6px;font-size:11px;color:var(--soft)}.sign .l b{display:block;color:var(--ink);font-size:12px}
 .print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:11px 18px;border-radius:11px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);z-index:5;font-family:inherit;font-size:13px}
+/* ---- MOBILE: folha A4 fixa vira coluna única legível (a paginação A4 fica só p/ impressão/PDF) ---- */
+@media screen and (max-width:820px){
+  html,body{background:#fff}
+  .doc{gap:0;padding:0 0 88px}
+  .sheet{width:100%;height:auto;min-height:0;box-shadow:none;border-radius:0;padding:20px 18px 10px;overflow:visible}
+  .sheet+.sheet{border-top:8px solid #eef1f4}
+  .sheet-body{overflow:visible}
+  .sheet-head{position:sticky;top:0;background:#fff;z-index:2;padding-top:6px}
+  .sheet:not(:first-child) .sheet-head{display:none}
+  .sheet-foot{display:none}
+  h1{font-size:22px}
+  .sub{font-size:14px;margin-bottom:16px}
+  p,li{font-size:15px;line-height:1.65;text-align:left}
+  h2{font-size:16.5px;margin:16px 0 6px}
+  .parties{grid-template-columns:1fr;gap:10px}
+  .party{font-size:14px;overflow-wrap:anywhere;word-break:break-word}
+  .paytbl td{font-size:14px;padding:10px 8px}
+  .paytbl tr.tot td{font-size:15.5px}
+  .aceite{font-size:14px}
+  .cta .accept{display:flex;width:100%;justify-content:center;padding:16px 20px;font-size:15px}
+  .sign{grid-template-columns:1fr;gap:26px}
+  .local{font-size:14px}
+  .print-hint{left:16px;right:16px;bottom:16px;padding:14px 18px;font-size:15px;text-align:center}
+}
 @media print{.print-hint,.cta{display:none}html,body{background:#fff}.doc{gap:0;padding:0}.sheet{box-shadow:none;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}}</style></head>
 <body>
 <div class="doc" id="doc"></div>
