@@ -274,6 +274,8 @@ const OB = {
     return extra ? this.BRIEFING_FORM.concat([{ sec: 'Detalhes do serviço', campos: extra }]) : this.BRIEFING_FORM;
   },
   briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site', identidade: 'Identidade Visual', ecommerce: 'E-commerce', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
+  /* produto correspondente a um tipo de briefing (biblioteca) */
+  briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' }[tipo]) || 'onepage'; },
   /* briefings prontos (biblioteca): formulário publicado por serviço */
   BRIEFINGS_PRONTOS: [
     { tipo: 'site', nome: 'Site Institucional' },

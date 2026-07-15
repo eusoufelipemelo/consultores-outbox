@@ -2487,17 +2487,20 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const emAcompanhamento = OB.projetosDe(u.id).length;
 
     v.innerHTML = `
-      <div class="cards cols-3" style="margin-bottom:16px">
-        ${this.kpi('send', pagasSemBrief.length, 'Prontos para o briefing', 'Serviços pagos, envie o formulário')}
-        ${this.kpi('clock', aguardando.length, 'Aguardando pagamento', 'Briefing libera após o pagamento')}
+      <div class="bf-cta card">
+        <span class="tr-ic on">${UI.icon('send', 20)}</span>
+        <div class="bf-cta__txt"><b>Compartilhar um briefing</b><span>Escolha o cliente e o serviço. Geramos um link que já salva as respostas em <b>Briefings</b>, em tempo real.</span></div>
+        <button class="btn brand" data-compartilhar-briefing="">${UI.icon('send', 16)} Compartilhar briefing</button>
+      </div>
+      <div class="cards cols-3" style="margin:16px 0">
+        ${this.kpi('docs', OB.projetosDe(u.id).filter(p => p.briefingRespostas).length, 'Briefings recebidos', 'Veja todos em Briefings')}
+        ${this.kpi('clock', OB.projetosDe(u.id).filter(p => p.status === 'briefing_enviado').length, 'Aguardando o cliente', 'Briefings compartilhados')}
         ${this.kpi('trend', emAcompanhamento, 'Em acompanhamento', 'Veja tudo na Linha do Tempo')}
       </div>
-      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing por aqui. Depois de enviado, acompanhe cada etapa em <b>Linha do Tempo</b>.</div></div>
       ${emAcompanhamento ? `<button class="btn ghost" id="ir-timeline" style="margin-bottom:16px">${UI.icon('trend',16)} Ir para a Linha do Tempo (${emAcompanhamento})</button>` : ''}
       ${this.bibliotecaBriefings()}
       ${pagasSemBrief.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagasSemBrief.map(s => this.projetoCard(s)).join('')}` : ''}
-      ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}
-      ${!vendas.length ? this.empty('briefcase', 'Nenhum projeto ainda', 'Lance uma venda aprovada. Quando o pagamento for confirmado, você envia o briefing por aqui.') : ''}`;
+      ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}`;
 
     const irTl = document.getElementById('ir-timeline'); if (irTl) irTl.onclick = () => App.go('timeline');
     v.querySelectorAll('[data-brief]').forEach(b => b.onclick = () => this.enviarBriefing(b.dataset.brief));
@@ -2505,7 +2508,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-relatorio]').forEach(b => b.onclick = () => this.emitirRelatorio(b.dataset.relatorio));
     v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
     v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
-    v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
+    this.wireArquivos(v, () => this.render('projetos'));
   },
 
   /* ====================== LINHA DO TEMPO (acompanhamento em tempo real) ====================== */
@@ -2730,6 +2733,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     root.querySelectorAll('[data-arq-link]').forEach(b => b.onclick = () => this.adicionarLinkModal(b.dataset.arqLink, onDone));
     root.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief));
     root.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
+    root.querySelectorAll('[data-compartilhar-proj]').forEach(b => b.onclick = () => this.compartilharLinkBriefing(b.dataset.compartilharProj));
+    root.querySelectorAll('[data-compartilhar-briefing]').forEach(b => b.onclick = () => this.compartilharBriefingModal(b.dataset.compartilharBriefing || ''));
   },
 
   /* ---------- BRIEFING preenchido: documento branded (ver/baixar) ---------- */
@@ -2796,10 +2801,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   /* biblioteca: cada briefing pronto vira um cartão estilo crachá (layout da referência Itaú) */
   bibliotecaBriefings() {
     const cards = OB.BRIEFINGS_PRONTOS.map(b => {
-      const link = OB.briefingLinkTipo(b.tipo);
+      const prod = OB.briefingProdutoDeTipo(b.tipo);
       const cid = 'cl-' + b.tipo;
       return `<div class="brief-cell">
-        <a class="bcard" href="${link}" target="_blank" rel="noopener" title="Abrir briefing · ${b.nome}">
+        <div class="bcard" role="button" tabindex="0" data-compartilhar-briefing="${prod}" title="Compartilhar briefing · ${b.nome}" style="cursor:pointer">
           <svg class="bcard__shape" viewBox="0 0 210 340" preserveAspectRatio="none" aria-hidden="true">
             <defs><clipPath id="${cid}" clipPathUnits="userSpaceOnUse"><path d="${this.BCARD_SHAPE}"/></clipPath></defs>
             <g clip-path="url(#${cid})">
@@ -2811,16 +2816,15 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
             <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
             <div class="bcard__id"><span class="bcard__kicker">Briefing</span><b>${b.nome}</b></div>
           </div>
-        </a>
+        </div>
         <div class="brief-cell-actions">
-          <button type="button" class="btn ghost sm" data-copylink="${link}" aria-label="Copiar link do briefing de ${b.nome}">${UI.icon('docs',15)}<span>Copiar</span></button>
-          <a class="btn ghost sm" href="${link}" target="_blank" rel="noopener" aria-label="Abrir briefing de ${b.nome} em nova guia">${UI.icon('external',15)}<span>Abrir</span></a>
+          <button type="button" class="btn brand sm" data-compartilhar-briefing="${prod}" aria-label="Compartilhar briefing de ${b.nome}">${UI.icon('send',15)}<span>Compartilhar</span></button>
         </div>
       </div>`;
     }).join('');
     return `<div class="card" style="margin-bottom:18px">
       <div class="row alc" style="gap:8px;margin-bottom:4px">${UI.icon('briefcase',16)}<b>Biblioteca de briefings</b></div>
-      <p class="mut" style="font-size:12.5px;margin-bottom:16px">Todos os briefings prontos. Clique no cartão para abrir ou copie o link para enviar ao cliente. Para receber as respostas aqui dentro, use <b>Enviar briefing</b> no serviço pago.</p>
+      <p class="mut" style="font-size:12.5px;margin-bottom:16px">Clique num briefing para <b>compartilhar com um cliente</b>. Você escolhe o cliente e pronto: o link já fica vinculado ao projeto e as respostas caem em <b>Briefings</b> automaticamente.</p>
       <div class="brief-cards">${cards}</div>
     </div>`;
   },
@@ -3000,7 +3004,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const linhas = [];
     if (proj.status === 'briefing_enviado') {
       linhas.push(`<span class="mut" style="font-size:12.5px">${UI.icon('clock',12)} Aguardando o cliente preencher o briefing.</span>`);
-      linhas.push(`<button class="btn ghost sm" data-brief="${proj.saleId}">${UI.icon('send',14)} Reenviar link</button>`);
+      linhas.push(`<button class="btn ghost sm" data-compartilhar-proj="${proj.id}">${UI.icon('send',14)} Compartilhar link</button>`);
       linhas.push(`<button class="btn ghost sm" data-brief-recebido="${proj.id}">${UI.icon('check',14)} Registrar briefing recebido</button>`);
     } else if (proj.status === 'briefing_recebido') {
       linhas.push(`<span class="mut" style="font-size:12.5px">${UI.icon('check',12)} Briefing recebido. A OutBox vai analisar e iniciar a produção.</span>`);
@@ -3018,6 +3022,61 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       linhas.unshift(`<a class="btn ghost sm" href="${proj.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
     }
     return `${respostas}<div class="proj-acoes">${linhas.join('')}</div>`;
+  },
+
+  /* ---------- COMPARTILHAR BRIEFING (fluxo único: cliente + serviço -> link vinculado que salva) ---------- */
+  compartilharBriefingModal(preServico) {
+    const u = this.u();
+    const clientes = OB.clientsOf(u.id);
+    if (!clientes.length) return UI.confirm('Cadastre um cliente', 'Você precisa de um cliente para compartilhar o briefing. Deseja cadastrar agora?', () => App.go('clientes'), 'Cadastrar cliente');
+    UI.modal({
+      title: 'Compartilhar briefing',
+      sub: 'Escolha o cliente e o serviço — o link já salva as respostas no sistema',
+      body: `
+        <div class="field"><label>Cliente <span class="req">*</span></label>
+          <select id="cb-cli">${clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+        <div class="field"><label>Serviço do briefing <span class="req">*</span></label>
+          <select id="cb-serv">${OB.PRODUTOS.map(p => `<option value="${p.id}" ${preServico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
+          <div class="hint">O link fica vinculado a este cliente e serviço. Quando ele enviar, o briefing aparece em <b>Briefings</b> e na <b>Linha do Tempo</b>, em tempo real.</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="cb-ok">${UI.icon('send', 16)} Gerar link</button>`
+    });
+    document.getElementById('cb-ok').onclick = () => {
+      const clientId = document.getElementById('cb-cli').value;
+      const servico = document.getElementById('cb-serv').value;
+      // reusa um projeto do mesmo cliente+serviço que ainda não recebeu briefing; senão cria (sem depender de venda)
+      let proj = OB.projetosDe(u.id).find(p => p.clientId === clientId && (p.produtos || []).includes(servico) && !p.briefingRespostas);
+      if (!proj) {
+        proj = { id: OB.uid(), saleId: null, consultorId: u.id, clientId, produtos: [servico], status: 'briefing_enviado', briefingToken: OB.uid().replace(/-/g, ''), briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
+        OB.addProjeto(proj);
+      }
+      UI.closeModal();
+      this._briefingLinkModal(proj);
+      App.refreshProjetosBadge();
+    };
+  },
+  compartilharLinkBriefing(projId) { const p = OB.projetoById(projId); if (p) this._briefingLinkModal(p); },
+  _briefingLinkModal(proj) {
+    const cli = OB.clientById(proj.clientId) || {};
+    if (!proj.briefingToken) { proj.briefingToken = OB.uid().replace(/-/g, ''); OB.updateProjeto(proj); }
+    const links = (proj.produtos || []).map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, link: OB.briefingLink(id, proj.id, proj.briefingToken) }));
+    const primeiro = cli.nome ? cli.nome.split(' ')[0] : '';
+    const msg = `Olá${primeiro ? ' ' + primeiro : ''}! Para darmos início ao seu projeto com a OutBox, preencha o briefing (leva poucos minutos): ${links.map(l => l.link).join(' ')}`;
+    const tel = (cli.telefone || '').replace(/\D/g, ''); const waTel = tel ? (tel.length <= 11 ? '55' + tel : tel) : '';
+    UI.modal({
+      title: 'Link do briefing', sub: cli.nome || '',
+      body: `
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Link <b>vinculado ao projeto de ${cli.nome || 'este cliente'}</b>. Quando ele enviar, o briefing cai automaticamente em <b>Briefings</b> e na <b>Linha do Tempo</b>, em tempo real.</div></div>
+        ${links.map(l => `<div class="field"><label>${l.nome}</label><div class="row" style="gap:8px"><input class="grow" value="${l.link}" readonly/><button type="button" class="btn ghost" data-copy="${l.link}">${UI.icon('docs',14)} Copiar</button></div></div>`).join('')}
+        <div class="field"><label>Mensagem</label><textarea id="bf-msg" style="min-height:96px">${msg}</textarea></div>`,
+      footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn green" id="bf-wa">${UI.icon('whats',16)} Enviar no WhatsApp</button>`
+    });
+    document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => UI.toast('Link copiado', '', 'ok')));
+    document.getElementById('bf-wa').onclick = () => {
+      const txt = encodeURIComponent(document.getElementById('bf-msg').value);
+      window.open(waTel ? `https://wa.me/${waTel}?text=${txt}` : `https://wa.me/?text=${txt}`, '_blank');
+      UI.closeModal(); UI.toast('Briefing compartilhado', 'O projeto entrou na esteira de entrega.', 'ok');
+      App.refreshProjetosBadge(); this.render(App.current || 'projetos');
+    };
   },
 
   enviarBriefing(saleId) {
