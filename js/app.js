@@ -503,7 +503,7 @@ const App = {
           }
         }
         this.refreshProjetosBadge();
-        if (this.current === 'projetos') this.mod().render('projetos');
+        if (this.current === 'projetos' || this.current === 'timeline') this.mod().render(this.current);
       })
       // arquivos do projeto (entregas do admin + uploads do consultor) em tempo real
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projeto_arquivos' }, (payload) => {
@@ -523,7 +523,7 @@ const App = {
             if (proj && proj.consultorId === u.id) UI.toast('Nova entrega disponível', 'O admin disponibilizou um arquivo do seu projeto.', 'ok');
           }
         }
-        if (this.current === 'projetos') this.mod().render('projetos');
+        if (this.current === 'projetos' || this.current === 'timeline') this.mod().render(this.current);
       })
       .subscribe();
   },

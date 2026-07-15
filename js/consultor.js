@@ -13,6 +13,7 @@ const Consultor = {
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money',    sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize',    sec: 'Operação' },
     { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Operação' },
     // Aprendizado & materiais — separado dos demais
@@ -2478,33 +2479,80 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   view_projetos() {
     const u = this.u();
     const v = document.getElementById('main-view');
-    // serviços vendidos e pagos = entregáveis (1 venda aprovada e recebida = 1 projeto)
+    // Projetos = fase de INÍCIO (envio de briefing). O acompanhamento vive em "Linha do Tempo".
     const vendas = OB.salesOf(u.id).filter(s => s.statusProposta === 'aprovada').sort((a, b) => new Date(b.data) - new Date(a.data));
-    const pagas = vendas.filter(s => s.statusPagamento === 'recebido');
+    const pagasSemBrief = vendas.filter(s => s.statusPagamento === 'recebido' && !OB.projetoDaVenda(s.id));
     const aguardando = vendas.filter(s => s.statusPagamento !== 'recebido');
-    const projs = OB.projetosDe(u.id);
-    const emAndamento = projs.filter(p => p.status !== 'aprovado').length;
-    const concluidos = projs.filter(p => p.status === 'aprovado').length;
+    const emAcompanhamento = OB.projetosDe(u.id).length;
 
     v.innerHTML = `
       <div class="cards cols-3" style="margin-bottom:16px">
-        ${this.kpi('rocket', emAndamento, 'Projetos em andamento', 'Do briefing à entrega')}
-        ${this.kpi('check', concluidos, 'Projetos concluídos', 'Aprovados pelo cliente')}
+        ${this.kpi('send', pagasSemBrief.length, 'Prontos para o briefing', 'Serviços pagos, envie o formulário')}
         ${this.kpi('clock', aguardando.length, 'Aguardando pagamento', 'Briefing libera após o pagamento')}
+        ${this.kpi('trend', emAcompanhamento, 'Em acompanhamento', 'Veja tudo na Linha do Tempo')}
       </div>
-      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing. O cliente preenche, a OutBox produz e você acompanha cada etapa aqui, podendo emitir relatórios para o seu cliente.</div></div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Assim que o cliente <b>paga o serviço</b>, envie o briefing por aqui. Depois de enviado, acompanhe cada etapa em <b>Linha do Tempo</b>.</div></div>
+      ${emAcompanhamento ? `<button class="btn ghost" id="ir-timeline" style="margin-bottom:16px">${UI.icon('trend',16)} Ir para a Linha do Tempo (${emAcompanhamento})</button>` : ''}
       ${this.bibliotecaBriefings()}
-      ${pagas.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagas.map(s => this.projetoCard(s)).join('')}` : ''}
+      ${pagasSemBrief.length ? `<div class="nav-label" style="padding-left:0">Serviços pagos, prontos para o briefing</div>${pagasSemBrief.map(s => this.projetoCard(s)).join('')}` : ''}
       ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Aguardando confirmação de pagamento</div>${aguardando.map(s => this.projetoCard(s)).join('')}` : ''}
       ${!vendas.length ? this.empty('briefcase', 'Nenhum projeto ainda', 'Lance uma venda aprovada. Quando o pagamento for confirmado, você envia o briefing por aqui.') : ''}`;
 
+    const irTl = document.getElementById('ir-timeline'); if (irTl) irTl.onclick = () => App.go('timeline');
     v.querySelectorAll('[data-brief]').forEach(b => b.onclick = () => this.enviarBriefing(b.dataset.brief));
     v.querySelectorAll('[data-brief-recebido]').forEach(b => b.onclick = () => this.marcarBriefingRecebido(b.dataset.briefRecebido));
     v.querySelectorAll('[data-relatorio]').forEach(b => b.onclick = () => this.emitirRelatorio(b.dataset.relatorio));
     v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
     v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
-    this.wireArquivos(v, () => this.render('projetos'));
+  },
+
+  /* ====================== LINHA DO TEMPO (acompanhamento em tempo real) ====================== */
+  view_timeline() {
+    const u = this.u();
+    const v = document.getElementById('main-view');
+    const projs = OB.projetosDe(u.id).slice().sort((a, b) => OB.etapaIndex(a.status) - OB.etapaIndex(b.status) || new Date(b.criadoEm) - new Date(a.criadoEm));
+    const ativos = projs.filter(p => p.status !== 'aprovado');
+    const concluidos = projs.filter(p => p.status === 'aprovado');
+    const aguardPag = OB.salesOf(u.id).filter(s => s.statusProposta === 'aprovada' && s.statusPagamento !== 'recebido').length;
+
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${this.kpi('rocket', ativos.length, 'Serviços em andamento', 'Do briefing à entrega')}
+        ${this.kpi('check', concluidos.length, 'Serviços concluídos', 'Aprovados pelo cliente')}
+        ${this.kpi('clock', aguardPag, 'Aguardando pagamento', 'Envie o briefing em Projetos')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Acompanhe cada serviço <b>em tempo real</b>: conforme a OutBox avança as etapas, a linha do tempo se move sozinha. Baixe as <b>entregas</b> e organize os <b>materiais</b> do projeto aqui. Compartilhe o andamento com o seu cliente pelo relatório.</div></div>
+      ${ativos.length ? `<div class="nav-label" style="padding-left:0">Em andamento</div>${ativos.map(p => this.projetoWorkspaceCard(p)).join('')}` : ''}
+      ${concluidos.length ? `<div class="nav-label" style="padding-left:0;margin-top:18px">Concluídos</div>${concluidos.map(p => this.projetoWorkspaceCard(p)).join('')}` : ''}
+      ${!projs.length ? this.empty('trend', 'Nenhum serviço em andamento', 'Quando você enviar um briefing em Projetos, o serviço aparece aqui com a linha do tempo em tempo real.') : ''}`;
+
+    v.querySelectorAll('[data-brief]').forEach(b => b.onclick = () => this.enviarBriefing(b.dataset.brief));
+    v.querySelectorAll('[data-brief-recebido]').forEach(b => b.onclick = () => this.marcarBriefingRecebido(b.dataset.briefRecebido));
+    v.querySelectorAll('[data-relatorio]').forEach(b => b.onclick = () => this.emitirRelatorio(b.dataset.relatorio));
+    v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
+    v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
+    this.wireArquivos(v, () => this.render('timeline'));
+  },
+
+  /* card completo de acompanhamento de um projeto (timeline + ações + arquivos) */
+  projetoWorkspaceCard(proj) {
+    const cli = OB.clientById(proj.clientId);
+    const nomes = (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + ');
+    const et = OB.ETAPAS_PROJETO.find(e => e.id === proj.status) || {};
+    return `<div class="card proj-card">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
+        <div class="row alc" style="gap:10px;min-width:0">
+          <span class="tr-ic on">${UI.icon('briefcase',18)}</span>
+          <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>
+            <div class="mut" style="font-size:12.5px">${nomes}</div></div>
+        </div>
+        <span class="chip ${proj.status === 'aprovado' ? 'green' : 'brand'} nowrap">${et.nome || ''}</span>
+      </div>
+      <div style="margin-top:14px">${this.timelineHTML(proj)}</div>
+      ${this.projetoAcoesHTML(proj)}
+      ${this.projArquivosHTML(proj, { admin: false })}
+    </div>`;
   },
 
   /* ---------- ARQUIVOS do projeto (entregas da OutBox p/ baixar + materiais do consultor) ---------- */
@@ -2859,7 +2907,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       UI.closeModal();
       UI.toast('Briefing enviado', 'O projeto entrou na esteira de entrega.', 'ok');
       App.refreshProjetosBadge();
-      this.render('projetos');
+      this.render(App.current || 'projetos');
     };
   },
 
@@ -2879,7 +2927,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       UI.closeModal();
       UI.toast('Briefing recebido!', 'A OutBox foi avisada para iniciar a produção.', 'ok');
       App.refreshProjetosBadge();
-      this.render('projetos');
+      this.render(App.current || 'projetos');
     };
   },
 
@@ -2889,7 +2937,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       OB.setEtapaProjeto(proj, 'aprovado');
       UI.toast('Projeto aprovado! 🎉', 'Entrega concluída.', 'ok');
       App.refreshProjetosBadge();
-      this.render('projetos');
+      this.render(App.current || 'projetos');
     }, 'Sim, aprovado');
   },
 
