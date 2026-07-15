@@ -588,7 +588,7 @@ const App = {
           }
         }
         this.refreshProjetosBadge();
-        if (this.current === 'projetos' || this.current === 'timeline') this.mod().render(this.current);
+        if (this.current === 'projetos' || this.current === 'timeline' || this.current === 'briefings') this.mod().render(this.current);
       })
       // arquivos do projeto (entregas do admin + uploads do consultor) em tempo real
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projeto_arquivos' }, (payload) => {
@@ -612,7 +612,7 @@ const App = {
           }
         }
         this.refreshTimelineBadge();
-        if (this.current === 'projetos' || this.current === 'timeline') this.mod().render(this.current);
+        if (this.current === 'projetos' || this.current === 'timeline' || this.current === 'briefings') this.mod().render(this.current);
       })
       .subscribe();
   },

@@ -2654,6 +2654,66 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     root.querySelectorAll('[data-arq-del]').forEach(b => b.onclick = () => { const a = OB.arquivoById(b.dataset.arqDel); if (!a) return; UI.confirm('Remover arquivo', `Remover <b>${(a.nome || 'este item').replace(/</g, '&lt;')}</b>?`, () => { OB.removeArquivo(a.id); UI.toast('Removido', '', 'ok'); if (onDone) onDone(); }, 'Remover'); });
     root.querySelectorAll('[data-arq-up]').forEach(b => b.onclick = () => { const parts = b.dataset.arqUp.split('|'); this.anexarArquivosModal(parts[0], parts[1], 'consultor', onDone); });
     root.querySelectorAll('[data-arq-link]').forEach(b => b.onclick = () => this.adicionarLinkModal(b.dataset.arqLink, onDone));
+    root.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief));
+    root.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
+  },
+
+  /* ---------- BRIEFING preenchido: documento branded (ver/baixar) ---------- */
+  buildBriefingHTML(proj) {
+    const cli = OB.clientById(proj.clientId) || (proj && proj.cliente) || {};
+    const cons = OB.userById(proj.consultorId) || {};
+    const servicos = (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(', ');
+    const dataBR = OB.dataBR(proj.briefingRecebidoEm || proj.criadoEm);
+    const linhas = (proj.briefingRespostas || '').split('\n');
+    let corpo = '';
+    linhas.forEach(raw => {
+      const l = raw.trim(); if (!l) return;
+      if (l.indexOf('• ') === 0) {
+        const rest = l.slice(2); const idx = rest.indexOf(': ');
+        const label = idx >= 0 ? rest.slice(0, idx) : ''; const val = idx >= 0 ? rest.slice(idx + 2) : rest;
+        corpo += `<div class="bd-item">${label ? `<div class="bd-q">${label.replace(/</g, '&lt;')}</div>` : ''}<div class="bd-a">${val.replace(/</g, '&lt;')}</div></div>`;
+      } else {
+        corpo += `<h2>${l.replace(/</g, '&lt;')}</h2>`;
+      }
+    });
+    if (!corpo) corpo = '<p class="bd-empty">O cliente ainda não enviou as respostas do briefing.</p>';
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="110" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Briefing · ${(cli.nome || '').replace(/"/g, '')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>:root{--brand:#F15532;--ink:#0A0A0A;--soft:#46505c;--mut:#8a96a3;--bg:#F5F7F9;--line:#e6eaef}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{max-width:820px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 10px 40px rgba(0,0,0,.06)}.cover{background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:38px 46px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}.brand b{font-size:23px;font-weight:800}.cover h1{font-size:27px;font-weight:800;letter-spacing:-.02em}.cover p{color:rgba(255,255,255,.9);margin-top:4px;font-size:14px}.body{padding:34px 46px 60px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:26px;font-size:14px}.grid .lbl{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.body h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin:26px 0 12px;padding-bottom:7px;border-bottom:2px solid #f1e2dd}.bd-item{margin-bottom:14px}.bd-q{font-size:13px;font-weight:700;color:var(--ink)}.bd-a{font-size:14.5px;color:var(--soft);white-space:pre-wrap;margin-top:2px}.bd-empty{color:var(--mut);font-size:14px}.foot{border-top:1px solid var(--line);padding:22px 46px;color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}.foot b{color:var(--ink)}.print-hint{position:fixed;bottom:16px;right:16px;background:var(--brand);color:#fff;padding:11px 18px;border-radius:11px;font-weight:700;cursor:pointer;border:none;box-shadow:0 8px 20px rgba(241,85,50,.3);font-family:inherit;font-size:13px}@media print{.print-hint{display:none}.page{box-shadow:none}@page{margin:14mm}}</style></head>
+<body><div class="page">
+  <div class="cover"><div class="brand">${mark}<b>OutBox</b></div><h1>Briefing do Projeto</h1><p>${servicos || 'Serviço'} · ${cli.nome || 'Cliente'}</p></div>
+  <div class="body">
+    <div class="grid">
+      <div><div class="lbl">Cliente</div>${cli.nome || '-'}</div>
+      <div><div class="lbl">Serviço(s)</div>${servicos || '-'}</div>
+      <div><div class="lbl">Consultor responsável</div>${(cons.nome || '') + ' ' + (cons.sobrenome || '') || '-'}</div>
+      <div><div class="lbl">Briefing recebido em</div>${dataBR || '-'}</div>
+    </div>
+    ${corpo}
+  </div>
+  <div class="foot"><div>OutBox Soluções Digitais · Briefing do cliente</div><div>www.outboxgroup.com.br</div></div>
+</div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
+  },
+  visualizarBriefing(projId) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    if (!proj.briefingRespostas) return UI.toast('Sem respostas', 'O cliente ainda não enviou o briefing.', 'err');
+    const blob = new Blob([this.buildBriefingHTML(proj)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const w = window.open(url, '_blank', 'noopener');
+    if (!w) { URL.revokeObjectURL(url); UI.toast('Não foi possível abrir', 'Permita pop-ups para visualizar.', 'err'); return; }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
+  baixarBriefing(projId) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    if (!proj.briefingRespostas) return UI.toast('Sem respostas', 'O cliente ainda não enviou o briefing.', 'err');
+    const cli = OB.clientById(proj.clientId) || {};
+    const blob = new Blob([this.buildBriefingHTML(proj)], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `Briefing - ${(cli.nome || 'cliente')}.html`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    UI.toast('Briefing baixado', 'Abra o arquivo para ler ou salvar em PDF.', 'ok');
   },
 
   /* Ranking de consultores (compartilhado com o admin via App.renderRanking) */
@@ -2876,6 +2936,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     } else if (proj.status === 'aprovado') {
       linhas.push(`<span class="chip green">${UI.icon('prize',13)} Projeto aprovado e concluído</span>`);
     }
+    // ver/baixar o briefing preenchido pelo cliente
+    if (proj.briefingRespostas) { linhas.push(`<button class="btn ghost sm" data-ver-brief="${proj.id}">${UI.icon('docs',14)} Ver briefing</button>`); linhas.push(`<button class="btn ghost sm" data-baixar-brief="${proj.id}">${UI.icon('download',14)} Baixar briefing</button>`); }
     // relatório sempre disponível a partir do briefing recebido
     if (OB.etapaIndex(proj.status) >= 1) linhas.push(`<button class="btn ghost sm" data-relatorio="${proj.id}">${UI.icon('receipt',14)} Emitir relatório</button>`);
     if (proj.linkFinal && (proj.status === 'entregue' || proj.status === 'aprovado')) {

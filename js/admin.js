@@ -13,6 +13,7 @@ const Admin = {
     { id: 'financeiro', label: 'Financeiro',       icon: 'money',    sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'briefings',  label: 'Briefings',        icon: 'docs',     sec: 'Operação' },
     { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat',     sec: 'Operação' },
     // Gestão & conteúdo
@@ -655,6 +656,7 @@ const Admin = {
     else if (p.status === 'em_revisao') acoes.push(`<button class="btn brand sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar projeto (link)</button>`);
     else if (p.status === 'entregue') { if (p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`); acoes.push(`<button class="btn ghost sm" data-concluir="${p.id}">${UI.icon('check',14)} Marcar aprovado</button>`); }
     else if (p.status === 'aprovado' && p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
+    if (p.briefingRespostas) acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}">${UI.icon('docs',14)} Ver briefing</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}">${UI.icon('download',14)} Baixar briefing</button>`);
     // botão de anexar arquivos de entrega (docs, artes finais) disponível a partir da produção
     const podeEntregarArq = ['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status);
     if (podeEntregarArq) acoes.push(`<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
@@ -770,6 +772,7 @@ const Admin = {
       <button type="button" class="btn brand sm" data-sol-send="${p.id}">${UI.icon('send',14)} Solicitar</button>
     </div>`;
     const acoes = [];
+    if (p.briefingRespostas) acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}">${UI.icon('docs',14)} Ver briefing</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}">${UI.icon('download',14)} Baixar briefing</button>`);
     if (['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status)) acoes.push(`<button class="btn ghost sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar (link/arquivos)</button>`, `<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
     return `<div class="card proj-card">
       <div class="row between alc" style="gap:12px;flex-wrap:wrap">
@@ -784,6 +787,84 @@ const Admin = {
       ${Consultor.projArquivosHTML(p, { admin: true })}
       ${acoes.length ? `<div class="proj-acoes">${acoes.join('')}</div>` : ''}
     </div>`;
+  },
+
+  /* ====================== BRIEFINGS (recebidos dos clientes) ====================== */
+  _bfFiltro: { cliente: '', servico: '', consultor: '', de: '', ate: '' },
+  view_briefings() {
+    const v = document.getElementById('main-view');
+    const all = OB.projetos().filter(p => p.briefingRespostas).slice()
+      .sort((a, b) => new Date(b.briefingRecebidoEm || b.criadoEm) - new Date(a.briefingRecebidoEm || a.criadoEm));
+    if (!all.length) { v.innerHTML = Consultor.empty('docs', 'Nenhum briefing recebido ainda', 'Quando um cliente finalizar e enviar o briefing, ele aparece aqui em tempo real para você baixar e iniciar a produção.'); return; }
+    const consultores = (OB.profiles || []).filter(p => p.role !== 'admin').sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    const servIds = [...new Set(all.flatMap(p => p.produtos || []))];
+    const semana = Date.now() - 7 * 864e5;
+    const novos = all.filter(p => new Date(p.briefingRecebidoEm || p.criadoEm).getTime() >= semana).length;
+    const f = this._bfFiltro;
+    v.innerHTML = `
+      <div class="kpis-3" style="margin-bottom:16px">
+        <div class="card kpi"><div class="ic">${UI.icon('docs', 20)}</div><div class="k-val">${all.length}</div><div class="k-lbl">Briefings recebidos</div></div>
+        <div class="card kpi"><div class="ic ic-ok">${UI.icon('bell', 20)}</div><div class="k-val" style="color:#16a34a">${novos}</div><div class="k-lbl">Nos últimos 7 dias</div></div>
+        <div class="card kpi"><div class="ic ic-warn">${UI.icon('rocket', 20)}</div><div class="k-val" style="color:var(--brand)">${OB.briefingsPendentesAdmin().length}</div><div class="k-lbl">A iniciar produção</div></div>
+      </div>
+      <div class="lib-head"><b>Briefings recebidos</b><span class="lib-count" id="bf-count">${all.length} briefings</span></div>
+      <div class="ctl-toolbar">
+        <div class="ctl-search">${UI.icon('search', 16)}<input id="bf-cliente" placeholder="Buscar por cliente" value="${f.cliente}"/></div>
+        <div class="ctl-selrow">
+          <div class="ctl-sel"><label for="bf-servico">Tipo de serviço</label>
+            <select id="bf-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.filter(p => servIds.includes(p.id)).map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label for="bf-cons">Consultor</label>
+            <select id="bf-cons"><option value="">Todos os consultores</option>${consultores.map(c => `<option value="${c.id}" ${f.consultor === c.id ? 'selected' : ''}>${c.nome} ${c.sobrenome || ''}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label>Período (data)</label>
+            <div class="ctl-daterange"><input type="date" id="bf-de" value="${f.de}" aria-label="Data inicial"/><span>até</span><input type="date" id="bf-ate" value="${f.ate}" aria-label="Data final"/></div></div>
+          <button type="button" class="ctl-clear" id="bf-limpar">${UI.icon('x', 14)} Limpar filtros</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0" id="bf-table"></div>`;
+    const draw = () => {
+      const ff = this._bfFiltro;
+      const q = (ff.cliente || '').toLowerCase();
+      const rows = all.filter(p => {
+        const cl = OB.clientById(p.clientId) || {};
+        if (q && !((cl.nome || '').toLowerCase().includes(q))) return false;
+        if (ff.servico && !(p.produtos || []).includes(ff.servico)) return false;
+        if (ff.consultor && p.consultorId !== ff.consultor) return false;
+        const dia = (p.briefingRecebidoEm || p.criadoEm || '').slice(0, 10);
+        if (ff.de && dia < ff.de) return false;
+        if (ff.ate && dia > ff.ate) return false;
+        return true;
+      });
+      const cnt = document.getElementById('bf-count'); if (cnt) cnt.textContent = `${rows.length} de ${all.length} briefings`;
+      const el = document.getElementById('bf-table');
+      if (!rows.length) { el.innerHTML = Consultor.empty('search', 'Nada neste filtro', 'Ajuste os filtros para ver os briefings.'); return; }
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Data</th><th>Cliente</th><th>Serviço(s)</th><th>Consultor</th><th>Etapa</th><th></th></tr></thead><tbody>
+        ${rows.map(p => {
+          const cl = OB.clientById(p.clientId) || {};
+          const cons = OB.userById(p.consultorId);
+          const svc = this._prodNomes(p.produtos);
+          const et = OB.ETAPAS_PROJETO.find(e => e.id === p.status) || {};
+          return `<tr><td class="nowrap">${OB.dataBR(p.briefingRecebidoEm || p.criadoEm)}</td>
+            <td class="strong">${cl.nome || '-'}</td><td>${svc}</td>
+            <td class="nowrap">${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</td>
+            <td><span class="chip ${p.status === 'aprovado' ? 'green' : p.status === 'briefing_recebido' ? 'warn' : 'brand'} nowrap">${et.nome || ''}</span></td>
+            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ver-brief="${p.id}" title="Ver briefing">${UI.icon('eye',15)}</button><button class="iconbtn" data-baixar-brief="${p.id}" title="Baixar briefing">${UI.icon('download',15)}</button></td></tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => Consultor.visualizarBriefing(b.dataset.verBrief));
+      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => Consultor.baixarBriefing(b.dataset.baixarBrief));
+    };
+    const capt = () => { this._bfFiltro = {
+      cliente: document.getElementById('bf-cliente').value,
+      servico: document.getElementById('bf-servico').value,
+      consultor: document.getElementById('bf-cons').value,
+      de: document.getElementById('bf-de').value,
+      ate: document.getElementById('bf-ate').value
+    }; draw(); };
+    ['bf-servico', 'bf-cons', 'bf-de', 'bf-ate'].forEach(id => { const el = document.getElementById(id); if (el) el.onchange = capt; });
+    const busca = document.getElementById('bf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
+    document.getElementById('bf-limpar').onclick = () => { this._bfFiltro = { cliente: '', servico: '', consultor: '', de: '', ate: '' }; this.view_briefings(); };
+    draw();
   },
 
   /* ====================== VENDAS ====================== */
