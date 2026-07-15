@@ -180,79 +180,128 @@ const App = {
     }
   },
 
-  /* ---------- página pública do briefing (cliente preenche → cai no admin em tempo real) ---------- */
+  /* ---------- página pública do briefing (tela cheia, capa por tipo + etapas) ---------- */
   async renderBriefingPublico(pid, token, tipo) {
     document.getElementById('auth').style.display = 'none';
     document.getElementById('app').style.display = 'none';
     const host = document.createElement('div'); host.id = 'briefing-page';
-    host.style.cssText = 'position:fixed;inset:0;overflow:auto;background:#eef1f4;font-family:Inter,system-ui,sans-serif';
+    host.style.cssText = 'position:fixed;inset:0;overflow:hidden;background:#f5f7f9;font-family:Inter,system-ui,sans-serif;z-index:200';
     document.body.appendChild(host);
     if (!pid || !token) { host.innerHTML = this._ctMsg('#dc2626', 'Link inválido', 'Este link de briefing está incompleto. Peça ao seu consultor para reenviar.'); return; }
+    const self = this;
     const tipoNome = OB.briefingTipoNome(tipo);
+    const intro = OB.briefingIntro(tipo);
     const secs = OB.briefingCampos(tipo);
-    const mark = `<svg viewBox="0 0 439 439" width="30" height="30" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="96" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
-    const field = c => `<div class="bf-field"><label>${c.label}${c.req ? ' <span class="bf-req">*</span>' : ''}</label>${c.tipo === 'textarea' ? `<textarea data-b="${c.id}" rows="2"></textarea>` : `<input data-b="${c.id}" type="text"/>`}</div>`;
-    host.innerHTML = `
-      <style>
-        #briefing-page .bf-wrap{max-width:720px;margin:0 auto;min-height:100vh;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.06)}
-        #briefing-page .bf-cover{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:26px 28px}
-        #briefing-page .bf-cover b{font-size:20px;font-weight:800;display:block;line-height:1}
-        #briefing-page .bf-cover span{font-size:12.5px;color:rgba(255,255,255,.92)}
-        #briefing-page .bf-body{padding:30px 28px 60px}
-        #briefing-page h1{font-size:23px;font-weight:800;color:#0A0A0A;margin:0 0 6px}
-        #briefing-page .bf-sub{color:#46505c;font-size:14px;line-height:1.6;margin:0 0 24px}
-        #briefing-page .bf-sec{margin-bottom:22px}
-        #briefing-page .bf-sec h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#F15532;margin:0 0 12px;padding-bottom:7px;border-bottom:2px solid #f1e2dd}
-        #briefing-page .bf-field{margin-bottom:14px}
-        #briefing-page .bf-field label{display:block;font-size:13.5px;font-weight:600;color:#0A0A0A;margin-bottom:6px}
-        #briefing-page .bf-req{color:#F15532}
-        #briefing-page .bf-field input,#briefing-page .bf-field textarea{width:100%;box-sizing:border-box;border:1px solid #e2e7ec;border-radius:11px;padding:12px 14px;font-size:15px;font-family:inherit;color:#0A0A0A;background:#fbfcfd;transition:border-color .15s,box-shadow .15s;resize:vertical}
-        #briefing-page .bf-field input:focus,#briefing-page .bf-field textarea:focus{outline:none;border-color:#F15532;box-shadow:0 0 0 3px rgba(241,85,50,.14);background:#fff}
-        #briefing-page .bf-field .inv{border-color:#dc2626;background:#fef2f2}
-        #briefing-page .bf-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:14px}
-        #briefing-page .bf-send{width:100%;background:#F15532;color:#fff;border:none;border-radius:12px;padding:16px;font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 8px 20px rgba(241,85,50,.28);transition:filter .15s}
-        #briefing-page .bf-send:hover{filter:brightness(1.05)}
-        #briefing-page .bf-send:disabled{opacity:.7;cursor:default}
-        #briefing-page .bf-foot{text-align:center;color:#8a96a3;font-size:12px;margin-top:18px}
-      </style>
-      <div class="bf-wrap">
-        <div class="bf-cover">${mark}<div><b>OutBox</b><span>Briefing · ${tipoNome}</span></div></div>
-        <div class="bf-body">
-          <h1>Briefing do seu projeto</h1>
-          <p class="bf-sub">Preencha com o máximo de detalhes que puder. Quanto mais completo, mais rápido e assertivo fica o seu <b>${tipoNome}</b>. Os campos com <b class="bf-req">*</b> são obrigatórios.</p>
-          ${secs.map(s => `<div class="bf-sec"><h2>${s.sec}</h2>${s.campos.map(field).join('')}</div>`).join('')}
-          <div class="bf-err" id="bf-err" hidden></div>
-          <button class="bf-send" id="bf-send">Enviar briefing</button>
-          <p class="bf-foot">Seus dados são usados apenas para produzir o seu projeto · OutBox Soluções Digitais</p>
-        </div>
-      </div>`;
-    const err = document.getElementById('bf-err');
-    document.getElementById('bf-send').onclick = async () => {
-      let ok = true;
-      secs.forEach(s => s.campos.forEach(c => {
-        if (!c.req) return;
-        const el = host.querySelector('[data-b="' + c.id + '"]');
-        if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv');
-      }));
-      if (!ok) { err.textContent = 'Preencha os campos obrigatórios (*).'; err.hidden = false; return; }
+    const total = secs.length;
+    const answers = {};
+    const markW = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const markB = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const style = `<style>
+      #briefing-page *{box-sizing:border-box}
+      #briefing-page .bfx-cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(120% 90% at 50% -10%,#ff6f4d 0%,#F15532 45%,#d83f1e 100%);overflow:auto}
+      #briefing-page .bfx-ci{max-width:560px;width:100%;text-align:center;color:#fff}
+      #briefing-page .bfx-brand{display:inline-flex;align-items:center;gap:9px;margin-bottom:34px;font-weight:700;font-size:13.5px;letter-spacing:.03em}
+      #briefing-page .bfx-emoji{font-size:54px;line-height:1;margin-bottom:16px}
+      #briefing-page .bfx-cover h1{font-size:33px;line-height:1.14;font-weight:800;letter-spacing:-.02em;margin:0 0 12px}
+      #briefing-page .bfx-frase{font-size:16px;line-height:1.6;color:rgba(255,255,255,.93);margin:0 0 26px}
+      #briefing-page .bfx-prev{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:32px}
+      #briefing-page .bfx-chip{font-size:12.5px;font-weight:600;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:7px 14px;color:#fff}
+      #briefing-page .bfx-start{background:#fff;color:#F15532;border:none;border-radius:14px;padding:17px 42px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 14px 36px rgba(0,0,0,.2);transition:transform .12s,box-shadow .2s}
+      #briefing-page .bfx-start:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(0,0,0,.26)}
+      #briefing-page .bfx-mini{font-size:12.5px;color:rgba(255,255,255,.82);margin-top:16px}
+      #briefing-page .bfx-form{position:fixed;inset:0;display:flex;flex-direction:column;background:#f5f7f9}
+      #briefing-page .bfx-top{background:#fff;border-bottom:1px solid #e6eaef;flex:0 0 auto}
+      #briefing-page .bfx-bar{height:4px;background:#eef1f4}
+      #briefing-page .bfx-bar-fill{height:100%;background:#F15532;transition:width .35s ease}
+      #briefing-page .bfx-toprow{display:flex;align-items:center;gap:10px;padding:13px 20px;max-width:660px;margin:0 auto;width:100%}
+      #briefing-page .bfx-toprow b{font-size:14px;font-weight:800}
+      #briefing-page .bfx-count{font-size:12.5px;font-weight:700;color:#8a96a3;margin-left:auto}
+      #briefing-page .bfx-main{flex:1 1 auto;overflow:auto;padding:28px 20px 40px}
+      #briefing-page .bfx-mi{max-width:660px;margin:0 auto;width:100%;animation:bfxin .35s ease both}
+      @keyframes bfxin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+      #briefing-page .bfx-eyebrow{font-size:12.5px;font-weight:700;color:#F15532;margin-bottom:6px}
+      #briefing-page .bfx-main h2{font-size:25px;font-weight:800;color:#0A0A0A;letter-spacing:-.01em;margin:0 0 22px}
+      #briefing-page .bfx-field{margin-bottom:18px}
+      #briefing-page .bfx-field label{display:block;font-size:14px;font-weight:600;color:#0A0A0A;margin-bottom:7px}
+      #briefing-page .bfx-req{color:#F15532}
+      #briefing-page .bfx-field input,#briefing-page .bfx-field textarea{width:100%;box-sizing:border-box;border:1px solid #e2e7ec;border-radius:12px;padding:14px 15px;font-size:16px;font-family:inherit;color:#0A0A0A;background:#fff;transition:border-color .15s,box-shadow .15s;resize:vertical}
+      #briefing-page .bfx-field input:focus,#briefing-page .bfx-field textarea:focus{outline:none;border-color:#F15532;box-shadow:0 0 0 3px rgba(241,85,50,.14)}
+      #briefing-page .bfx-field .inv{border-color:#dc2626;background:#fef2f2}
+      #briefing-page .bfx-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13.5px;padding:12px 14px;border-radius:10px;margin-top:8px}
+      #briefing-page .bfx-bottom{background:#fff;border-top:1px solid #e6eaef;flex:0 0 auto}
+      #briefing-page .bfx-bi{display:flex;align-items:center;gap:12px;padding:14px 20px;max-width:660px;margin:0 auto;width:100%}
+      #briefing-page .bfx-btn{border:none;border-radius:12px;padding:15px 28px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:filter .15s}
+      #briefing-page .bfx-btn.brand{background:#F15532;color:#fff;box-shadow:0 8px 20px rgba(241,85,50,.26);margin-left:auto}
+      #briefing-page .bfx-btn.brand:hover{filter:brightness(1.05)}
+      #briefing-page .bfx-btn.brand:disabled{opacity:.7;cursor:default}
+      #briefing-page .bfx-btn.ghost{background:#eef1f4;color:#46505c}
+      @media(max-width:520px){#briefing-page .bfx-cover h1{font-size:28px}#briefing-page .bfx-btn{padding:14px 20px}}
+    </style>`;
+    const saveInputs = () => host.querySelectorAll('[data-b]').forEach(el => { answers[el.getAttribute('data-b')] = el.value; });
+    const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const fieldHTML = c => `<div class="bfx-field"><label>${c.label}${c.req ? ' <span class="bfx-req">*</span>' : ''}</label>${c.tipo === 'textarea' ? `<textarea data-b="${c.id}" rows="3">${esc(answers[c.id])}</textarea>` : `<input data-b="${c.id}" type="text" value="${esc(answers[c.id])}"/>`}</div>`;
+    let step = 0;
+    const renderCover = () => {
+      host.innerHTML = style + `
+        <div class="bfx-cover"><div class="bfx-ci">
+          <div class="bfx-brand">${markW}<span>Briefing OutBox</span></div>
+          <div class="bfx-emoji">${intro.emoji}</div>
+          <h1>${intro.titulo}</h1>
+          <p class="bfx-frase">${intro.frase}</p>
+          <div class="bfx-prev">${secs.map((s, i) => `<span class="bfx-chip">${i + 1}. ${s.sec}</span>`).join('')}</div>
+          <button class="bfx-start" id="bfx-start">Começar o briefing</button>
+          <p class="bfx-mini">Leva poucos minutos · ${total} etapa${total > 1 ? 's' : ''}</p>
+        </div></div>`;
+      document.getElementById('bfx-start').onclick = () => { step = 1; renderStep(); };
+    };
+    const submit = async () => {
       const linhas = [];
-      secs.forEach(s => {
-        const parts = [];
-        s.campos.forEach(c => { const el = host.querySelector('[data-b="' + c.id + '"]'); const val = (el && el.value || '').trim(); if (val) parts.push('• ' + c.label + ': ' + val); });
-        if (parts.length) { linhas.push(s.sec.toUpperCase()); linhas.push(parts.join('\n')); linhas.push(''); }
-      });
+      secs.forEach(s => { const parts = []; s.campos.forEach(c => { const val = (answers[c.id] || '').trim(); if (val) parts.push('• ' + c.label + ': ' + val); }); if (parts.length) { linhas.push(s.sec.toUpperCase()); linhas.push(parts.join('\n')); linhas.push(''); } });
       const texto = linhas.join('\n').trim();
-      const btn = document.getElementById('bf-send'); btn.disabled = true; btn.textContent = 'Enviando...';
+      const btn = document.getElementById('bfx-next'); const err = document.getElementById('bfx-err');
+      btn.disabled = true; btn.textContent = 'Enviando...';
       try {
         const { data, error } = await SB.rpc('salvar_briefing', { p_pid: pid, p_token: token, p_respostas: texto });
         if (error) throw error;
-        if (data && data.ok) { host.innerHTML = this._ctMsg('#16a34a', 'Briefing enviado! 🎉', 'Recebemos as suas respostas. A OutBox já foi notificada e vai iniciar a produção do seu projeto. Em breve o seu consultor entra em contato.'); }
+        if (data && data.ok) { host.innerHTML = self._ctMsg('#16a34a', 'Briefing enviado! 🎉', 'Recebemos as suas respostas. A OutBox já foi notificada e vai iniciar a produção do seu projeto. Em breve o seu consultor entra em contato.'); }
         else { err.textContent = 'Link inválido ou expirado. Peça ao seu consultor para reenviar o briefing.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing'; }
       } catch (e) {
         err.textContent = 'Não foi possível enviar agora. Tente novamente em instantes. (' + ((e && e.message) || 'erro') + ')';
         err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing';
       }
     };
+    const renderStep = () => {
+      const sec = secs[step - 1];
+      const pct = Math.round((step / total) * 100);
+      host.innerHTML = style + `
+        <div class="bfx-form">
+          <div class="bfx-top">
+            <div class="bfx-bar"><div class="bfx-bar-fill" style="width:${pct}%"></div></div>
+            <div class="bfx-toprow">${markB}<b>OutBox</b><span class="bfx-count">Etapa ${step} de ${total}</span></div>
+          </div>
+          <div class="bfx-main"><div class="bfx-mi">
+            <div class="bfx-eyebrow">${intro.emoji} Briefing · ${tipoNome}</div>
+            <h2>${sec.sec}</h2>
+            ${sec.campos.map(fieldHTML).join('')}
+            <div class="bfx-err" id="bfx-err" hidden></div>
+          </div></div>
+          <div class="bfx-bottom"><div class="bfx-bi">
+            ${step > 1 ? `<button class="bfx-btn ghost" id="bfx-prev">Voltar</button>` : '<span></span>'}
+            <button class="bfx-btn brand" id="bfx-next">${step === total ? 'Enviar briefing' : 'Próximo'}</button>
+          </div></div>
+        </div>`;
+      const prev = document.getElementById('bfx-prev'); if (prev) prev.onclick = () => { saveInputs(); step--; renderStep(); };
+      document.getElementById('bfx-next').onclick = async () => {
+        let ok = true;
+        sec.campos.forEach(c => { if (!c.req) return; const el = host.querySelector('[data-b="' + c.id + '"]'); if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv'); });
+        if (!ok) { const e = document.getElementById('bfx-err'); e.textContent = 'Preencha os campos obrigatórios (*).'; e.hidden = false; return; }
+        saveInputs();
+        if (step < total) { step++; renderStep(); document.querySelector('.bfx-main').scrollTop = 0; }
+        else await submit();
+      };
+      const first = host.querySelector('[data-b]'); if (first) setTimeout(() => first.focus(), 80);
+    };
+    renderCover();
   },
 
   _ctMsg(cor, titulo, msg, extra) {

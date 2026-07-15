@@ -276,6 +276,17 @@ const OB = {
   briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site', identidade: 'Identidade Visual', ecommerce: 'E-commerce', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
   /* produto correspondente a um tipo de briefing (biblioteca) */
   briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' }[tipo]) || 'onepage'; },
+  /* tela de início (capa) exclusiva por tipo de briefing */
+  BRIEFING_INTRO: {
+    onepage:     { emoji: '🚀', titulo: 'Vamos criar o seu Site OnePage', frase: 'Uma página única, direta e persuasiva, feita para transformar visitantes em clientes.' },
+    landing:     { emoji: '🎯', titulo: 'Vamos criar a sua Landing Page', frase: 'Uma página focada em uma única ação: capturar e converter o seu cliente.' },
+    site:        { emoji: '🌐', titulo: 'Vamos criar o seu Site', frase: 'Um site institucional completo para posicionar a sua marca com autoridade.' },
+    identidade:  { emoji: '🎨', titulo: 'Vamos criar a sua Identidade Visual', frase: 'Logo, cores e a personalidade que vão dar cara à sua marca.' },
+    ecommerce:   { emoji: '🛒', titulo: 'Vamos criar a sua Loja Virtual', frase: 'Sua loja online pronta para vender 24 horas por dia, 7 dias por semana.' },
+    sistemas:    { emoji: '⚙️', titulo: 'Vamos criar o seu Sistema', frase: 'Um sistema sob medida, desenhado para o processo do seu negócio.' },
+    vendas:      { emoji: '💥', titulo: 'Vamos criar a sua Página de Vendas', frase: 'Uma página construída com técnica para vender o seu produto ou serviço.' }
+  },
+  briefingIntro(tipo) { return this.BRIEFING_INTRO[tipo] || { emoji: '✨', titulo: 'Vamos começar o seu projeto', frase: 'Preencha o briefing para darmos início com tudo alinhado.' }; },
   /* briefings prontos (biblioteca): formulário publicado por serviço */
   BRIEFINGS_PRONTOS: [
     { tipo: 'site', nome: 'Site Institucional' },
