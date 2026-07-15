@@ -15,6 +15,8 @@ const App = {
     if (qs.get('aceite')) { return this.renderAceite(qs.get('aceite'), qs.get('t')); }
     // página pública de ACEITE do contrato (cliente lê e assina virtualmente)
     if (qs.get('contrato')) { return this.renderAceiteContrato(qs.get('contrato'), qs.get('t')); }
+    // página pública do BRIEFING (cliente preenche; ao enviar cai em tempo real no painel do admin)
+    if (qs.get('briefing')) { return this.renderBriefingPublico(qs.get('briefing'), qs.get('t'), qs.get('p')); }
 
     // link de recuperação de senha vindo do e-mail
     SB.auth.onAuthStateChange((event) => {
@@ -176,6 +178,81 @@ const App = {
     } catch (e) {
       host.innerHTML = card(alert, '#dc2626', 'Erro ao confirmar', 'Tente novamente em instantes ou avise o seu consultor. (' + ((e && e.message) || 'falha de conexão') + ')');
     }
+  },
+
+  /* ---------- página pública do briefing (cliente preenche → cai no admin em tempo real) ---------- */
+  async renderBriefingPublico(pid, token, tipo) {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    const host = document.createElement('div'); host.id = 'briefing-page';
+    host.style.cssText = 'position:fixed;inset:0;overflow:auto;background:#eef1f4;font-family:Inter,system-ui,sans-serif';
+    document.body.appendChild(host);
+    if (!pid || !token) { host.innerHTML = this._ctMsg('#dc2626', 'Link inválido', 'Este link de briefing está incompleto. Peça ao seu consultor para reenviar.'); return; }
+    const tipoNome = OB.briefingTipoNome(tipo);
+    const secs = OB.briefingCampos(tipo);
+    const mark = `<svg viewBox="0 0 439 439" width="30" height="30" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="96" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const field = c => `<div class="bf-field"><label>${c.label}${c.req ? ' <span class="bf-req">*</span>' : ''}</label>${c.tipo === 'textarea' ? `<textarea data-b="${c.id}" rows="2"></textarea>` : `<input data-b="${c.id}" type="text"/>`}</div>`;
+    host.innerHTML = `
+      <style>
+        #briefing-page .bf-wrap{max-width:720px;margin:0 auto;min-height:100vh;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+        #briefing-page .bf-cover{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#F15532,#e0431f);color:#fff;padding:26px 28px}
+        #briefing-page .bf-cover b{font-size:20px;font-weight:800;display:block;line-height:1}
+        #briefing-page .bf-cover span{font-size:12.5px;color:rgba(255,255,255,.92)}
+        #briefing-page .bf-body{padding:30px 28px 60px}
+        #briefing-page h1{font-size:23px;font-weight:800;color:#0A0A0A;margin:0 0 6px}
+        #briefing-page .bf-sub{color:#46505c;font-size:14px;line-height:1.6;margin:0 0 24px}
+        #briefing-page .bf-sec{margin-bottom:22px}
+        #briefing-page .bf-sec h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#F15532;margin:0 0 12px;padding-bottom:7px;border-bottom:2px solid #f1e2dd}
+        #briefing-page .bf-field{margin-bottom:14px}
+        #briefing-page .bf-field label{display:block;font-size:13.5px;font-weight:600;color:#0A0A0A;margin-bottom:6px}
+        #briefing-page .bf-req{color:#F15532}
+        #briefing-page .bf-field input,#briefing-page .bf-field textarea{width:100%;box-sizing:border-box;border:1px solid #e2e7ec;border-radius:11px;padding:12px 14px;font-size:15px;font-family:inherit;color:#0A0A0A;background:#fbfcfd;transition:border-color .15s,box-shadow .15s;resize:vertical}
+        #briefing-page .bf-field input:focus,#briefing-page .bf-field textarea:focus{outline:none;border-color:#F15532;box-shadow:0 0 0 3px rgba(241,85,50,.14);background:#fff}
+        #briefing-page .bf-field .inv{border-color:#dc2626;background:#fef2f2}
+        #briefing-page .bf-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:14px}
+        #briefing-page .bf-send{width:100%;background:#F15532;color:#fff;border:none;border-radius:12px;padding:16px;font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 8px 20px rgba(241,85,50,.28);transition:filter .15s}
+        #briefing-page .bf-send:hover{filter:brightness(1.05)}
+        #briefing-page .bf-send:disabled{opacity:.7;cursor:default}
+        #briefing-page .bf-foot{text-align:center;color:#8a96a3;font-size:12px;margin-top:18px}
+      </style>
+      <div class="bf-wrap">
+        <div class="bf-cover">${mark}<div><b>OutBox</b><span>Briefing · ${tipoNome}</span></div></div>
+        <div class="bf-body">
+          <h1>Briefing do seu projeto</h1>
+          <p class="bf-sub">Preencha com o máximo de detalhes que puder. Quanto mais completo, mais rápido e assertivo fica o seu <b>${tipoNome}</b>. Os campos com <b class="bf-req">*</b> são obrigatórios.</p>
+          ${secs.map(s => `<div class="bf-sec"><h2>${s.sec}</h2>${s.campos.map(field).join('')}</div>`).join('')}
+          <div class="bf-err" id="bf-err" hidden></div>
+          <button class="bf-send" id="bf-send">Enviar briefing</button>
+          <p class="bf-foot">Seus dados são usados apenas para produzir o seu projeto · OutBox Soluções Digitais</p>
+        </div>
+      </div>`;
+    const err = document.getElementById('bf-err');
+    document.getElementById('bf-send').onclick = async () => {
+      let ok = true;
+      secs.forEach(s => s.campos.forEach(c => {
+        if (!c.req) return;
+        const el = host.querySelector('[data-b="' + c.id + '"]');
+        if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv');
+      }));
+      if (!ok) { err.textContent = 'Preencha os campos obrigatórios (*).'; err.hidden = false; return; }
+      const linhas = [];
+      secs.forEach(s => {
+        const parts = [];
+        s.campos.forEach(c => { const el = host.querySelector('[data-b="' + c.id + '"]'); const val = (el && el.value || '').trim(); if (val) parts.push('• ' + c.label + ': ' + val); });
+        if (parts.length) { linhas.push(s.sec.toUpperCase()); linhas.push(parts.join('\n')); linhas.push(''); }
+      });
+      const texto = linhas.join('\n').trim();
+      const btn = document.getElementById('bf-send'); btn.disabled = true; btn.textContent = 'Enviando...';
+      try {
+        const { data, error } = await SB.rpc('salvar_briefing', { p_pid: pid, p_token: token, p_respostas: texto });
+        if (error) throw error;
+        if (data && data.ok) { host.innerHTML = this._ctMsg('#16a34a', 'Briefing enviado! 🎉', 'Recebemos as suas respostas. A OutBox já foi notificada e vai iniciar a produção do seu projeto. Em breve o seu consultor entra em contato.'); }
+        else { err.textContent = 'Link inválido ou expirado. Peça ao seu consultor para reenviar o briefing.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing'; }
+      } catch (e) {
+        err.textContent = 'Não foi possível enviar agora. Tente novamente em instantes. (' + ((e && e.message) || 'erro') + ')';
+        err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing';
+      }
+    };
   },
 
   _ctMsg(cor, titulo, msg, extra) {

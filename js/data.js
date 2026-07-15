@@ -222,10 +222,58 @@ const OB = {
   BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
   briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
   briefingLink(produtoId, pid, token) {
-    let url = this.BRIEFING_BASE + '?p=' + this.briefingTipo(produtoId);
-    if (pid && token) url += '&pid=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token);
-    return url;
+    // formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin
+    return this.APP_URL + '/?briefing=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token) + '&p=' + this.briefingTipo(produtoId);
   },
+  /* formulário de briefing (público) — seções e campos; extras por tipo de serviço */
+  BRIEFING_FORM: [
+    { sec: 'Sobre o seu negócio', campos: [
+      { id: 'empresa', label: 'Nome da empresa ou marca', tipo: 'text', req: true },
+      { id: 'segmento', label: 'Segmento / nicho de atuação', tipo: 'text', req: true },
+      { id: 'sobre', label: 'O que a sua empresa faz? (produtos e serviços)', tipo: 'textarea', req: true },
+      { id: 'diferenciais', label: 'Quais os principais diferenciais?', tipo: 'textarea' }
+    ] },
+    { sec: 'Objetivo do projeto', campos: [
+      { id: 'objetivo', label: 'Qual o principal objetivo deste projeto?', tipo: 'textarea', req: true },
+      { id: 'publico', label: 'Quem é o seu público-alvo?', tipo: 'textarea', req: true },
+      { id: 'acao', label: 'O que o cliente deve fazer ao acessar? (falar no WhatsApp, comprar, agendar...)', tipo: 'text' }
+    ] },
+    { sec: 'Conteúdo e identidade', campos: [
+      { id: 'secoes', label: 'Seções, páginas ou itens que não podem faltar', tipo: 'textarea' },
+      { id: 'textos', label: 'Você já tem os textos prontos ou precisa da nossa redação?', tipo: 'text' },
+      { id: 'logo', label: 'Já possui logotipo e identidade visual?', tipo: 'text' },
+      { id: 'cores', label: 'Cores e estilo de preferência', tipo: 'text' },
+      { id: 'referencias', label: 'Sites ou perfis de referência que você gosta (cole os links)', tipo: 'textarea' },
+      { id: 'evitar', label: 'Algo que você NÃO gosta ou quer evitar', tipo: 'text' }
+    ] },
+    { sec: 'Materiais e contato', campos: [
+      { id: 'materiais', label: 'Onde estão as imagens, logos e materiais? (link do Drive, WeTransfer...)', tipo: 'text' },
+      { id: 'dominio', label: 'Já possui domínio (www)? Qual?', tipo: 'text' },
+      { id: 'whatsapp', label: 'WhatsApp para contato', tipo: 'text', req: true },
+      { id: 'email', label: 'E-mail', tipo: 'text' },
+      { id: 'redes', label: 'Redes sociais (@)', tipo: 'text' },
+      { id: 'obs', label: 'Observações finais e prazo desejado', tipo: 'textarea' }
+    ] }
+  ],
+  BRIEFING_EXTRA: {
+    ecommerce: [
+      { id: 'qtd_produtos', label: 'Quantos produtos, aproximadamente?', tipo: 'text' },
+      { id: 'pagamento', label: 'Meios de pagamento e frete desejados', tipo: 'text' }
+    ],
+    sistemas: [
+      { id: 'processo', label: 'Descreva o processo ou rotina que o sistema deve atender', tipo: 'textarea', req: true },
+      { id: 'usuarios', label: 'Quem vai usar o sistema? (perfis de acesso)', tipo: 'text' }
+    ],
+    identidade: [
+      { id: 'valores', label: 'Valores e personalidade da marca (3 palavras)', tipo: 'text' },
+      { id: 'aplicacoes', label: 'Onde a marca será aplicada? (cartão, fachada, redes...)', tipo: 'text' }
+    ]
+  },
+  briefingCampos(tipo) {
+    const extra = this.BRIEFING_EXTRA[tipo];
+    return extra ? this.BRIEFING_FORM.concat([{ sec: 'Detalhes do serviço', campos: extra }]) : this.BRIEFING_FORM;
+  },
+  briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site', identidade: 'Identidade Visual', ecommerce: 'E-commerce', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
   /* briefings prontos (biblioteca): formulário publicado por serviço */
   BRIEFINGS_PRONTOS: [
     { tipo: 'site', nome: 'Site Institucional' },
