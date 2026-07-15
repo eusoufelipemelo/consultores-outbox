@@ -284,7 +284,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -352,7 +352,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -367,7 +367,8 @@ const OB = {
       SB.rpc('ranking_geral'),
       SB.from('chat_mensagens').select('*').order('criado_em'),
       SB.from('contratos').select('*').order('criado_em', { ascending: false }),
-      SB.from('criativos').select('id,titulo,formato,categoria,legenda,hashtags,ativo,criado_em').order('criado_em', { ascending: false })
+      SB.from('criativos').select('id,titulo,formato,categoria,legenda,hashtags,ativo,criado_em').order('criado_em', { ascending: false }),
+      SB.from('projeto_arquivos').select('id,projeto_id,autor,categoria,nome,mime,tamanho,url,criado_em').order('criado_em', { ascending: false })
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -398,9 +399,10 @@ const OB = {
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
     this.db.contratos = (ctr && ctr.data) ? ctr.data.map(r => this._ctIn(r)) : [];
     this.db.criativos = (cri && cri.data) ? cri.data.map(r => this._criIn(r)) : [];
+    this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -603,6 +605,35 @@ const OB = {
   },
   /* briefings recebidos que ainda não entraram em produção (alerta do admin) */
   briefingsPendentesAdmin() { return (this.db.projetos || []).filter(p => p.status === 'briefing_recebido'); },
+
+  /* ---------- ARQUIVOS do projeto (entregas do admin + uploads do consultor) ----------
+     dados (base64) NÃO vêm no loadAll (só metadados); baixa sob demanda via getArquivoDados. */
+  ARQ_CATEGORIAS: {
+    entrega: { nome: 'Entrega', quem: 'admin' },
+    imagem:  { nome: 'Imagem do projeto', quem: 'consultor' },
+    copy:    { nome: 'Copy / texto', quem: 'consultor' },
+    link:    { nome: 'Link', quem: 'consultor' }
+  },
+  _paIn(r) { return { id: r.id, projetoId: r.projeto_id, autor: r.autor || 'consultor', categoria: r.categoria || 'imagem', nome: r.nome || '', mime: r.mime || '', tamanho: r.tamanho || 0, url: r.url || '', criadoEm: r.criado_em }; },
+  _paOut(a) { return { id: a.id, projeto_id: a.projetoId, autor: a.autor || 'consultor', categoria: a.categoria || 'imagem', nome: a.nome || null, mime: a.mime || null, tamanho: a.tamanho || 0, url: a.url || null, dados: a.dados || null }; },
+  arquivosDoProjeto(projetoId) { return (this.db.projetoArquivos || []).filter(a => a.projetoId === projetoId); },
+  entregasDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'admin'); },
+  uploadsDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'consultor'); },
+  arquivoById(id) { return (this.db.projetoArquivos || []).find(a => a.id === id) || null; },
+  addArquivo(a) { const meta = { id: a.id, projetoId: a.projetoId, autor: a.autor, categoria: a.categoria, nome: a.nome, mime: a.mime, tamanho: a.tamanho, url: a.url || '', criadoEm: new Date().toISOString() };
+    (this.db.projetoArquivos || (this.db.projetoArquivos = [])).unshift(meta);
+    if (a.dados) this._paDados = Object.assign(this._paDados || {}, { [a.id]: a.dados }); // cache local do base64 recém-enviado
+    this._save('projeto_arquivos', this._paOut(a)); return meta; },
+  removeArquivo(id) { this.db.projetoArquivos = (this.db.projetoArquivos || []).filter(a => a.id !== id); if (this._paDados) delete this._paDados[id]; this._delete('projeto_arquivos', id); },
+  /* baixa o base64 do arquivo sob demanda (cache em memória) */
+  async getArquivoDados(id) {
+    this._paDados = this._paDados || {};
+    if (this._paDados[id] != null) return this._paDados[id];
+    const { data, error } = await SB.from('projeto_arquivos').select('dados,url').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    this._paDados[id] = data.dados || '';
+    return this._paDados[id];
+  },
 
   /* ---------- CONTRATOS por serviço (aceite virtual) ---------- */
   CONTRATO_FORO: 'Comarca de Santa Cruz do Rio Pardo, Estado de São Paulo',

@@ -2459,18 +2459,20 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   /* timeline horizontal das 6 etapas */
   timelineHTML(proj) {
     const atual = OB.etapaIndex(proj.status);
-    return `<div class="tl">
-      ${OB.ETAPAS_PROJETO.map((e, i) => {
-        const feito = i <= atual;
-        const data = proj[e.campo] ? OB.dataBR(proj[e.campo]) : '';
-        const cls = i < atual ? 'done' : (i === atual ? 'now' : 'todo');
-        return `<div class="tl-step ${cls}">
-          <div class="tl-dot">${feito ? UI.icon(i === atual ? e.icon : 'check', 13) : (i + 1)}</div>
-          <div class="tl-lbl">${e.nome}</div>
-          <div class="tl-date">${data || '&nbsp;'}</div>
-        </div>`;
-      }).join('<div class="tl-line"></div>')}
-    </div>`;
+    const steps = OB.ETAPAS_PROJETO;
+    let html = '<div class="tl">';
+    steps.forEach((e, i) => {
+      if (i > 0) html += `<div class="tl-line${i <= atual ? ' fill' : ''}"></div>`;
+      const cls = i < atual ? 'done' : (i === atual ? 'now' : 'todo');
+      const data = proj[e.campo] ? OB.dataBR(proj[e.campo]) : '';
+      const ic = i < atual ? 'check' : e.icon;
+      html += `<div class="tl-step ${cls}" style="--d:${i * 60}ms">
+        <div class="tl-dot">${i <= atual ? UI.icon(ic, 13) : (i + 1)}</div>
+        <div class="tl-lbl">${e.nome}</div>
+        <div class="tl-date">${data || '&nbsp;'}</div>
+      </div>`;
+    });
+    return html + '</div>';
   },
 
   view_projetos() {
@@ -2502,6 +2504,90 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     v.querySelectorAll('[data-aprovar-proj]').forEach(b => b.onclick = () => this.aprovarProjeto(b.dataset.aprovarProj));
     v.querySelectorAll('[data-share-final]').forEach(b => b.onclick = () => this.compartilharLinkFinal(b.dataset.shareFinal));
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
+    this.wireArquivos(v, () => this.render('projetos'));
+  },
+
+  /* ---------- ARQUIVOS do projeto (entregas da OutBox p/ baixar + materiais do consultor) ---------- */
+  _fmtTam(b) { b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; },
+  _arqIcone(a) { const m = a.mime || ''; if (a.categoria === 'link') return 'external'; if (m.indexOf('image/') === 0) return 'gallery'; if (m.indexOf('pdf') >= 0) return 'contract'; return 'docs'; },
+  arqItemHTML(a, canDel) {
+    const isLink = a.categoria === 'link';
+    const meta = isLink ? (a.url || '') : this._fmtTam(a.tamanho);
+    const nome = (a.nome || (isLink ? a.url : 'arquivo') || '').replace(/</g, '&lt;');
+    return `<div class="arq-item">
+      <span class="arq-ic">${UI.icon(this._arqIcone(a), 15)}</span>
+      <div class="arq-meta"><b>${nome}</b><span>${(meta || '').replace(/</g, '&lt;')}</span></div>
+      <button class="iconbtn" data-arq-get="${a.id}" title="${isLink ? 'Abrir' : 'Baixar'}">${UI.icon(isLink ? 'external' : 'download', 15)}</button>
+      ${canDel ? `<button class="iconbtn danger" data-arq-del="${a.id}" title="Remover">${UI.icon('trash', 15)}</button>` : ''}
+    </div>`;
+  },
+  projArquivosHTML(proj, opts) {
+    opts = opts || {}; const isAdmin = !!opts.admin;
+    const entregas = OB.entregasDoProjeto(proj.id);
+    const uploads = OB.uploadsDoProjeto(proj.id);
+    const entregaBloco = (entregas.length || isAdmin) ? `
+      <div class="arq-group">
+        <div class="arq-head">${UI.icon('download', 14)} Entregas da OutBox${entregas.length ? ` <i>${entregas.length}</i>` : ''}</div>
+        ${entregas.length ? `<div class="arq-list">${entregas.map(a => this.arqItemHTML(a, isAdmin)).join('')}</div>` : `<div class="arq-empty">Nenhum arquivo de entrega ainda.</div>`}
+      </div>` : '';
+    const uploadBloco = `
+      <div class="arq-group">
+        <div class="arq-head">${UI.icon('gallery', 14)} Materiais do projeto${uploads.length ? ` <i>${uploads.length}</i>` : ''}
+          ${!isAdmin ? `<span class="arq-add">
+            <button type="button" class="btn ghost xs" data-arq-up="${proj.id}|imagem">${UI.icon('gallery', 13)} Imagem</button>
+            <button type="button" class="btn ghost xs" data-arq-up="${proj.id}|copy">${UI.icon('docs', 13)} Copy</button>
+            <button type="button" class="btn ghost xs" data-arq-link="${proj.id}">${UI.icon('external', 13)} Link</button>
+          </span>` : ''}
+        </div>
+        ${uploads.length ? `<div class="arq-list">${uploads.map(a => this.arqItemHTML(a, !isAdmin)).join('')}</div>` : `<div class="arq-empty">${isAdmin ? 'O consultor ainda não enviou materiais.' : 'Suba imagens, textos de copy e links do projeto para deixar tudo organizado.'}</div>`}
+      </div>`;
+    return `<div class="proj-arqs">${entregaBloco}${uploadBloco}</div>`;
+  },
+  async subirArquivos(projId, categoria, autor, files) {
+    const MAX = 8 * 1024 * 1024; let n = 0;
+    for (const f of files) {
+      if (f.size > MAX) { UI.toast('Arquivo grande', `${f.name} passa de 8 MB e foi ignorado.`, 'err'); continue; }
+      const dados = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(f); });
+      if (!dados) continue;
+      OB.addArquivo({ id: OB.uid(), projetoId: projId, autor, categoria, nome: f.name, mime: f.type || '', tamanho: f.size, dados });
+      n++;
+    }
+    if (n) UI.toast('Enviado', `${n} arquivo(s) adicionado(s).`, 'ok');
+    return n;
+  },
+  anexarArquivosModal(projId, categoria, autor, onDone) {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true;
+    if (categoria === 'imagem') inp.accept = 'image/*';
+    inp.style.display = 'none'; document.body.appendChild(inp);
+    inp.onchange = async () => { if (inp.files.length) { await this.subirArquivos(projId, categoria, autor, [...inp.files]); if (onDone) onDone(); } inp.remove(); };
+    inp.click();
+  },
+  adicionarLinkModal(projId, onDone) {
+    UI.modal({ title: 'Adicionar link do projeto', sub: 'Figma, Drive, referência, site publicado...', body: `
+      <div class="field"><label>Título <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label><input id="al-nome" placeholder="Ex.: Layout no Figma"/></div>
+      <div class="field"><label>Link <span class="req">*</span></label><input id="al-url" type="url" placeholder="https://..."/><div class="err">Informe o link</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="al-ok">Adicionar</button>` });
+    document.getElementById('al-ok').onclick = () => {
+      const url = (document.getElementById('al-url').value || '').trim();
+      if (!url) { document.getElementById('al-url').closest('.field').classList.add('has-error'); return; }
+      const nome = (document.getElementById('al-nome').value || '').trim() || url;
+      OB.addArquivo({ id: OB.uid(), projetoId: projId, autor: 'consultor', categoria: 'link', nome, url, mime: '', tamanho: 0 });
+      UI.closeModal(); UI.toast('Link adicionado', '', 'ok'); if (onDone) onDone();
+    };
+  },
+  async baixarArquivo(id) {
+    const a = OB.arquivoById(id); if (!a) return;
+    if (a.categoria === 'link') { if (a.url) window.open(a.url, '_blank', 'noopener'); return; }
+    UI.toast('Baixando...', '', 'info');
+    const dados = await OB.getArquivoDados(id);
+    if (!dados) return UI.toast('Indisponível', 'Não foi possível baixar o arquivo.', 'err');
+    const el = document.createElement('a'); el.href = dados; el.download = a.nome || 'arquivo'; document.body.appendChild(el); el.click(); el.remove();
+  },
+  wireArquivos(root, onDone) {
+    root.querySelectorAll('[data-arq-get]').forEach(b => b.onclick = () => this.baixarArquivo(b.dataset.arqGet));
+    root.querySelectorAll('[data-arq-del]').forEach(b => b.onclick = () => { const a = OB.arquivoById(b.dataset.arqDel); if (!a) return; UI.confirm('Remover arquivo', `Remover <b>${(a.nome || 'este item').replace(/</g, '&lt;')}</b>?`, () => { OB.removeArquivo(a.id); UI.toast('Removido', '', 'ok'); if (onDone) onDone(); }, 'Remover'); });
+    root.querySelectorAll('[data-arq-up]').forEach(b => b.onclick = () => { const parts = b.dataset.arqUp.split('|'); this.anexarArquivosModal(parts[0], parts[1], 'consultor', onDone); });
+    root.querySelectorAll('[data-arq-link]').forEach(b => b.onclick = () => this.adicionarLinkModal(b.dataset.arqLink, onDone));
   },
 
   /* Ranking de consultores (compartilhado com o admin via App.renderRanking) */
@@ -2694,7 +2780,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         <button class="btn brand" data-brief="${s.id}">${UI.icon('send',15)} Enviar briefing</button>
       </div>`;
     } else {
-      corpo = `<div style="margin-top:14px">${this.timelineHTML(proj)}</div>${this.projetoAcoesHTML(proj)}`;
+      corpo = `<div style="margin-top:14px">${this.timelineHTML(proj)}</div>${this.projetoAcoesHTML(proj)}${this.projArquivosHTML(proj, { admin: false })}`;
     }
     return `<div class="card proj-card">
       <div class="row between alc" style="gap:12px;flex-wrap:wrap">

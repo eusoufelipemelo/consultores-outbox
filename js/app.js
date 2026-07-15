@@ -505,6 +505,26 @@ const App = {
         this.refreshProjetosBadge();
         if (this.current === 'projetos') this.mod().render('projetos');
       })
+      // arquivos do projeto (entregas do admin + uploads do consultor) em tempo real
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projeto_arquivos' }, (payload) => {
+        const u = OB.session(); if (!u) return;
+        const row = payload.new && payload.new.id ? payload.new : payload.old;
+        if (!row) return;
+        const arr = OB.db.projetoArquivos || (OB.db.projetoArquivos = []);
+        if (payload.eventType === 'DELETE') {
+          OB.db.projetoArquivos = arr.filter(a => a.id !== row.id);
+        } else {
+          const a = OB._paIn(payload.new);
+          const i = arr.findIndex(x => x.id === a.id);
+          if (i >= 0) arr[i] = a; else arr.unshift(a);
+          // avisa o consultor quando o admin publica uma entrega
+          if (payload.eventType === 'INSERT' && a.autor === 'admin' && u.role !== 'admin') {
+            const proj = OB.projetoById(a.projetoId);
+            if (proj && proj.consultorId === u.id) UI.toast('Nova entrega disponível', 'O admin disponibilizou um arquivo do seu projeto.', 'ok');
+          }
+        }
+        if (this.current === 'projetos') this.mod().render('projetos');
+      })
       .subscribe();
   },
   unsubscribeProjetos() {

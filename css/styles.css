@@ -1537,3 +1537,38 @@ select, .field select, .cons-filtros select, .cons-filtros-grid select, .ctl-sel
 }
 select:hover { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
 select:disabled { cursor: not-allowed; opacity: .6; }
+
+/* ===== Linha do tempo do projeto — animada + em tempo real ===== */
+.tl-line { transition: background .45s ease; }
+.tl-line.fill { background: var(--brand); }
+.tl-step { animation: tl-in .4s ease both; animation-delay: var(--d, 0ms); }
+.tl-step.now .tl-dot { animation: tl-pulse 1.9s ease-in-out infinite; }
+@keyframes tl-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--brand-soft); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand) 20%, transparent); }
+}
+@keyframes tl-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+.tl-step.done .tl-dot svg { animation: tl-pop .35s ease both; }
+@keyframes tl-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .tl-step, .tl-step.now .tl-dot, .tl-step.done .tl-dot svg { animation: none; }
+}
+
+/* ===== Arquivos do projeto (entregas da OutBox + materiais do consultor) ===== */
+.proj-arqs { margin-top: 14px; display: grid; gap: 12px; }
+.arq-group { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface-2); }
+.arq-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--text-soft); margin-bottom: 10px; flex-wrap: wrap; }
+.arq-head i { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); }
+.arq-head .arq-add { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.btn.xs { padding: 5px 9px; font-size: 11.5px; height: auto; min-height: 0; border-radius: 8px; gap: 4px; }
+.arq-list { display: grid; gap: 8px; }
+.arq-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); animation: tl-in .3s ease both; }
+.arq-ic { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.arq-meta { flex: 1; min-width: 0; }
+.arq-meta b { display: block; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arq-meta span { display: block; font-size: 11.5px; color: var(--text-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arq-empty { font-size: 12px; color: var(--text-mut); padding: 4px 2px; }
+.arq-drop { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 15px; border: 1.5px dashed var(--line); border-radius: 10px; color: var(--text-mut); font-size: 13px; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+.arq-drop:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+.arq-pre { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.arq-chip { font-size: 11.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; color: var(--text-soft); display: inline-flex; align-items: center; gap: 5px; }

@@ -638,6 +638,8 @@ const Admin = {
     v.querySelectorAll('[data-revisao]').forEach(b => b.onclick = () => this.avancarProjeto(b.dataset.revisao, 'em_revisao'));
     v.querySelectorAll('[data-entregar]').forEach(b => b.onclick = () => this.entregarProjeto(b.dataset.entregar));
     v.querySelectorAll('[data-concluir]').forEach(b => b.onclick = () => this.avancarProjeto(b.dataset.concluir, 'aprovado'));
+    v.querySelectorAll('[data-add-entrega]').forEach(b => b.onclick = () => Consultor.anexarArquivosModal(b.dataset.addEntrega, 'entrega', 'admin', () => this.render('projetos')));
+    Consultor.wireArquivos(v, () => this.render('projetos'));
     App.refreshProjetosBadge();
   },
 
@@ -652,6 +654,9 @@ const Admin = {
     else if (p.status === 'em_revisao') acoes.push(`<button class="btn brand sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar projeto (link)</button>`);
     else if (p.status === 'entregue') { if (p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`); acoes.push(`<button class="btn ghost sm" data-concluir="${p.id}">${UI.icon('check',14)} Marcar aprovado</button>`); }
     else if (p.status === 'aprovado' && p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
+    // botão de anexar arquivos de entrega (docs, artes finais) disponível a partir da produção
+    const podeEntregarArq = ['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status);
+    if (podeEntregarArq) acoes.push(`<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
     return `<div class="card proj-card">
       <div class="row between alc" style="gap:12px;flex-wrap:wrap">
         <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>
@@ -660,6 +665,7 @@ const Admin = {
       </div>
       <div style="margin-top:14px">${Consultor.timelineHTML(p)}</div>
       ${respostas}
+      ${Consultor.projArquivosHTML(p, { admin: true })}
       <div class="proj-acoes">${acoes.join('')}</div>
     </div>`;
   },
@@ -682,19 +688,29 @@ const Admin = {
     const p = OB.projetoById(projId); if (!p) return;
     UI.modal({
       title: 'Entregar projeto',
-      sub: 'Cole o link do projeto pronto',
+      sub: 'Por link, por arquivos, ou os dois',
       body: `
-        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Cole o link do projeto finalizado (site publicado, pasta do Drive, protótipo, etc.). O consultor vai compartilhar com o cliente para a aprovação final.</div></div>
-        <div class="field"><label>Link do projeto <span class="req">*</span></label><input id="pj-link" type="url" value="${p.linkFinal || ''}" placeholder="https://..."/><div class="err">Informe o link</div></div>`,
-      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="pj-ok">${UI.icon('external',16)} Entregar</button>`
+        <div class="notice" style="margin-bottom:14px">${UI.icon('info',16)}<div>Entregue o projeto por <b>link</b> (site publicado, Drive, protótipo) e/ou anexando os <b>arquivos</b> (artes finais, documentos, PDFs). O consultor recebe em tempo real e compartilha com o cliente.</div></div>
+        <div class="field"><label>Link do projeto <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label><input id="pj-link" type="url" value="${p.linkFinal || ''}" placeholder="https://..."/></div>
+        <div class="field"><label>Arquivos de entrega <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <label class="arq-drop" for="pj-files">${UI.icon('download',18)}<span>Escolher arquivos (até 8 MB cada)</span></label>
+          <input id="pj-files" type="file" multiple hidden/>
+          <div class="arq-pre" id="pj-pre"></div></div>
+        <div class="err" id="pj-err" style="display:none">Informe um link ou anexe ao menos um arquivo.</div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="pj-ok">${UI.icon('check',16)} Entregar</button>`
     });
-    document.getElementById('pj-ok').onclick = () => {
+    const fInput = document.getElementById('pj-files'); const pre = document.getElementById('pj-pre');
+    let files = [];
+    fInput.onchange = () => { files = [...fInput.files]; pre.innerHTML = files.map(f => `<span class="arq-chip">${UI.icon('docs',12)} ${f.name}</span>`).join(''); };
+    document.getElementById('pj-ok').onclick = async () => {
       const link = (document.getElementById('pj-link').value || '').trim();
-      if (!link) { document.getElementById('pj-link').closest('.field').classList.add('has-error'); return; }
-      p.linkFinal = link;
+      if (!link && !files.length) { document.getElementById('pj-err').style.display = 'block'; return; }
+      const btn = document.getElementById('pj-ok'); btn.disabled = true; btn.textContent = 'Enviando...';
+      if (files.length) await Consultor.subirArquivos(projId, 'entrega', 'admin', files);
+      if (link) p.linkFinal = link;
       OB.setEtapaProjeto(p, 'entregue');
       UI.closeModal();
-      UI.toast('Projeto entregue!', 'O consultor pode compartilhar com o cliente.', 'ok');
+      UI.toast('Projeto entregue!', 'O consultor já pode ver e compartilhar.', 'ok');
       App.refreshProjetosBadge();
       this.render('projetos');
     };
