@@ -4,21 +4,24 @@
 const Consultor = {
   HOME: 'overview',
   NAV: [
+    // Dashboard
     { id: 'overview',   label: 'Visão Geral',      icon: 'overview', home: true },
-    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
-    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
-    { id: 'criativos',  label: 'Criativos',        icon: 'creative' },
-    { id: 'documentos', label: 'Documentos',       icon: 'docs' },
-    { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help' },
-    { id: 'ebooks',     label: 'E-Books',          icon: 'book' },
-    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban' },
-    { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients' },
-    { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote' },
-    { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery' },
-    { id: 'premiacoes', label: 'Premiações',       icon: 'prize' },
-    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
-    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
-    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money' }
+    // Operação — na ordem do fluxo: cadastrar cliente -> reunião -> proposta -> venda -> contrato -> execução -> prêmios
+    { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients',  sec: 'Operação' },
+    { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban',   sec: 'Operação' },
+    { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote',    sec: 'Operação' },
+    { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money',    sec: 'Operação' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
+    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'premiacoes', label: 'Premiações',       icon: 'prize',    sec: 'Operação' },
+    { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Operação' },
+    // Aprendizado & materiais — separado dos demais
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy',  sec: 'Cursos & Materiais' },
+    { id: 'documentos', label: 'Documentos',       icon: 'docs',     sec: 'Cursos & Materiais' },
+    { id: 'ebooks',     label: 'E-Books',          icon: 'book',     sec: 'Cursos & Materiais' },
+    { id: 'criativos',  label: 'Criativos',        icon: 'creative', sec: 'Cursos & Materiais' },
+    { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery',  sec: 'Cursos & Materiais' },
+    { id: 'ajuda',      label: 'Dúvidas & Guia',   icon: 'help',     sec: 'Cursos & Materiais' }
   ],
 
   titles: {

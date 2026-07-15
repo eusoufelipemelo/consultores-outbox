@@ -5,19 +5,22 @@
 const Admin = {
   HOME: 'painel',
   NAV: [
+    // Dashboard
     { id: 'painel',     label: 'Painel Geral',     icon: 'overview', home: true },
-    { id: 'atendimento',label: 'Atendimento',      icon: 'chat' },
-    { id: 'avisos',     label: 'Avisos',           icon: 'bell' },
-    { id: 'projetos',   label: 'Briefings',        icon: 'briefcase' },
-    { id: 'consultores',label: 'Consultores',      icon: 'users' },
-    { id: 'contratos',  label: 'Contratos',        icon: 'contract' },
-    { id: 'criativos',  label: 'Criativos',        icon: 'creative' },
-    { id: 'financeiro', label: 'Financeiro',       icon: 'money' },
-    { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map' },
-    { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone' },
-    { id: 'ranking',    label: 'Ranking de Consultores', icon: 'ranking' },
-    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy' },
-    { id: 'vendas',     label: 'Vendas',           icon: 'cart' }
+    // Operação — fluxo de acompanhamento da rede e entrega
+    { id: 'consultores',label: 'Consultores',      icon: 'users',    sec: 'Operação' },
+    { id: 'vendas',     label: 'Vendas',           icon: 'cart',     sec: 'Operação' },
+    { id: 'financeiro', label: 'Financeiro',       icon: 'money',    sec: 'Operação' },
+    { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
+    { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'atendimento',label: 'Atendimento',      icon: 'chat',     sec: 'Operação' },
+    // Gestão & conteúdo
+    { id: 'criativos',  label: 'Criativos',        icon: 'creative', sec: 'Gestão & Conteúdo' },
+    { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone',sec: 'Gestão & Conteúdo' },
+    { id: 'avisos',     label: 'Avisos',           icon: 'bell',     sec: 'Gestão & Conteúdo' },
+    { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy',  sec: 'Gestão & Conteúdo' },
+    { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map',      sec: 'Gestão & Conteúdo' },
+    { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Gestão & Conteúdo' }
   ],
   titles: {
     painel:      ['Painel Geral', 'Visão consolidada de toda a operação'],

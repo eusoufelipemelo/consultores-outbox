@@ -1413,6 +1413,10 @@ td .strong { color: var(--text); font-weight: 600; }
 
 /* linha divisória discreta abaixo do item inicial (Visão Geral / Painel Geral) */
 .nav-sep { height: 1px; background: var(--line); margin: 7px 12px; opacity: .7; }
+/* rótulo de grupo do menu (separa Operação de Cursos & Materiais) */
+.nav-group { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-mut); padding: 14px 12px 5px; margin-top: 6px; border-top: 1px solid var(--line); }
+.nav-group:first-child { border-top: none; margin-top: 0; padding-top: 4px; }
 
 /* ===== Criativos (galeria consultor + gestão admin) ===== */
 .cri-hero { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 16px; margin-bottom: 16px;
