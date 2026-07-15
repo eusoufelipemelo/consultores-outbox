@@ -13,6 +13,7 @@ const Consultor = {
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money',    sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'briefings',  label: 'Briefings',        icon: 'docs',     sec: 'Operação' },
     { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize',    sec: 'Operação' },
     { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Operação' },
@@ -2553,6 +2554,79 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       ${this.projetoAcoesHTML(proj)}
       ${this.projArquivosHTML(proj, { admin: false })}
     </div>`;
+  },
+
+  /* ====================== BRIEFINGS (arquivo dos briefings preenchidos) ====================== */
+  _bfFiltro: { cliente: '', servico: '', de: '', ate: '' },
+  view_briefings() {
+    const u = this.u();
+    const v = document.getElementById('main-view');
+    const all = OB.projetosDe(u.id).filter(p => p.briefingRespostas).slice()
+      .sort((a, b) => new Date(b.briefingRecebidoEm || b.criadoEm) - new Date(a.briefingRecebidoEm || a.criadoEm));
+    if (!all.length) { v.innerHTML = this.empty('docs', 'Nenhum briefing recebido ainda', 'Quando o seu cliente finalizar e enviar o briefing, ele fica guardado aqui para você consultar e baixar quando quiser.'); return; }
+    const servIds = [...new Set(all.flatMap(p => p.produtos || []))];
+    const semana = Date.now() - 7 * 864e5;
+    const novos = all.filter(p => new Date(p.briefingRecebidoEm || p.criadoEm).getTime() >= semana).length;
+    const emAndamento = all.filter(p => p.status !== 'aprovado').length;
+    const f = this._bfFiltro;
+    v.innerHTML = `
+      <div class="kpis-3" style="margin-bottom:16px">
+        <div class="card kpi"><div class="ic">${UI.icon('docs', 20)}</div><div class="k-val">${all.length}</div><div class="k-lbl">Briefings recebidos</div></div>
+        <div class="card kpi"><div class="ic ic-ok">${UI.icon('bell', 20)}</div><div class="k-val" style="color:#16a34a">${novos}</div><div class="k-lbl">Nos últimos 7 dias</div></div>
+        <div class="card kpi"><div class="ic ic-warn">${UI.icon('rocket', 20)}</div><div class="k-val" style="color:var(--brand)">${emAndamento}</div><div class="k-lbl">Projetos em andamento</div></div>
+      </div>
+      <div class="lib-head"><b>Briefings recebidos</b><span class="lib-count" id="bf-count">${all.length} briefings</span></div>
+      <div class="ctl-toolbar">
+        <div class="ctl-search">${UI.icon('search', 16)}<input id="bf-cliente" placeholder="Buscar por cliente" value="${f.cliente}"/></div>
+        <div class="ctl-selrow">
+          <div class="ctl-sel"><label for="bf-servico">Tipo de serviço</label>
+            <select id="bf-servico"><option value="">Todos os serviços</option>${OB.PRODUTOS.filter(p => servIds.includes(p.id)).map(p => `<option value="${p.id}" ${f.servico === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></div>
+          <div class="ctl-sel"><label>Período (data)</label>
+            <div class="ctl-daterange"><input type="date" id="bf-de" value="${f.de}" aria-label="Data inicial"/><span>até</span><input type="date" id="bf-ate" value="${f.ate}" aria-label="Data final"/></div></div>
+          <button type="button" class="ctl-clear" id="bf-limpar">${UI.icon('x', 14)} Limpar filtros</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0" id="bf-table"></div>`;
+    const draw = () => {
+      const ff = this._bfFiltro;
+      const q = (ff.cliente || '').toLowerCase();
+      const rows = all.filter(p => {
+        const cl = OB.clientById(p.clientId) || {};
+        if (q && !((cl.nome || '').toLowerCase().includes(q))) return false;
+        if (ff.servico && !(p.produtos || []).includes(ff.servico)) return false;
+        const dia = (p.briefingRecebidoEm || p.criadoEm || '').slice(0, 10);
+        if (ff.de && dia < ff.de) return false;
+        if (ff.ate && dia > ff.ate) return false;
+        return true;
+      });
+      const cnt = document.getElementById('bf-count'); if (cnt) cnt.textContent = `${rows.length} de ${all.length} briefings`;
+      const el = document.getElementById('bf-table');
+      if (!rows.length) { el.innerHTML = this.empty('search', 'Nada neste filtro', 'Ajuste os filtros para ver os briefings.'); return; }
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr>
+        <th>Data</th><th>Cliente</th><th>Serviço(s)</th><th>Etapa</th><th></th></tr></thead><tbody>
+        ${rows.map(p => {
+          const cl = OB.clientById(p.clientId) || {};
+          const svc = (p.produtos || []).map(id => (OB.PRODUTOS.find(x => x.id === id) || {}).nome || id).join(' + ');
+          const et = OB.ETAPAS_PROJETO.find(e => e.id === p.status) || {};
+          return `<tr><td class="nowrap">${OB.dataBR(p.briefingRecebidoEm || p.criadoEm)}</td>
+            <td class="strong">${cl.nome || '-'}</td><td>${svc}</td>
+            <td><span class="chip ${p.status === 'aprovado' ? 'green' : p.status === 'briefing_recebido' ? 'warn' : 'brand'} nowrap">${et.nome || ''}</span></td>
+            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ver-brief="${p.id}" title="Ver briefing">${UI.icon('eye',15)}</button><button class="iconbtn" data-baixar-brief="${p.id}" title="Baixar briefing">${UI.icon('download',15)}</button></td></tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief));
+      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
+    };
+    const capt = () => { this._bfFiltro = {
+      cliente: document.getElementById('bf-cliente').value,
+      servico: document.getElementById('bf-servico').value,
+      de: document.getElementById('bf-de').value,
+      ate: document.getElementById('bf-ate').value
+    }; draw(); };
+    ['bf-servico', 'bf-de', 'bf-ate'].forEach(id => { const el = document.getElementById(id); if (el) el.onchange = capt; });
+    const busca = document.getElementById('bf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
+    document.getElementById('bf-limpar').onclick = () => { this._bfFiltro = { cliente: '', servico: '', de: '', ate: '' }; this.view_briefings(); };
+    draw();
   },
 
   /* ---------- ARQUIVOS do projeto (entregas da OutBox p/ baixar + materiais do consultor) ---------- */
