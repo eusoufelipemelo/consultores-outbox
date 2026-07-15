@@ -609,16 +609,20 @@ const OB = {
   /* ---------- ARQUIVOS do projeto (entregas do admin + uploads do consultor) ----------
      dados (base64) NÃO vêm no loadAll (só metadados); baixa sob demanda via getArquivoDados. */
   ARQ_CATEGORIAS: {
-    entrega: { nome: 'Entrega', quem: 'admin' },
-    imagem:  { nome: 'Imagem do projeto', quem: 'consultor' },
-    copy:    { nome: 'Copy / texto', quem: 'consultor' },
-    link:    { nome: 'Link', quem: 'consultor' }
+    entrega:     { nome: 'Entrega', quem: 'admin' },
+    solicitacao: { nome: 'Solicitação de material', quem: 'admin' },
+    imagem:      { nome: 'Imagem do projeto', quem: 'consultor' },
+    copy:        { nome: 'Copy / texto', quem: 'consultor' },
+    link:        { nome: 'Link', quem: 'consultor' }
   },
   _paIn(r) { return { id: r.id, projetoId: r.projeto_id, autor: r.autor || 'consultor', categoria: r.categoria || 'imagem', nome: r.nome || '', mime: r.mime || '', tamanho: r.tamanho || 0, url: r.url || '', criadoEm: r.criado_em }; },
   _paOut(a) { return { id: a.id, projeto_id: a.projetoId, autor: a.autor || 'consultor', categoria: a.categoria || 'imagem', nome: a.nome || null, mime: a.mime || null, tamanho: a.tamanho || 0, url: a.url || null, dados: a.dados || null }; },
   arquivosDoProjeto(projetoId) { return (this.db.projetoArquivos || []).filter(a => a.projetoId === projetoId); },
-  entregasDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'admin'); },
-  uploadsDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'consultor'); },
+  entregasDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'admin' && a.categoria === 'entrega'); },
+  uploadsDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.autor === 'consultor' && a.categoria !== 'solicitacao'); },
+  solicitacoesDoProjeto(projetoId) { return this.arquivosDoProjeto(projetoId).filter(a => a.categoria === 'solicitacao'); },
+  /* projetos do consultor com solicitação em aberto (badge da Linha do Tempo) */
+  solicitacoesAbertas(consultorId) { return this.projetosDe(consultorId).reduce((n, p) => n + this.solicitacoesDoProjeto(p.id).length, 0); },
   arquivoById(id) { return (this.db.projetoArquivos || []).find(a => a.id === id) || null; },
   addArquivo(a) { const meta = { id: a.id, projetoId: a.projetoId, autor: a.autor, categoria: a.categoria, nome: a.nome, mime: a.mime, tamanho: a.tamanho, url: a.url || '', criadoEm: new Date().toISOString() };
     (this.db.projetoArquivos || (this.db.projetoArquivos = [])).unshift(meta);

@@ -13,6 +13,7 @@ const Admin = {
     { id: 'financeiro', label: 'Financeiro',       icon: 'money',    sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
+    { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat',     sec: 'Operação' },
     // Gestão & conteúdo
     { id: 'criativos',  label: 'Criativos',        icon: 'creative', sec: 'Gestão & Conteúdo' },
@@ -712,8 +713,77 @@ const Admin = {
       UI.closeModal();
       UI.toast('Projeto entregue!', 'O consultor já pode ver e compartilhar.', 'ok');
       App.refreshProjetosBadge();
-      this.render('projetos');
+      this.render(App.current || 'projetos');
     };
+  },
+
+  /* ====================== LINHA DO TEMPO (admin: edita status + solicita material) ====================== */
+  view_timeline() {
+    const v = document.getElementById('main-view');
+    const projs = OB.projetos().slice().sort((a, b) => OB.etapaIndex(a.status) - OB.etapaIndex(b.status) || new Date(b.criadoEm) - new Date(a.criadoEm));
+    const novos = projs.filter(p => p.status === 'briefing_recebido');
+    const ativos = projs.filter(p => p.status !== 'aprovado' && p.status !== 'briefing_recebido');
+    const concluidos = projs.filter(p => p.status === 'aprovado');
+
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('bell', novos.length, 'Briefings recebidos', 'Prontos para iniciar a leitura')}
+        ${Consultor.kpi('rocket', ativos.length, 'Em andamento', 'Produção, revisão e entrega')}
+        ${Consultor.kpi('check', concluidos.length, 'Concluídos', 'Aprovados pelo cliente')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Edite o <b>status da produção</b> de cada serviço: a linha do tempo se atualiza <b>em tempo real</b> para você e para o consultor. Precisa de algum material para dar sequência? Use <b>Solicitar material</b> — chega como mensagem para o consultor na hora.</div></div>
+      ${novos.length ? `<div class="nav-label" style="padding-left:0">Briefings recebidos, iniciar leitura</div>${novos.map(p => this.timelineProjetoCard(p)).join('')}` : ''}
+      ${ativos.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Em andamento</div>${ativos.map(p => this.timelineProjetoCard(p)).join('')}` : ''}
+      ${concluidos.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Concluídos</div>${concluidos.map(p => this.timelineProjetoCard(p)).join('')}` : ''}
+      ${!projs.length ? Consultor.empty('trend', 'Nenhum serviço em andamento', 'Quando um consultor enviar um briefing, o serviço aparece aqui para você acompanhar e produzir.') : ''}`;
+
+    // editar status da produção (atualiza em tempo real p/ os dois lados)
+    v.querySelectorAll('[data-set-status]').forEach(sel => sel.onchange = () => {
+      const p = OB.projetoById(sel.dataset.setStatus); if (!p) return;
+      OB.setEtapaProjeto(p, sel.value);
+      UI.toast('Status atualizado', 'Etapa: ' + ((OB.ETAPAS_PROJETO.find(e => e.id === sel.value) || {}).nome || sel.value), 'ok');
+      App.refreshProjetosBadge();
+      this.render('timeline');
+    });
+    // enviar solicitação de material
+    v.querySelectorAll('[data-sol-send]').forEach(b => b.onclick = () => {
+      const inp = v.querySelector('#sol-' + b.dataset.solSend);
+      if (inp && Consultor.enviarSolicitacao(b.dataset.solSend, inp.value)) { inp.value = ''; this.render('timeline'); }
+    });
+    v.querySelectorAll('[data-entregar]').forEach(b => b.onclick = () => this.entregarProjeto(b.dataset.entregar));
+    v.querySelectorAll('[data-add-entrega]').forEach(b => b.onclick = () => Consultor.anexarArquivosModal(b.dataset.addEntrega, 'entrega', 'admin', () => this.render('timeline')));
+    Consultor.wireArquivos(v, () => this.render('timeline'));
+    App.refreshProjetosBadge();
+  },
+
+  timelineProjetoCard(p) {
+    const cons = OB.userById(p.consultorId);
+    const cli = OB.clientById(p.clientId);
+    const et = OB.ETAPAS_PROJETO.find(e => e.id === p.status) || {};
+    const respostas = p.briefingRespostas ? `<div class="proj-brief-box"><b>${UI.icon('docs',13)} Briefing do cliente</b><p>${(p.briefingRespostas).replace(/</g, '&lt;')}</p></div>` : '';
+    const statusSel = `<div class="tl-editor">
+      <label>${UI.icon('edit',13)} Status da produção</label>
+      <select class="input" data-set-status="${p.id}">${OB.ETAPAS_PROJETO.map(e => `<option value="${e.id}" ${p.status === e.id ? 'selected' : ''}>${e.nome}</option>`).join('')}</select>
+    </div>`;
+    const solForm = `<div class="sol-form">
+      <input type="text" id="sol-${p.id}" placeholder="Solicitar material ao consultor (ex.: logo em alta, textos, acessos)..."/>
+      <button type="button" class="btn brand sm" data-sol-send="${p.id}">${UI.icon('send',14)} Solicitar</button>
+    </div>`;
+    const acoes = [];
+    if (['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status)) acoes.push(`<button class="btn ghost sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar (link/arquivos)</button>`, `<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
+    return `<div class="card proj-card">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
+        <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>
+          <div class="mut" style="font-size:12.5px">${this._prodNomes(p.produtos)} · Consultor: ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}</div></div>
+        <span class="chip ${p.status === 'aprovado' ? 'green' : p.status === 'briefing_recebido' ? 'warn' : 'brand'} nowrap">${et.nome || ''}</span>
+      </div>
+      <div style="margin-top:14px">${Consultor.timelineHTML(p)}</div>
+      ${statusSel}
+      ${solForm}
+      ${respostas}
+      ${Consultor.projArquivosHTML(p, { admin: true })}
+      ${acoes.length ? `<div class="proj-acoes">${acoes.join('')}</div>` : ''}
+    </div>`;
   },
 
   /* ====================== VENDAS ====================== */

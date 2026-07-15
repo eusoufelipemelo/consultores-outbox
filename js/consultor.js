@@ -2573,6 +2573,17 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     opts = opts || {}; const isAdmin = !!opts.admin;
     const entregas = OB.entregasDoProjeto(proj.id);
     const uploads = OB.uploadsDoProjeto(proj.id);
+    const solicitacoes = OB.solicitacoesDoProjeto(proj.id);
+    // solicitações da OutBox (admin pede material ao consultor) — destaque âmbar, mensagem em tempo real
+    const solBloco = solicitacoes.length ? `
+      <div class="arq-group sol-group">
+        <div class="arq-head">${UI.icon('bell', 14)} Solicitações da OutBox <i>${solicitacoes.length}</i></div>
+        <div class="arq-list">${solicitacoes.map(a => `<div class="sol-item">
+          <span class="arq-ic">${UI.icon('bell', 15)}</span>
+          <div class="arq-meta"><b>${(a.nome || 'Material solicitado').replace(/</g, '&lt;')}</b><span>${isAdmin ? 'Enviada ao consultor' : 'Envie o material em "Materiais do projeto" abaixo'}</span></div>
+          <button class="iconbtn" data-arq-del="${a.id}" title="${isAdmin ? 'Remover solicitação' : 'Marcar como atendida'}">${UI.icon('check', 15)}</button>
+        </div>`).join('')}</div>
+      </div>` : '';
     const entregaBloco = (entregas.length || isAdmin) ? `
       <div class="arq-group">
         <div class="arq-head">${UI.icon('download', 14)} Entregas da OutBox${entregas.length ? ` <i>${entregas.length}</i>` : ''}</div>
@@ -2589,7 +2600,14 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         </div>
         ${uploads.length ? `<div class="arq-list">${uploads.map(a => this.arqItemHTML(a, !isAdmin)).join('')}</div>` : `<div class="arq-empty">${isAdmin ? 'O consultor ainda não enviou materiais.' : 'Suba imagens, textos de copy e links do projeto para deixar tudo organizado.'}</div>`}
       </div>`;
-    return `<div class="proj-arqs">${entregaBloco}${uploadBloco}</div>`;
+    return `<div class="proj-arqs">${solBloco}${entregaBloco}${uploadBloco}</div>`;
+  },
+  /* admin envia uma solicitação de material — vira mensagem em tempo real p/ o consultor */
+  enviarSolicitacao(projId, texto) {
+    const t = (texto || '').trim(); if (!t) return false;
+    OB.addArquivo({ id: OB.uid(), projetoId: projId, autor: 'admin', categoria: 'solicitacao', nome: t, mime: '', tamanho: 0, url: '' });
+    UI.toast('Solicitação enviada', 'O consultor foi avisado em tempo real.', 'ok');
+    return true;
   },
   async subirArquivos(projId, categoria, autor, files) {
     const MAX = 8 * 1024 * 1024; let n = 0;
