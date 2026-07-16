@@ -2735,6 +2735,19 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     root.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
     root.querySelectorAll('[data-compartilhar-proj]').forEach(b => b.onclick = () => this.compartilharLinkBriefing(b.dataset.compartilharProj));
     root.querySelectorAll('[data-compartilhar-briefing]').forEach(b => b.onclick = () => this.compartilharBriefingModal(b.dataset.compartilharBriefing || ''));
+    root.querySelectorAll('[data-del-proj]').forEach(b => b.onclick = () => this.excluirProjeto(b.dataset.delProj, onDone));
+  },
+  /* exclui um briefing/projeto (ex.: enviado duplicado) */
+  excluirProjeto(projId, onDone) {
+    const proj = OB.projetoById(projId); if (!proj) return;
+    const cli = OB.clientById(proj.clientId) || {};
+    const nomes = (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + ');
+    UI.confirm('Excluir briefing', `Remover o briefing de <b>${nomes}</b> de <b>${(cli.nome || 'cliente').replace(/</g, '&lt;')}</b>?<br><br>O link enviado ao cliente deixa de funcionar e os materiais deste projeto também são removidos. Esta ação não pode ser desfeita.`, () => {
+      OB.removeProjeto(projId);
+      UI.toast('Briefing excluído', '', 'ok');
+      App.refreshProjetosBadge();
+      if (onDone) onDone(); else this.render(App.current || 'timeline');
+    }, 'Excluir briefing');
   },
 
   /* ---------- BRIEFING preenchido: documento branded (ver/baixar) ---------- */
@@ -3016,6 +3029,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     }
     // ver/baixar o briefing preenchido pelo cliente
     if (proj.briefingRespostas) { linhas.push(`<button class="btn ghost sm" data-ver-brief="${proj.id}">${UI.icon('docs',14)} Ver briefing</button>`); linhas.push(`<button class="btn ghost sm" data-baixar-brief="${proj.id}">${UI.icon('download',14)} Baixar briefing</button>`); }
+    // excluir (ex.: briefing duplicado) — liberado enquanto a produção não começou
+    if (['briefing_enviado', 'briefing_recebido'].includes(proj.status)) linhas.push(`<button class="btn danger sm" data-del-proj="${proj.id}">${UI.icon('trash',14)} Excluir briefing</button>`);
     // relatório sempre disponível a partir do briefing recebido
     if (OB.etapaIndex(proj.status) >= 1) linhas.push(`<button class="btn ghost sm" data-relatorio="${proj.id}">${UI.icon('receipt',14)} Emitir relatório</button>`);
     if (proj.linkFinal && (proj.status === 'entregue' || proj.status === 'aprovado')) {

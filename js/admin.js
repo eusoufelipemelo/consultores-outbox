@@ -774,6 +774,7 @@ const Admin = {
     const acoes = [];
     if (p.briefingRespostas) acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}">${UI.icon('docs',14)} Ver briefing</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}">${UI.icon('download',14)} Baixar briefing</button>`);
     if (['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status)) acoes.push(`<button class="btn ghost sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar (link/arquivos)</button>`, `<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
+    acoes.push(`<button class="btn danger sm" data-del-proj="${p.id}">${UI.icon('trash',14)} Excluir</button>`);
     return `<div class="card proj-card">
       <div class="row between alc" style="gap:12px;flex-wrap:wrap">
         <div style="min-width:0"><b style="font-size:15px">${cli ? cli.nome : 'Cliente'}</b>

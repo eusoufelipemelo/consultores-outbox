@@ -656,6 +656,12 @@ const OB = {
   projetoById(id) { return (this.db.projetos || []).find(p => p.id === id) || null; },
   addProjeto(p) { this.db.projetos.push(p); this._save('projetos', this._prOut(p)); return p; },
   updateProjeto(p) { const i = this.db.projetos.findIndex(x => x.id === p.id); if (i >= 0) this.db.projetos[i] = p; else this.db.projetos.push(p); this._save('projetos', this._prOut(p)); return p; },
+  /* exclui o projeto/briefing (os arquivos vão junto pelo ON DELETE CASCADE) */
+  removeProjeto(id) {
+    this.db.projetos = (this.db.projetos || []).filter(p => p.id !== id);
+    this.db.projetoArquivos = (this.db.projetoArquivos || []).filter(a => a.projetoId !== id);
+    this._delete('projetos', id);
+  },
   /* move o projeto para uma etapa, carimbando a data (não regride datas já existentes) */
   setEtapaProjeto(p, status) {
     const idx = this.etapaIndex(status);
