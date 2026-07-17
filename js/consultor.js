@@ -761,6 +761,7 @@ const Consultor = {
               <button class="iconbtn" data-view="${s.id}" title="Visualizar em nova aba">${UI.icon('external',16)}</button>
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
               <button class="iconbtn" data-share="${s.id}" title="Compartilhar">${UI.icon('share',16)}</button>
+              ${s.acceptToken && s.statusProposta === 'aguardando' ? `<button class="iconbtn" data-lk="${s.id}" title="Copiar link de aceite" style="color:var(--brand)">${UI.icon('docs',16)}</button>` : ''}
               ${s.statusProposta==='aguardando'?`<button class="iconbtn" data-ap="${s.id}" title="Marcar aprovada" style="color:#1fa855">${UI.icon('check',16)}</button>`:''}
               <button class="iconbtn" data-edit="${s.id}" title="Editar">${UI.icon('edit',16)}</button>
               <button class="iconbtn" data-del="${s.id}" title="Excluir">${UI.icon('trash',16)}</button>
@@ -769,6 +770,7 @@ const Consultor = {
       el.querySelectorAll('[data-view]').forEach(b => b.onclick = () => this.visualizarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.view)));
       el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => this.baixarOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.pdf)));
       el.querySelectorAll('[data-share]').forEach(b => b.onclick = () => this.compartilharOrcamento(OB.salesOf(u.id).find(x => x.id === b.dataset.share)));
+      el.querySelectorAll('[data-lk]').forEach(b => b.onclick = () => { const s = OB.salesOf(u.id).find(x => x.id === b.dataset.lk); if (!s || this.bonusBloqueado(s)) return; navigator.clipboard.writeText(`${OB.APP_URL}/?aceite=${encodeURIComponent(s.id)}&t=${encodeURIComponent(s.acceptToken)}`).then(() => UI.toast('Link de aceite copiado', 'Cole no WhatsApp: o cliente vê a proposta, escolhe o pagamento e aceita.', 'ok')); });
       el.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { this.setStatusProposta(b.dataset.ap, 'aprovada'); });
       el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => this.editarVenda(OB.salesOf(u.id).find(x => x.id === b.dataset.edit)));
       el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const s = OB.salesOf(u.id).find(x => x.id === b.dataset.del); UI.confirm('Excluir orçamento', `Remover a proposta de ${OB.clientById(s.clientId)?.nome||'cliente'}?`, () => { OB.removeContratoDaVenda(s.id); OB.removeSale(s.id); UI.toast('Orçamento excluído','','ok'); this.render('orcamentos'); }, 'Excluir'); });
@@ -784,19 +786,20 @@ const Consultor = {
     const prodIds = OB.produtosDaVenda(s);
     const porteCli = cli ? (cli.porte || 'pequena') : 'pequena';
     const bruto = s.valorBruto || s.valor;
+    // porte realmente usado no orçamento (o que faz a tabela bater com o total salvo)
+    let porteOrc = null;
+    for (const pt of OB.PORTES) { if (prodIds.reduce((t, id) => t + (OB.precoTabela(id, pt.id) || 0), 0) === bruto) { porteOrc = pt.id; break; } }
+    const porteFinal = porteOrc || porteCli;
     let linhasSvc = '';
     const escopoDe = (p, id) => (p && p.incluso) ? p.incluso : 'Desenvolvido pela OutBox Soluções Digitais';
     if (prodIds.length <= 1) {
       const p0 = OB.PRODUTOS.find(x => x.id === prodIds[0]);
       linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${escopoDe(p0, prodIds[0])}</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
     } else {
-      // descobre o PORTE realmente usado no orçamento: o que faz a soma da tabela bater com o valor salvo
-      // (o porte do cadastro do cliente pode ser outro; sem isso os valores por serviço saíam distorcidos)
-      let porteUsado = null;
-      for (const pt of OB.PORTES) { if (prodIds.reduce((t, id) => t + (OB.precoTabela(id, pt.id) || 0), 0) === bruto) { porteUsado = pt.id; break; } }
-      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteUsado || porteCli) || 0 }; });
+      // usa o porte inferido acima: mostra o preço REAL de tabela de cada serviço
+      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteFinal) || 0 }; });
       const somaTab = itens.reduce((t, i) => t + i.val, 0);
-      if (porteUsado || somaTab === bruto) {
+      if (porteOrc || somaTab === bruto) {
         // soma bate: mostra o preço REAL de tabela de cada serviço (hospedagem sai 1.200 exato)
         itens.forEach(it => { it.mostra = it.val; });
       } else {
@@ -832,9 +835,12 @@ const Consultor = {
       // Bônus / cortesia (só exibe se não recusado pelo admin)
       const bonus = (s.bonus || []).filter(id => s.produtos.indexOf(id) < 0);
       if (!bonus.length || s.bonusStatus === 'recusado') return '';
-      const linhas = bonus.map(id => { const p = OB.PRODUTOS.find(x => x.id === id) || {}; return `<tr><td><b>${p.nome || id}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${p.incluso || 'Cortesia da OutBox'}</span></td><td style="text-align:right;color:#16a34a;font-weight:800">Cortesia</td></tr>`; }).join('');
+      let economia = 0;
+      const linhas = bonus.map(id => { const p = OB.PRODUTOS.find(x => x.id === id) || {}; const valTab = OB.precoTabela(id, porteFinal) || 0; economia += valTab;
+        return `<tr><td><b>${p.nome || id}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${p.incluso || 'Cortesia da OutBox'}</span></td><td style="text-align:right;white-space:nowrap"><span style="text-decoration:line-through;color:var(--mut);font-size:13px">${OB.money(valTab, s.moeda)}</span><br><b style="color:#16a34a">Cortesia</b></td></tr>`; }).join('');
       return `<div style="margin:6px 0 22px"><div style="display:inline-flex;align-items:center;gap:7px;background:#e7f7ee;color:#15803d;font-weight:800;font-size:12px;padding:6px 12px;border-radius:999px;margin-bottom:10px">&#127873; BÔNUS EXCLUSIVO</div>
-        <table class="tbl"><thead><tr><th>Você também leva de brinde</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+        <table class="tbl"><thead><tr><th>Você também leva de brinde</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>
+        <div style="text-align:right;font-size:14px;color:#15803d;font-weight:800;margin-top:-6px">Você economiza ${OB.money(economia, s.moeda)} em bônus &#127881;</div></div>`;
     })()}
     ${(() => {
       const m = s.moeda;
@@ -1293,7 +1299,8 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
     const p = OB.PRODUTOS.find(x => x.id === s.produto);
     const nome = cli ? cli.nome : 'cliente';
     const titulo = `Orçamento OutBox — ${nome}`;
-    const texto = `Olá${cli ? ', ' + cli.nome.split(' ')[0] : ''}! Segue o orçamento ${OB.produtosNomes(s) ? 'de ' + OB.produtosNomes(s) + ' ' : ''}no valor de ${OB.money(s.valor, s.moeda)}. Qualquer dúvida estou à disposição. — ${u.nome || 'OutBox'}`;
+    const aceiteUrl = s.acceptToken ? `${OB.APP_URL}/?aceite=${encodeURIComponent(s.id)}&t=${encodeURIComponent(s.acceptToken)}` : '';
+    const texto = `Olá${cli ? ', ' + cli.nome.split(' ')[0] : ''}! Segue o orçamento ${OB.produtosNomes(s) ? 'de ' + OB.produtosNomes(s) + ' ' : ''}no valor de ${OB.money(s.valor, s.moeda)}.${aceiteUrl ? ` Para ver as formas de pagamento e aceitar a proposta, é só abrir: ${aceiteUrl}` : ''} Qualquer dúvida estou à disposição. — ${u.nome || 'OutBox'}`;
     const arquivo = new File([this.buildOrcamentoHTML(s)], `Orcamento OutBox - ${nome}.html`, { type: 'text/html' });
 
     // 1) Web Share API com arquivo (ideal no celular)

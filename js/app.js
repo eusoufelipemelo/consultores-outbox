@@ -146,7 +146,7 @@ const App = {
     document.getElementById('app').style.display = 'none';
     const host = document.createElement('div');
     host.id = 'aceite-page';
-    host.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#F15532,#e0431f);font-family:Inter,system-ui,sans-serif';
+    host.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#F15532,#e0431f);font-family:Inter,system-ui,sans-serif;overflow:auto';
     const card = (icon, cor, titulo, msg, extra) => `
       <div style="max-width:440px;width:100%;background:#fff;border-radius:20px;padding:40px 32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
         <div style="width:72px;height:72px;border-radius:50%;background:${cor}1a;color:${cor};display:grid;place-items:center;margin:0 auto 20px">
@@ -160,8 +160,32 @@ const App = {
     document.body.appendChild(host);
     if (!saleId || !token) { host.innerHTML = card(alert, '#dc2626', 'Link inválido', 'Este link de aceite está incompleto. Peça ao seu consultor para reenviar a proposta.'); return; }
 
-    // tela de escolha da forma de pagamento + aceite
-    const parcOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<option value="${n}">${n}x</option>`).join('');
+    // carrega o resumo da proposta (RPC pública) e mostra tudo: serviços, bônus e valores por forma
+    host.innerHTML = card(spinner, '#F15532', 'Carregando proposta...', 'Um instante, estamos buscando os detalhes.');
+    let info = null;
+    try { const { data, error } = await SB.rpc('proposta_publica', { p_sale: saleId, p_token: token }); if (error) throw error; info = data; } catch (e) { info = null; }
+    if (!info || !info.ok) { host.innerHTML = card(alert, '#dc2626', 'Link inválido', 'Este link de aceite não confere ou expirou. Peça ao seu consultor para reenviar a proposta.'); return; }
+    if (info.status_proposta === 'aprovada') {
+      host.innerHTML = card(check, '#16a34a', 'Proposta já aceita',
+        'Esta proposta já estava confirmada' + (info.forma_aceite ? ' (' + (info.forma_aceite === 'cartao' ? 'Cartão em ' + (info.parcelas_aceite || 1) + 'x' : 'PIX à vista') + ')' : '') + '. Seu consultor foi avisado e dará seguimento ao projeto.',
+        '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais</p>');
+      return;
+    }
+    const m = info.moeda || 'BRL';
+    let produtosAc = []; try { produtosAc = JSON.parse(info.produtos || '[]'); } catch (e) { produtosAc = []; }
+    const bonusAc = info.bonus_status === 'recusado' ? [] : (info.bonus || '').split(',').map(x => x.trim()).filter(Boolean);
+    const bruto = Number(info.valor_bruto) || 0;
+    const desc = info.desconto_tipo === 'percent' ? Number(info.desconto_valor || 0) : 0;
+    const negociado = Math.round(bruto * (1 - desc / 100));
+    let porteAc = 'pequena';
+    for (const pt of OB.PORTES) { if (produtosAc.reduce((t, id) => t + (OB.precoTabela(id, pt.id) || 0), 0) === bruto) { porteAc = pt.id; break; } }
+    const nomeProd = id => (OB.PRODUTOS.find(x => x.id === id) || {}).nome || id;
+    const pixCalc = OB.calcPagamento(negociado, 'pix', { pixDesconto: !!info.pix_desconto });
+    const cartaoCalc = n => OB.calcPagamento(negociado, 'cartao', { parcelas: n });
+    let economiaBonus = 0; bonusAc.forEach(id => { economiaBonus += OB.precoTabela(id, porteAc) || 0; });
+    const svcLinhas = produtosAc.map(id => `<div class="ac-svc"><span>${nomeProd(id)}</span><b>${OB.money(OB.precoTabela(id, porteAc) || 0, m)}</b></div>`).join('');
+    const bonusLinhas = bonusAc.map(id => `<div class="ac-svc"><span>&#127873; ${nomeProd(id)} <i class="ac-cort">Bônus</i></span><b><s style="color:#8a96a3;font-weight:500">${OB.money(OB.precoTabela(id, porteAc) || 0, m)}</s> <span style="color:#16a34a">Cortesia</span></b></div>`).join('');
+    const parcOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(n => { const c = cartaoCalc(n); return `<option value="${n}">${n}x de ${OB.money(c.valorParcela, m)} · total ${OB.money(c.valorCliente, m)}</option>`; }).join('');
     host.innerHTML = `
       <style>
         #aceite-page .ac-card{max-width:460px;width:100%;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -182,16 +206,30 @@ const App = {
         #aceite-page .ac-btn:disabled{opacity:.7;cursor:default}
         #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:12px}
         #aceite-page .ac-foot{text-align:center;font-size:12px;color:#8a96a3;margin-top:16px}
+        #aceite-page .ac-sum{border:1px solid #e2e7ec;border-radius:13px;padding:14px 16px;margin-bottom:18px}
+        #aceite-page .ac-svc{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;color:#0A0A0A;padding:6px 0;border-bottom:1px dashed #eef1f4}
+        #aceite-page .ac-svc:last-of-type{border-bottom:none}
+        #aceite-page .ac-svc b{white-space:nowrap}
+        #aceite-page .ac-cort{font-style:normal;font-size:10.5px;font-weight:800;text-transform:uppercase;background:#e7f7ee;color:#15803d;border-radius:999px;padding:2px 8px;margin-left:4px}
+        #aceite-page .ac-tot{display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:#0A0A0A;padding-top:10px;margin-top:4px;border-top:2px solid #eef1f4}
+        #aceite-page .ac-eco{text-align:right;font-size:12.5px;font-weight:700;color:#15803d;margin-top:4px}
       </style>
       <div class="ac-card">
         <div class="ac-h">
           <div class="ac-mark"><svg viewBox="0 0 439 439" width="30" height="30"><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg></div>
-          <h1>Aceitar a sua proposta</h1>
-          <p>Escolha como prefere pagar e confirme. O seu consultor recebe a escolha na hora.</p>
+          <h1>Proposta OutBox${info.cliente ? ' · ' + info.cliente : ''}</h1>
+          <p>Confira o resumo, escolha como prefere pagar e confirme. ${info.consultor ? 'Seu consultor ' + info.consultor + ' recebe a escolha na hora.' : 'Seu consultor recebe a escolha na hora.'}</p>
+        </div>
+        <div class="ac-lbl">Resumo da proposta</div>
+        <div class="ac-sum">
+          ${svcLinhas}
+          ${bonusLinhas}
+          <div class="ac-tot"><span>Valor dos serviços${desc ? ` (${desc}% off)` : ''}</span><span>${OB.money(negociado, m)}</span></div>
+          ${economiaBonus ? `<div class="ac-eco">&#127873; Você economiza ${OB.money(economiaBonus, m)} em bônus</div>` : ''}
         </div>
         <div class="ac-lbl">Forma de pagamento</div>
-        <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span><b>PIX à vista</b><span>Pagamento integral, na hora</span></span></label>
-        <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span><b>Cartão de crédito</b><span>Em até 12x</span></span></label>
+        <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span style="flex:1"><b>PIX à vista${info.pix_desconto ? ' · 5% de desconto' : ''}</b><span>Pagamento integral, na hora</span></span><b style="white-space:nowrap">${OB.money(pixCalc.valorCliente, m)}</b></label>
+        <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span style="flex:1"><b>Cartão de crédito</b><span>Em até 12x</span></span><b style="white-space:nowrap">até 12x</b></label>
         <div class="ac-parc" id="ac-parc" hidden><label for="ac-parcelas">Número de parcelas</label><select id="ac-parcelas">${parcOpts}</select></div>
         <div class="ac-err" id="ac-err" hidden></div>
         <button class="ac-btn" id="ac-ok">&#10003; Aceitar proposta</button>
