@@ -1601,3 +1601,12 @@ select:disabled { cursor: not-allowed; opacity: .6; }
 .bf-cta__txt b { display: block; font-size: 15px; }
 .bf-cta__txt span { font-size: 12.5px; color: var(--text-mut); }
 .bf-cta .btn { flex: 0 0 auto; }
+
+/* ===== Bônus / cortesia ===== */
+.svc-opt.bonus-opt:has(input:checked) { border-color: #16a34a; background: rgba(22,163,74,.10); color: var(--text); }
+.svc-opt.bonus-opt:has(input:checked) input { accent-color: #16a34a; }
+.bonus-box { margin-top: 14px; border: 1px solid color-mix(in srgb, #16a34a 34%, var(--line)); background: color-mix(in srgb, #16a34a 7%, var(--surface-2)); border-radius: 12px; padding: 12px 14px; }
+.bonus-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #15803d; margin-bottom: 10px; }
+[data-theme="dark"] .bonus-head { color: #4ade80; }
+.bonus-cost { margin-top: 10px; font-size: 13px; color: var(--text-soft); }
+.bonus-cost b { color: var(--text); }

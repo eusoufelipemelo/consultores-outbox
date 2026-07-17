@@ -565,6 +565,12 @@ const Consultor = {
         <div class="field"><label>Link de pagamento <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
           <input id="s-link" type="url" placeholder="https://... cole o link da cobrança"/>
           <div class="hint">Vira o botão verde "Ir para o pagamento" no orçamento. Pode colar depois, editando a proposta.</div></div>
+        <div class="field"><label>Bônus / cortesia <span style="font-weight:400;color:var(--text-mut)">(opcional)</span></label>
+          <div class="svc-multi" id="s-bonus">
+            ${OB.PRODUTOS.map(p => `<label class="svc-opt bonus-opt"><input type="checkbox" value="${p.id}"><span>${p.nome}</span></label>`).join('')}
+          </div>
+          <input id="s-bonus-obs" class="input" placeholder="Observação do bônus (ex.: cliente fechou 2 serviços)" style="margin-top:8px"/>
+          <div class="hint">Serviços que você quer <b>dar de brinde</b>. Aparecem como <b>Bônus (cortesia)</b> no orçamento do cliente e vão para o admin autorizar.</div></div>
         <div class="field"><label>Status da proposta</label>
           <select id="s-status">
             <option value="aprovada" ${!orcamento?'selected':''}>Aprovada (venda fechada)</option>
@@ -700,6 +706,7 @@ const Consultor = {
       const pfSave = produtos.length === 1 ? OB.produtoPrecoFixo(produtos[0]) : null;
       const desc = pfSave ? 0 : (parseInt(sDesc.value, 10) || 0);
       const calc = payBox._calc;
+      const bonus = [...document.querySelectorAll('#s-bonus input:checked')].map(i => i.value).filter(id => !produtos.includes(id));
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: sCli.value,
         produto: produtos[0], produtos,
@@ -708,10 +715,12 @@ const Consultor = {
         precoModo: 'tabela',
         formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
         linkPagamento: (document.getElementById('s-link').value || '').trim(),
+        bonus, bonusStatus: bonus.length ? 'pendente' : null, bonusObs: (document.getElementById('s-bonus-obs').value || '').trim(),
         acceptToken: OB.uid().replace(/-/g, ''), // token p/ o link de aceite do cliente
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
       });
+      if (bonus.length) UI.toast('Bônus registrado', 'Enviado para o admin autorizar.', 'info');
       this.autoContrato(OB.db.sales[OB.db.sales.length - 1]); // formalizou a venda -> gera o contrato
       UI.closeModal();
       UI.toast(orcamento ? 'Orçamento criado!' : 'Venda lançada!', '', 'ok');
@@ -813,6 +822,14 @@ const Consultor = {
     </div>
     <table class="tbl"><thead><tr><th>Serviço${prodIds.length > 1 ? 's' : ''}</th><th style="text-align:right">Valor</th></tr></thead>
       <tbody>${linhasSvc}</tbody></table>
+    ${(() => {
+      // Bônus / cortesia (só exibe se não recusado pelo admin)
+      const bonus = (s.bonus || []).filter(id => s.produtos.indexOf(id) < 0);
+      if (!bonus.length || s.bonusStatus === 'recusado') return '';
+      const linhas = bonus.map(id => { const p = OB.PRODUTOS.find(x => x.id === id) || {}; return `<tr><td><b>${p.nome || id}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${p.incluso || 'Cortesia da OutBox'}</span></td><td style="text-align:right;color:#16a34a;font-weight:800">Cortesia</td></tr>`; }).join('');
+      return `<div style="margin:6px 0 22px"><div style="display:inline-flex;align-items:center;gap:7px;background:#e7f7ee;color:#15803d;font-weight:800;font-size:12px;padding:6px 12px;border-radius:999px;margin-bottom:10px">&#127873; BÔNUS EXCLUSIVO</div>
+        <table class="tbl"><thead><tr><th>Você também leva de brinde</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    })()}
     ${(() => {
       const m = s.moeda;
       const base = s.valorBruto || s.valor;

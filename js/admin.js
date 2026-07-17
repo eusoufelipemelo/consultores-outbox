@@ -11,6 +11,7 @@ const Admin = {
     { id: 'consultores',label: 'Consultores',      icon: 'users',    sec: 'Operação' },
     { id: 'vendas',     label: 'Vendas',           icon: 'cart',     sec: 'Operação' },
     { id: 'financeiro', label: 'Financeiro',       icon: 'money',    sec: 'Operação' },
+    { id: 'bonus',      label: 'Bônus',            icon: 'prize',    sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
     { id: 'briefings',  label: 'Briefings',        icon: 'docs',     sec: 'Operação' },
@@ -866,6 +867,63 @@ const Admin = {
     const busca = document.getElementById('bf-cliente'); let t; busca.oninput = () => { clearTimeout(t); t = setTimeout(capt, 300); };
     document.getElementById('bf-limpar').onclick = () => { this._bfFiltro = { cliente: '', servico: '', consultor: '', de: '', ate: '' }; this.view_briefings(); };
     draw();
+  },
+
+  /* ====================== BÔNUS (cortesias a autorizar) ====================== */
+  view_bonus() {
+    const v = document.getElementById('main-view');
+    const all = OB.sales().filter(s => s.bonusStatus && (s.bonus || []).length).slice().sort((a, b) => new Date(b.data) - new Date(a.data));
+    if (!all.length) { v.innerHTML = Consultor.empty('prize', 'Nenhum bônus solicitado', 'Quando um consultor incluir um bônus (cortesia) num orçamento, ele aparece aqui para você autorizar ou recusar.'); return; }
+    const pend = all.filter(s => s.bonusStatus === 'pendente');
+    const aprov = all.filter(s => s.bonusStatus === 'aprovado');
+    const rec = all.filter(s => s.bonusStatus === 'recusado');
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('clock', pend.length, 'Aguardando autorização', 'Bônus pendentes de aprovação')}
+        ${Consultor.kpi('check', aprov.length, 'Autorizados', 'Cortesias liberadas')}
+        ${Consultor.kpi('x', rec.length, 'Recusados', 'Cortesias negadas')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>O consultor sinaliza um <b>bônus (cortesia)</b> no orçamento. Aqui você <b>autoriza ou recusa</b>. Se recusar, o bônus deixa de aparecer no orçamento do cliente.</div></div>
+      ${pend.length ? `<div class="nav-label" style="padding-left:0">Aguardando autorização</div>${pend.map(s => this.bonusCard(s)).join('')}` : ''}
+      ${aprov.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Autorizados</div>${aprov.map(s => this.bonusCard(s)).join('')}` : ''}
+      ${rec.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Recusados</div>${rec.map(s => this.bonusCard(s)).join('')}` : ''}`;
+    v.querySelectorAll('[data-bonus-ok]').forEach(b => b.onclick = () => this.setBonus(b.dataset.bonusOk, 'aprovado'));
+    v.querySelectorAll('[data-bonus-no]').forEach(b => b.onclick = () => this.setBonus(b.dataset.bonusNo, 'recusado'));
+    App.refreshBadge();
+  },
+  bonusCard(s) {
+    const cli = OB.clientById(s.clientId) || {};
+    const cons = OB.userById(s.consultorId);
+    const porte = cli.porte || 'pequena';
+    const pagos = (s.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + ');
+    const bonusItens = (s.bonus || []).map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, val: OB.precoTabela(id, porte) || 0 }));
+    const custo = bonusItens.reduce((t, b) => t + b.val, 0);
+    const chip = s.bonusStatus === 'aprovado' ? '<span class="chip green nowrap">Autorizado</span>' : (s.bonusStatus === 'recusado' ? '<span class="chip gray nowrap">Recusado</span>' : '<span class="chip warn nowrap">Aguardando</span>');
+    return `<div class="card proj-card">
+      <div class="row between alc" style="gap:12px;flex-wrap:wrap">
+        <div style="min-width:0"><b style="font-size:15px">${cli.nome || 'Cliente'}</b>
+          <div class="mut" style="font-size:12.5px">Consultor: ${cons ? cons.nome + ' ' + (cons.sobrenome || '') : '-'}${pagos ? ' · Contratou: ' + pagos : ''}</div></div>
+        ${chip}
+      </div>
+      <div class="bonus-box">
+        <div class="bonus-head">${UI.icon('prize',15)} Bônus solicitado (cortesia)</div>
+        <div class="arq-list">${bonusItens.map(b => `<div class="arq-item"><span class="arq-ic" style="background:#e7f7ee;color:#15803d">${UI.icon('prize',15)}</span><div class="arq-meta"><b>${b.nome}</b><span>Valor de tabela: ${OB.money(b.val, s.moeda)}</span></div></div>`).join('')}</div>
+        ${s.bonusObs ? `<div class="hint" style="margin-top:8px">${UI.icon('info',12)} ${s.bonusObs.replace(/</g, '&lt;')}</div>` : ''}
+        <div class="bonus-cost">Custo total da cortesia: <b>${OB.money(custo, s.moeda)}</b></div>
+      </div>
+      ${s.bonusStatus === 'pendente' ? `<div class="proj-acoes">
+        <button class="btn brand sm" data-bonus-ok="${s.id}">${UI.icon('check',14)} Autorizar bônus</button>
+        <button class="btn danger sm" data-bonus-no="${s.id}">${UI.icon('x',14)} Recusar</button>
+      </div>` : `<div class="proj-acoes"><button class="btn ghost sm" data-bonus-${s.bonusStatus === 'aprovado' ? 'no' : 'ok'}="${s.id}">${s.bonusStatus === 'aprovado' ? 'Reverter para recusado' : 'Autorizar mesmo assim'}</button></div>`}
+    </div>`;
+  },
+  setBonus(saleId, status) {
+    const s = OB.sales().find(x => x.id === saleId); if (!s) return;
+    s.bonusStatus = status;
+    OB.updateSale(s);
+    UI.toast(status === 'aprovado' ? 'Bônus autorizado' : 'Bônus recusado', '', status === 'aprovado' ? 'ok' : 'info');
+    App.refreshBadge();
+    this.render('bonus');
   },
 
   /* ====================== VENDAS ====================== */
