@@ -180,7 +180,14 @@ const App = {
     const negociado = Math.round(bruto * (1 - desc / 100));
     const pixCalc = OB.calcPagamento(negociado, 'pix', { pixDesconto: !!info.pix_desconto });
     const cartaoCalc = n => OB.calcPagamento(negociado, 'cartao', { parcelas: n });
-    const parcOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(n => { const c = cartaoCalc(n); return `<option value="${n}">${n}x de ${OB.money(c.valorParcela, m)} · total ${OB.money(c.valorCliente, m)}</option>`; }).join('');
+    // cartões de parcela (toque grande, valor por parcela + total) em vez de <select>
+    const parcChips = Array.from({ length: 12 }, (_, i) => i + 1).map(n => {
+      const c = cartaoCalc(n);
+      const semJuros = c.valorCliente <= negociado + 1;
+      return `<button type="button" class="ac-chip" data-n="${n}" role="radio" aria-checked="false" aria-label="${n} vezes de ${OB.money(c.valorParcela, m)}, total ${OB.money(c.valorCliente, m)}">
+        <b>${n}x</b><span>${OB.money(c.valorParcela, m)}</span><i class="ac-chip-tag ${semJuros ? 'sj' : 'cj'}">${semJuros ? 'sem juros' : 'total ' + OB.money(c.valorCliente, m)}</i>
+      </button>`;
+    }).join('');
 
     // documento COMPLETO da proposta (mesmo layout do orçamento) dentro de um iframe isolado
     const saleObj = {
@@ -206,44 +213,113 @@ const App = {
         #aceite-page .ac-bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e7ec;box-shadow:0 -8px 30px rgba(0,0,0,.1);z-index:5}
         #aceite-page .ac-bi{max-width:860px;margin:0 auto;padding:16px}
         #aceite-page .ac-lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a96a3;margin:0 0 9px}
-        #aceite-page .ac-forms{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-        #aceite-page .ac-opt{flex:1;min-width:200px;display:flex;align-items:center;gap:11px;border:1.5px solid #e2e7ec;border-radius:13px;padding:13px 15px;cursor:pointer;transition:border-color .15s,background .15s}
-        #aceite-page .ac-opt:has(input:checked){border-color:#F15532;background:#fff5f2}
-        #aceite-page .ac-opt input{width:19px;height:19px;accent-color:#F15532;flex:none}
-        #aceite-page .ac-opt b{font-size:14.5px;color:#0A0A0A;display:block}
-        #aceite-page .ac-opt span{font-size:12px;color:#8a96a3}
-        #aceite-page .ac-parc{margin:2px 0 12px}
-        #aceite-page .ac-parc select{width:100%;height:46px;border:1px solid #e2e7ec;border-radius:11px;padding:0 13px;font-size:15px;font-family:inherit;background:#fff}
-        #aceite-page .ac-btn{width:100%;background:#F15532;color:#fff;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 10px 26px rgba(241,85,50,.3)}
+        #aceite-page .ac-forms{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+        #aceite-page .ac-opt{flex:1;min-width:200px;display:flex;align-items:center;gap:11px;border:1.5px solid #e2e7ec;border-radius:13px;padding:13px 15px;cursor:pointer;background:#fff;text-align:left;font-family:inherit;transition:border-color .18s,background .18s,box-shadow .18s}
+        #aceite-page .ac-opt:hover{border-color:#f7b6a5}
+        #aceite-page .ac-opt[aria-pressed="true"]{border-color:#F15532;background:#fff5f2;box-shadow:0 4px 14px rgba(241,85,50,.14)}
+        #aceite-page .ac-opt:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(241,85,50,.28)}
+        #aceite-page .ac-radio{width:20px;height:20px;border-radius:50%;border:2px solid #cdd5dd;flex:none;position:relative;transition:border-color .18s}
+        #aceite-page .ac-opt[aria-pressed="true"] .ac-radio{border-color:#F15532}
+        #aceite-page .ac-opt[aria-pressed="true"] .ac-radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#F15532}
+        #aceite-page .ac-otxt{flex:1;min-width:0}
+        #aceite-page .ac-opt b{font-size:14.5px;color:#0A0A0A;display:block;line-height:1.3}
+        #aceite-page .ac-opt .ac-sub{font-size:12px;color:#8a96a3;font-weight:400}
+        #aceite-page .ac-oval{font-size:15px;font-weight:800;color:#0A0A0A;white-space:nowrap}
+        #aceite-page .ac-opt[data-forma="pix"][aria-pressed="true"] .ac-oval{color:#16a34a}
+        #aceite-page .ac-parc{margin:0 0 12px;animation:acfade .22s ease both}
+        @keyframes acfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+        #aceite-page .ac-parc-h{font-size:12.5px;font-weight:700;color:#46505c;margin:0 0 9px}
+        #aceite-page .ac-chips{display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+        #aceite-page .ac-chips::-webkit-scrollbar{height:5px}
+        #aceite-page .ac-chips::-webkit-scrollbar-thumb{background:#d6dde3;border-radius:99px}
+        #aceite-page .ac-chip{flex:0 0 auto;min-width:92px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1.5px solid #e2e7ec;border-radius:12px;padding:10px 13px;background:#fff;cursor:pointer;font-family:inherit;transition:border-color .16s,background .16s,box-shadow .16s}
+        #aceite-page .ac-chip:hover{border-color:#f7b6a5}
+        #aceite-page .ac-chip[aria-checked="true"]{border-color:#F15532;background:#fff5f2;box-shadow:0 4px 12px rgba(241,85,50,.16)}
+        #aceite-page .ac-chip:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(241,85,50,.28)}
+        #aceite-page .ac-chip b{font-size:16px;font-weight:800;color:#0A0A0A;line-height:1.1}
+        #aceite-page .ac-chip span{font-size:12.5px;color:#46505c;font-weight:600}
+        #aceite-page .ac-chip-tag{font-style:normal;font-size:10.5px;font-weight:700;margin-top:2px;white-space:nowrap}
+        #aceite-page .ac-chip-tag.sj{color:#15803d}
+        #aceite-page .ac-chip-tag.cj{color:#8a96a3}
+        #aceite-page .ac-plan{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f6f8fa;border:1px solid #e6eaef;border-radius:11px;padding:11px 14px;font-size:13.5px;color:#46505c}
+        #aceite-page .ac-plan b{color:#0A0A0A;font-size:15px;font-weight:800}
+        #aceite-page .ac-btn{width:100%;background:#F15532;color:#fff;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 10px 26px rgba(241,85,50,.3);transition:filter .15s,transform .08s;display:flex;align-items:center;justify-content:center;gap:8px}
+        #aceite-page .ac-btn:hover{filter:brightness(1.04)}
+        #aceite-page .ac-btn:active{transform:translateY(1px)}
         #aceite-page .ac-btn:disabled{opacity:.7;cursor:default}
         #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:10px}
-        @media(max-width:560px){#aceite-page .ac-opt{min-width:0}}
+        @media(max-width:560px){#aceite-page .ac-opt{min-width:0}#aceite-page .ac-bi{padding:14px}}
+        @media(prefers-reduced-motion:reduce){#aceite-page .ac-parc,#aceite-page .ac-btn,#aceite-page .ac-chip,#aceite-page .ac-opt{animation:none;transition:none}}
       </style>
       <div class="ac-wrap">
         <iframe id="ac-doc" class="ac-doc" title="Proposta OutBox"></iframe>
       </div>
       <div class="ac-bar"><div class="ac-bi">
         <div class="ac-lbl">Escolha como prefere pagar</div>
-        <div class="ac-forms">
-          <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span style="flex:1"><b>PIX à vista${info.pix_desconto ? ' · 5% off' : ''}</b><span>Integral, na hora</span></span><b style="white-space:nowrap">${OB.money(pixCalc.valorCliente, m)}</b></label>
-          <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span style="flex:1"><b>Cartão de crédito</b><span>Em até 12x</span></span><b style="white-space:nowrap">até 12x</b></label>
+        <div class="ac-forms" role="radiogroup" aria-label="Forma de pagamento">
+          <button type="button" class="ac-opt" data-forma="pix" role="radio" aria-checked="true" aria-pressed="true">
+            <span class="ac-radio"></span>
+            <span class="ac-otxt"><b>PIX à vista${info.pix_desconto ? ' · 5% off' : ''}</b><span class="ac-sub">Pagamento integral, na hora</span></span>
+            <span class="ac-oval">${OB.money(pixCalc.valorCliente, m)}</span>
+          </button>
+          <button type="button" class="ac-opt" data-forma="cartao" role="radio" aria-checked="false" aria-pressed="false">
+            <span class="ac-radio"></span>
+            <span class="ac-otxt"><b>Cartão de crédito</b><span class="ac-sub">Parcele em até 12x</span></span>
+            <span class="ac-oval" id="ac-cval">até 12x</span>
+          </button>
         </div>
-        <div class="ac-parc" id="ac-parc" hidden><select id="ac-parcelas">${parcOpts}</select></div>
+        <div class="ac-parc" id="ac-parc" hidden>
+          <div class="ac-parc-h">Em quantas vezes quer parcelar?</div>
+          <div class="ac-chips" id="ac-chips" role="radiogroup" aria-label="Número de parcelas">${parcChips}</div>
+          <div class="ac-plan" id="ac-plan"><span>Escolha o número de parcelas acima</span></div>
+        </div>
         <div class="ac-err" id="ac-err" hidden></div>
-        <button class="ac-btn" id="ac-ok">&#10003; Aceitar proposta</button>
+        <button class="ac-btn" id="ac-ok">Aceitar com PIX · ${OB.money(pixCalc.valorCliente, m)}</button>
       </div></div>`;
     const iframe = document.getElementById('ac-doc');
     iframe.srcdoc = docHTML;
     iframe.onload = () => { try { const h = iframe.contentWindow.document.documentElement.scrollHeight; if (h > 100) iframe.style.height = (h + 6) + 'px'; } catch (e) {} };
+    // estado da escolha
+    let forma = 'pix';
+    let parcelas = 0; // 0 = nenhuma parcela escolhida ainda
     const parcWrap = document.getElementById('ac-parc');
-    host.querySelectorAll('input[name="ac-forma"]').forEach(r => r.onchange = () => { parcWrap.hidden = host.querySelector('input[name="ac-forma"]:checked').value !== 'cartao'; });
-    document.getElementById('ac-ok').onclick = async () => {
-      const forma = host.querySelector('input[name="ac-forma"]:checked').value;
-      const parcelas = forma === 'cartao' ? (parseInt(document.getElementById('ac-parcelas').value, 10) || 1) : 1;
-      const btn = document.getElementById('ac-ok'); const err = document.getElementById('ac-err');
+    const okBtn = document.getElementById('ac-ok');
+    const cval = document.getElementById('ac-cval');
+    const plan = document.getElementById('ac-plan');
+    const optBtns = host.querySelectorAll('.ac-opt');
+    const chipBtns = host.querySelectorAll('.ac-chip');
+    const money = v => OB.money(v, m);
+    const atualizarBotao = () => {
+      if (forma === 'pix') { okBtn.textContent = `Aceitar com PIX · ${money(pixCalc.valorCliente)}`; return; }
+      if (!parcelas) { okBtn.textContent = 'Escolha o número de parcelas'; return; }
+      const c = cartaoCalc(parcelas);
+      okBtn.textContent = parcelas === 1 ? `Aceitar · à vista no cartão · ${money(c.valorCliente)}` : `Aceitar · ${parcelas}x de ${money(c.valorParcela)}`;
+    };
+    const selParcela = n => {
+      parcelas = n;
+      chipBtns.forEach(ch => ch.setAttribute('aria-checked', String(Number(ch.dataset.n) === n)));
+      const c = cartaoCalc(n);
+      const semJuros = c.valorCliente <= negociado + 1;
+      cval.textContent = `${n}x`;
+      plan.innerHTML = `<span>${n === 1 ? 'À vista no cartão' : n + 'x de ' + money(c.valorParcela)}${semJuros ? ' · sem juros' : ' · juros do cartão inclusos'}</span><b>${money(c.valorCliente)}</b>`;
+      atualizarBotao();
+    };
+    const setForma = f => {
+      forma = f;
+      optBtns.forEach(b => { const on = b.dataset.forma === f; b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-checked', String(on)); });
+      parcWrap.hidden = f !== 'cartao';
+      if (f === 'cartao' && !parcelas) selParcela(1);
+      atualizarBotao();
+    };
+    optBtns.forEach(b => b.onclick = () => setForma(b.dataset.forma));
+    chipBtns.forEach(ch => ch.onclick = () => selParcela(Number(ch.dataset.n)));
+    okBtn.onclick = async () => {
+      const parcelasFinal = forma === 'cartao' ? (parcelas || 1) : 1;
+      const btn = okBtn; const err = document.getElementById('ac-err');
       btn.disabled = true; btn.textContent = 'Confirmando...';
+      const restaura = () => { btn.disabled = false; atualizarBotao(); };
       try {
-        const { data, error } = await SB.rpc('aceitar_proposta', { p_sale: saleId, p_token: token, p_forma: forma, p_parcelas: parcelas });
+        const { data, error } = await SB.rpc('aceitar_proposta', { p_sale: saleId, p_token: token, p_forma: forma, p_parcelas: parcelasFinal });
         if (error) throw error;
         if (data && data.ok) {
           host.innerHTML = card(check, '#16a34a', data.ja ? 'Proposta já aceita' : 'Proposta aceita! 🎉',
@@ -252,11 +328,11 @@ const App = {
             '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais · obrigado pela confiança</p>');
         } else {
           err.textContent = (data && data.erro === 'token') ? 'Este link de aceite não confere. Peça ao consultor para reenviar.' : 'Proposta não encontrada. Fale com o seu consultor.';
-          err.hidden = false; btn.disabled = false; btn.innerHTML = '&#10003; Aceitar proposta';
+          err.hidden = false; restaura();
         }
       } catch (e) {
         err.textContent = 'Não foi possível confirmar agora. Tente novamente. (' + ((e && e.message) || 'falha') + ')';
-        err.hidden = false; btn.disabled = false; btn.innerHTML = '&#10003; Aceitar proposta';
+        err.hidden = false; restaura();
       }
     };
   },
