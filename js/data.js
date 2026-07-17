@@ -30,10 +30,9 @@ const OB = {
       incluso: 'Loja virtual completa: cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gerenciar pedidos.' },
     { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 19000, media: 45000, grande: 82000, industria: 130000 },
       incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' },
-    { id: 'hospedagem',   nome: 'Hospedagem de Site',  anual: true, maxParcelas: 12,
-      precoFixo: { pix: 900, cartao: 1200 }, // preço único para todos os portes (plano anual)
-      precos: { pequena: 1200, media: 1200, grande: 1200, industria: 1200 },
-      incluso: 'Hospedagem anual do site em servidor de alta disponibilidade: domínio conectado, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico. Renovação anual: R$1.200 no cartão em até 12x ou R$900 à vista no PIX.' }
+    { id: 'hospedagem',   nome: 'Hospedagem de Site',  anual: true,
+      precos: { pequena: 1200, media: 1200, grande: 1200, industria: 1200 }, // R$ 1.200 (preço único p/ todos os portes)
+      incluso: 'Hospedagem anual do site em servidor de alta disponibilidade: domínio conectado, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico. Renovação anual.' }
   ],
   /* preço de tabela conforme produto + porte do cliente */
   precoTabela(produtoId, porteId) {
@@ -86,8 +85,8 @@ const OB = {
       const total = Math.round(base / (1 - j / 100));
       return { forma, valorServico: base, valorCliente: total, parcelas: n, valorParcela: Math.round((total / n) * 100) / 100, jurosPct: j, pixDesconto: false };
     }
-    // boleto à vista (preço cheio, sem o desconto do PIX)
-    return { forma: 'boleto', valorServico: base, valorCliente: base, parcelas: 1, valorParcela: base, jurosPct: 0, pixDesconto: false };
+    // fallback à vista (PIX sem o desconto)
+    return { forma: 'pix', valorServico: base, valorCliente: base, parcelas: 1, valorParcela: base, jurosPct: 0, pixDesconto: false };
   },
   /* valor mínimo para solicitar o saque da comissão (regra fixa) */
   SAQUE_MINIMO: 500,
@@ -193,7 +192,6 @@ const OB = {
   /* ---------- formas de pagamento ---------- */
   FORMAS_PAGAMENTO: [
     { id: 'pix',     nome: 'PIX à vista', detalhe: 'Pagamento integral · pode conceder 5% de desconto à vista' },
-    { id: 'boleto',  nome: 'Boleto à vista', detalhe: 'Pagamento integral · preço cheio, sem o desconto do PIX' },
     { id: 'cartao',  nome: 'Cartão de crédito', detalhe: 'Em até 12x · juros do parcelamento repassados ao cliente' }
   ],
 
@@ -362,8 +360,8 @@ const OB = {
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
 
-  _sIn(r)  { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods) || !prods.length) prods = r.produto ? [r.produto] : []; return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, produtos: prods, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', parcelas: Number(r.parcelas || 1), pixDesconto: !!r.pix_desconto, valorCliente: r.valor_cliente != null ? Number(r.valor_cliente) : Number(r.valor), acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente', bonus: (r.bonus || '').split(',').map(x => x.trim()).filter(Boolean), bonusStatus: r.bonus_status || null, bonusObs: r.bonus_obs || '' }; },
-  _sOut(s) { const prods = (Array.isArray(s.produtos) && s.produtos.length) ? s.produtos : (s.produto ? [s.produto] : []); return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto || prods[0] || null, produtos: JSON.stringify(prods), valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', parcelas: s.parcelas || 1, pix_desconto: !!s.pixDesconto, valor_cliente: s.valorCliente != null ? s.valorCliente : s.valor, accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente', bonus: (Array.isArray(s.bonus) && s.bonus.length) ? s.bonus.join(',') : null, bonus_status: s.bonusStatus || null, bonus_obs: s.bonusObs || null }; },
+  _sIn(r)  { let prods = []; try { prods = r.produtos ? (typeof r.produtos === 'string' ? JSON.parse(r.produtos) : r.produtos) : []; } catch (e) { prods = []; } if (!Array.isArray(prods) || !prods.length) prods = r.produto ? [r.produto] : []; return { id: r.id, consultorId: r.consultor_id, clientId: r.client_id, produto: r.produto, produtos: prods, valor: Number(r.valor), data: r.data, statusComissao: r.status_comissao, statusProposta: r.status_proposta || 'aprovada', valorBruto: r.valor_bruto != null ? Number(r.valor_bruto) : Number(r.valor), descontoTipo: r.desconto_tipo, descontoValor: Number(r.desconto_valor || 0), moeda: r.moeda || 'BRL', precoModo: r.preco_modo || 'tabela', formaPagamento: r.forma_pagamento || 'pix', parcelas: Number(r.parcelas || 1), pixDesconto: !!r.pix_desconto, valorCliente: r.valor_cliente != null ? Number(r.valor_cliente) : Number(r.valor), acceptToken: r.accept_token || null, aceitoEm: r.aceito_em || null, linkPagamento: r.link_pagamento || '', statusPagamento: r.status_pagamento || 'pendente', bonus: (r.bonus || '').split(',').map(x => x.trim()).filter(Boolean), bonusStatus: r.bonus_status || null, bonusObs: r.bonus_obs || '', formaAceite: r.forma_aceite || null, parcelasAceite: r.parcelas_aceite != null ? Number(r.parcelas_aceite) : null }; },
+  _sOut(s) { const prods = (Array.isArray(s.produtos) && s.produtos.length) ? s.produtos : (s.produto ? [s.produto] : []); return { id: s.id, consultor_id: s.consultorId, client_id: s.clientId, produto: s.produto || prods[0] || null, produtos: JSON.stringify(prods), valor: s.valor, data: s.data, status_comissao: s.statusComissao, status_proposta: s.statusProposta || 'aprovada', valor_bruto: s.valorBruto != null ? s.valorBruto : s.valor, desconto_tipo: s.descontoTipo || null, desconto_valor: s.descontoValor || 0, moeda: s.moeda || 'BRL', preco_modo: s.precoModo || 'tabela', forma_pagamento: s.formaPagamento || 'pix', parcelas: s.parcelas || 1, pix_desconto: !!s.pixDesconto, valor_cliente: s.valorCliente != null ? s.valorCliente : s.valor, accept_token: s.acceptToken || null, link_pagamento: s.linkPagamento || null, status_pagamento: s.statusPagamento || 'pendente', bonus: (Array.isArray(s.bonus) && s.bonus.length) ? s.bonus.join(',') : null, bonus_status: s.bonusStatus || null, bonus_obs: s.bonusObs || null, forma_aceite: s.formaAceite || null, parcelas_aceite: s.parcelasAceite != null ? s.parcelasAceite : null }; },
 
   _avIn(r)  { return r && { id: r.id, texto: r.texto || '', tipo: r.tipo || 'info', ativo: !!r.ativo, inicio: r.inicio || null, fim: r.fim || null }; },
   _avOut(a) { return { id: this.AVISO_ID, texto: a.texto || '', tipo: a.tipo || 'info', ativo: !!a.ativo, inicio: a.inicio || null, fim: a.fim || null, atualizado_em: new Date().toISOString() }; },

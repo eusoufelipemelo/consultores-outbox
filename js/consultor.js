@@ -458,7 +458,7 @@ const Consultor = {
         linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
         linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, moeda)}</b></div>`;
       } else {
-        linhas += `<div class="row total"><span>${forma === 'pix' ? 'À vista no PIX' : 'À vista no boleto'}</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
+        linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, moeda)}</b></div>`;
       }
       linhas += `<div class="pay-note">Comissão sobre ${OB.money(calc.valorServico, moeda)} (valor do serviço).</div>`;
       payBox.innerHTML = linhas;
@@ -662,7 +662,7 @@ const Consultor = {
           linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
           linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, m)}</b></div>`;
         } else {
-          linhas += `<div class="row total"><span>${forma === 'pix' ? 'À vista no PIX' : 'À vista no boleto'}</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+          linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
         }
         linhas += `<div class="pay-note">Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)} (valor do serviço, sem juros).</div>`;
         payBox.innerHTML = linhas;
@@ -680,14 +680,8 @@ const Consultor = {
       } else { box.innerHTML = ''; }
     };
     // hospedagem (plano anual) é vendida sozinha — exclusividade mútua com os demais serviços
-    const prodInputs = [...document.querySelectorAll('#s-prods input')];
-    prodInputs.forEach(cb => cb.onchange = () => {
-      if (cb.checked) {
-        if (cb.value === 'hospedagem') prodInputs.forEach(o => { if (o !== cb) o.checked = false; });
-        else { const h = prodInputs.find(o => o.value === 'hospedagem'); if (h) h.checked = false; }
-      }
-      recalcular(); updateTreinoAviso();
-    });
+    // todos os serviços são múltipla escolha e somam (inclusive hospedagem)
+    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { recalcular(); updateTreinoAviso(); });
     sCli.onchange = () => { sincPorteComCliente(); recalcular(); };
     sPorte.onchange = recalcular;
     sDesc.onchange = recalcular;
@@ -835,23 +829,21 @@ const Consultor = {
       const base = s.valorBruto || s.valor;
       const desc = s.descontoTipo === 'percent' ? (s.descontoValor || 0) : 0;
       const negociado = Math.round(base * (1 - desc / 100));
-      const forma = s.formaPagamento || 'pix';
-      const cliente = s.valorCliente != null ? s.valorCliente : s.valor;
-      const parcelas = s.parcelas || 1;
-      let rows = `<div class="row"><span>Valor de tabela</span><span>${OB.money(base, m)}</span></div>`;
-      if (desc) rows += `<div class="row"><span>Desconto comercial (${desc}%)</span><span>- ${OB.money(base - negociado, m)}</span></div>`;
-      if (forma === 'pix' && s.pixDesconto) rows += `<div class="row"><span>Desconto PIX à vista (5%)</span><span>- ${OB.money(negociado - s.valor, m)}</span></div>`;
-      if (forma === 'cartao' && cliente > negociado) rows += `<div class="row"><span>Juros do cartão (${parcelas}x)</span><span>+ ${OB.money(cliente - negociado, m)}</span></div>`;
-      rows += `<div class="row grand"><span>Total ${forma === 'cartao' ? 'no cartão' : 'à vista'}</span><b>${OB.money(cliente, m)}</b></div>`;
-      if (forma === 'cartao') rows += `<div class="row"><span>Parcelamento</span><b>${parcelas}x de ${OB.money(Math.round((cliente / parcelas) * 100) / 100, m)}</b></div>`;
-      return `<div class="tot"><div class="box">${rows}</div></div>`;
-    })()}
-    ${(() => {
-      const fp = OB.FORMAS_PAGAMENTO.find(f => f.id === (s.formaPagamento || 'pix')) || OB.FORMAS_PAGAMENTO[0];
-      let extra = fp.detalhe;
-      if ((s.formaPagamento || 'pix') === 'cartao') extra = `Em ${s.parcelas || 1}x · juros do parcelamento já incluídos no total`;
-      else if ((s.formaPagamento) === 'pix' && s.pixDesconto) extra = 'Pagamento integral via PIX · 5% de desconto à vista aplicado';
-      return `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink)">Forma de pagamento:</b> ${fp.nome}<br><span style="font-size:12px">${extra}</span></div>`;
+      const pixCalc = OB.calcPagamento(negociado, 'pix', { pixDesconto: !!s.pixDesconto });
+      const parcOpts = [1, 3, 6, 12].map(n => OB.calcPagamento(negociado, 'cartao', { parcelas: n }));
+      const escolha = s.formaAceite ? (s.formaAceite === 'cartao' ? `Cartão de crédito em ${s.parcelasAceite || 1}x · ${OB.money((parcOpts.find(c => c.parcelas === (s.parcelasAceite || 1)) || {}).valorCliente || 0, m)}` : `PIX à vista · ${OB.money(pixCalc.valorCliente, m)}`) : '';
+      return `<div class="tot"><div class="box" style="min-width:340px">
+        <div style="font-weight:800;font-size:15px;margin-bottom:10px;color:var(--ink)">Formas de pagamento</div>
+        <div class="row"><span>Valor dos serviços${desc ? ` (tabela ${OB.money(base, m)}, ${desc}% off)` : ''}</span><b>${OB.money(negociado, m)}</b></div>
+        <div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:15px"><b style="color:var(--brand)">PIX à vista${s.pixDesconto ? ' · 5% de desconto' : ''}</b><b>${OB.money(pixCalc.valorCliente, m)}</b></div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-top:9px">
+          <b style="color:var(--brand);font-size:15px">Cartão de crédito · em até 12x</b>
+          ${parcOpts.map(c => `<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--soft);margin-top:7px"><span>${c.parcelas}x de <b style="color:var(--ink)">${OB.money(c.valorParcela, m)}</b></span><span>total ${OB.money(c.valorCliente, m)}</span></div>`).join('')}
+        </div>
+        ${escolha ? `<div class="row grand" style="margin-top:12px"><span>Escolha do cliente</span><b>${escolha}</b></div>` : `<div style="font-size:12.5px;color:var(--mut);margin-top:12px">&#128073; Você escolhe a forma e o número de parcelas no momento do aceite.</div>`}
+      </div></div>`;
     })()}
     ${(() => {
       const aceito = s.statusProposta === 'aprovada';
@@ -940,7 +932,7 @@ const Consultor = {
     const nomes = (d.servicos || []).map(x => x.nome).join(', ');
     const negociado = Math.round((p.valorBase || 0) * (1 - (p.desconto || 0) / 100));
     const forma = p.forma || 'pix';
-    const formaTxt = forma === 'cartao' ? `Cartão de crédito em ${p.parcelas || 1}x` : (forma === 'boleto' ? 'Boleto bancário à vista' : 'PIX à vista');
+    const formaTxt = forma === 'cartao' ? `Cartão de crédito em ${p.parcelas || 1}x` : 'PIX à vista';
     const contratantePessoa = (cl.tipo || '').toUpperCase().includes('PJ') || (cl.doc || '').replace(/\D/g, '').length > 11 ? 'pessoa jurídica' : 'pessoa física';
     const cidadeSede = (e.cidade || 'Santa Cruz do Rio Pardo/SP');
     const assin = (typeof OB !== 'undefined' && OB.ASSINATURA_OUTBOX) ? OB.ASSINATURA_OUTBOX : '';
@@ -958,9 +950,7 @@ const Consultor = {
     if (forma === 'cartao') payRows += `<tr><td>Parcelamento</td><td class="r"><b>${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}</b></td></tr>`;
     const condPagamento = forma === 'cartao'
       ? `O pagamento será realizado por cartão de crédito, parcelado em ${p.parcelas}x de ${money(Math.round((p.valorCliente / (p.parcelas || 1)) * 100) / 100)}, totalizando ${money(p.valorCliente)}.${temJuros ? ' Os juros do parcelamento são cobrados pela operadora do cartão e já estão incluídos no valor total.' : ''}`
-      : (forma === 'boleto'
-        ? `O pagamento será realizado à vista, por boleto bancário, no valor de ${money(p.valorCliente)}, com vencimento em até 3 (três) dias úteis a contar da assinatura deste contrato.`
-        : `O pagamento será realizado à vista, via PIX, no valor de ${money(p.valorCliente)}${p.pixDesconto ? ' (já aplicado o desconto de 5% para pagamento à vista)' : ''}, em até 3 (três) dias úteis a contar da assinatura deste contrato.`);
+      : `O pagamento será realizado à vista, via PIX, no valor de ${money(p.valorCliente)}${p.pixDesconto ? ' (já aplicado o desconto de 5% para pagamento à vista)' : ''}, em até 3 (três) dias úteis a contar da assinatura deste contrato.`;
     const aceiteBloco = c.status === 'aceito'
       ? `<div class="aceite ok clause"><b>&#10003; Contrato aceito eletronicamente</b><div>Aceito por <b>${c.aceiteNome || cl.nome}</b>${c.aceiteDoc ? ' · Documento: ' + c.aceiteDoc : ''}<br>Data e hora: ${new Date(c.aceitoEm).toLocaleString('pt-BR')}${c.aceiteIp ? ' · IP ' + c.aceiteIp : ''}</div><div class="mut">Assinatura eletrônica com validade jurídica nos termos da MP 2.200-2/2001 e da Lei 14.063/2020.</div></div>`
       : (aceiteUrl ? `<div class="cta"><a class="accept" href="${aceiteUrl}" target="_blank" rel="noopener">&#10003; Ler e aceitar o contrato</a></div><p class="mut" style="text-align:center;font-size:12px">O aceite eletrônico tem validade jurídica (MP 2.200-2/2001 e Lei 14.063/2020).</p>` : '');

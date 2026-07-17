@@ -157,27 +157,70 @@ const App = {
     const spinner = '<circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9"/>';
     const check = '<path d="M20 6 9 17l-5-5"/>';
     const alert = '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';
-    host.innerHTML = card(spinner, '#F15532', 'Confirmando...', 'Estamos registrando o seu aceite, um instante.');
     document.body.appendChild(host);
-
     if (!saleId || !token) { host.innerHTML = card(alert, '#dc2626', 'Link inválido', 'Este link de aceite está incompleto. Peça ao seu consultor para reenviar a proposta.'); return; }
-    try {
-      const { data, error } = await SB.rpc('aceitar_proposta', { p_sale: saleId, p_token: token });
-      if (error) throw error;
-      if (data && data.ok) {
-        host.innerHTML = card(check, '#16a34a',
-          data.ja ? 'Proposta já aceita' : 'Proposta aceita! 🎉',
-          data.ja
-            ? 'Esta proposta já estava confirmada. Seu consultor foi avisado e dará seguimento ao projeto.'
-            : 'Obrigado! Seu aceite foi registrado e o consultor já foi notificado. Em breve iniciamos o briefing do seu projeto.',
-          '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais · obrigado pela confiança</p>');
-      } else {
-        host.innerHTML = card(alert, '#dc2626', 'Não foi possível confirmar',
-          (data && data.erro === 'token') ? 'Este link de aceite não confere. Peça ao seu consultor para reenviar a proposta.' : 'Proposta não encontrada. Fale com o seu consultor.');
+
+    // tela de escolha da forma de pagamento + aceite
+    const parcOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(n => `<option value="${n}">${n}x</option>`).join('');
+    host.innerHTML = `
+      <style>
+        #aceite-page .ac-card{max-width:460px;width:100%;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+        #aceite-page .ac-h{text-align:center;margin-bottom:22px}
+        #aceite-page .ac-h h1{font-size:22px;font-weight:800;color:#0A0A0A;margin:10px 0 6px}
+        #aceite-page .ac-h p{color:#46505c;font-size:14px;line-height:1.55}
+        #aceite-page .ac-mark{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#F15532,#e0431f);display:grid;place-items:center;margin:0 auto}
+        #aceite-page .ac-lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a96a3;margin:0 0 10px}
+        #aceite-page .ac-opt{display:flex;align-items:center;gap:11px;border:1.5px solid #e2e7ec;border-radius:13px;padding:15px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s}
+        #aceite-page .ac-opt:has(input:checked){border-color:#F15532;background:#fff5f2}
+        #aceite-page .ac-opt input{width:19px;height:19px;accent-color:#F15532;flex:none}
+        #aceite-page .ac-opt b{font-size:15px;color:#0A0A0A;display:block}
+        #aceite-page .ac-opt span{font-size:12.5px;color:#8a96a3}
+        #aceite-page .ac-parc{margin:2px 0 14px;padding:0 2px}
+        #aceite-page .ac-parc label{display:block;font-size:13px;font-weight:600;color:#0A0A0A;margin-bottom:6px}
+        #aceite-page .ac-parc select{width:100%;height:46px;border:1px solid #e2e7ec;border-radius:11px;padding:0 13px;font-size:15px;font-family:inherit;background:#fff}
+        #aceite-page .ac-btn{width:100%;background:#F15532;color:#fff;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 10px 26px rgba(241,85,50,.3)}
+        #aceite-page .ac-btn:disabled{opacity:.7;cursor:default}
+        #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:12px}
+        #aceite-page .ac-foot{text-align:center;font-size:12px;color:#8a96a3;margin-top:16px}
+      </style>
+      <div class="ac-card">
+        <div class="ac-h">
+          <div class="ac-mark"><svg viewBox="0 0 439 439" width="30" height="30"><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg></div>
+          <h1>Aceitar a sua proposta</h1>
+          <p>Escolha como prefere pagar e confirme. O seu consultor recebe a escolha na hora.</p>
+        </div>
+        <div class="ac-lbl">Forma de pagamento</div>
+        <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span><b>PIX à vista</b><span>Pagamento integral, na hora</span></span></label>
+        <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span><b>Cartão de crédito</b><span>Em até 12x</span></span></label>
+        <div class="ac-parc" id="ac-parc" hidden><label for="ac-parcelas">Número de parcelas</label><select id="ac-parcelas">${parcOpts}</select></div>
+        <div class="ac-err" id="ac-err" hidden></div>
+        <button class="ac-btn" id="ac-ok">&#10003; Aceitar proposta</button>
+        <p class="ac-foot">OutBox Soluções Digitais · obrigado pela confiança</p>
+      </div>`;
+    const parcWrap = document.getElementById('ac-parc');
+    host.querySelectorAll('input[name="ac-forma"]').forEach(r => r.onchange = () => { parcWrap.hidden = host.querySelector('input[name="ac-forma"]:checked').value !== 'cartao'; });
+    document.getElementById('ac-ok').onclick = async () => {
+      const forma = host.querySelector('input[name="ac-forma"]:checked').value;
+      const parcelas = forma === 'cartao' ? (parseInt(document.getElementById('ac-parcelas').value, 10) || 1) : 1;
+      const btn = document.getElementById('ac-ok'); const err = document.getElementById('ac-err');
+      btn.disabled = true; btn.textContent = 'Confirmando...';
+      try {
+        const { data, error } = await SB.rpc('aceitar_proposta', { p_sale: saleId, p_token: token, p_forma: forma, p_parcelas: parcelas });
+        if (error) throw error;
+        if (data && data.ok) {
+          host.innerHTML = card(check, '#16a34a', data.ja ? 'Proposta já aceita' : 'Proposta aceita! 🎉',
+            data.ja ? 'Esta proposta já estava confirmada. O seu consultor foi avisado e dará seguimento ao projeto.'
+              : 'Obrigado! Registramos o seu aceite e a forma de pagamento escolhida. O consultor já foi notificado e em breve iniciamos o seu projeto.',
+            '<p style="margin-top:18px;font-size:13px;color:#8a96a3">OutBox Soluções Digitais · obrigado pela confiança</p>');
+        } else {
+          err.textContent = (data && data.erro === 'token') ? 'Este link de aceite não confere. Peça ao consultor para reenviar.' : 'Proposta não encontrada. Fale com o seu consultor.';
+          err.hidden = false; btn.disabled = false; btn.innerHTML = '&#10003; Aceitar proposta';
+        }
+      } catch (e) {
+        err.textContent = 'Não foi possível confirmar agora. Tente novamente. (' + ((e && e.message) || 'falha') + ')';
+        err.hidden = false; btn.disabled = false; btn.innerHTML = '&#10003; Aceitar proposta';
       }
-    } catch (e) {
-      host.innerHTML = card(alert, '#dc2626', 'Erro ao confirmar', 'Tente novamente em instantes ou avise o seu consultor. (' + ((e && e.message) || 'falha de conexão') + ')');
-    }
+    };
   },
 
   /* ---------- página pública do briefing (tela cheia, capa por tipo + etapas) ---------- */
