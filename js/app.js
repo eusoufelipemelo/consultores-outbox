@@ -248,7 +248,7 @@ const App = {
         #aceite-page .ac-btn:active{transform:translateY(1px)}
         #aceite-page .ac-btn:disabled{opacity:.7;cursor:default}
         #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:10px}
-        @media(max-width:560px){#aceite-page .ac-opt{min-width:0}#aceite-page .ac-bi{padding:14px}}
+        @media(max-width:560px){#aceite-page .ac-forms{flex-direction:column}#aceite-page .ac-opt{min-width:0;width:100%}#aceite-page .ac-bi{padding:14px}}
         @media(prefers-reduced-motion:reduce){#aceite-page .ac-parc,#aceite-page .ac-btn,#aceite-page .ac-chip,#aceite-page .ac-opt{animation:none;transition:none}}
       </style>
       <div class="ac-wrap">
