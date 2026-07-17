@@ -570,7 +570,7 @@ const Consultor = {
             ${OB.PRODUTOS.map(p => `<label class="svc-opt bonus-opt"><input type="checkbox" value="${p.id}"><span>${p.nome}</span></label>`).join('')}
           </div>
           <input id="s-bonus-obs" class="input" placeholder="Observação do bônus (ex.: cliente fechou 2 serviços)" style="margin-top:8px"/>
-          <div class="hint">Serviços que você quer <b>dar de brinde</b>. Aparecem como <b>Bônus (cortesia)</b> no orçamento do cliente e vão para o admin autorizar.</div></div>
+          <div class="hint">Serviços de <b>brinde</b>: o valor deles é <b>zerado</b> (não soma no total) e aparecem como <b>Bônus (cortesia)</b> no orçamento. O envio ao cliente só libera <b>após o admin autorizar</b>.</div></div>
         <div class="field"><label>Status da proposta</label>
           <select id="s-status">
             <option value="aprovada" ${!orcamento?'selected':''}>Aprovada (venda fechada)</option>
@@ -590,7 +590,9 @@ const Consultor = {
     const sParcelas = document.getElementById('s-parcelas');
     const payBox = document.getElementById('s-paybox');
     // serviços selecionados (múltipla escolha)
-    const prodsSel = () => [...document.querySelectorAll('#s-prods input:checked')].map(i => i.value);
+    const bonusSel = () => [...document.querySelectorAll('#s-bonus input:checked')].map(i => i.value);
+    // serviços PAGOS = marcados em Serviços e que NÃO estão no bônus (bônus nunca é cobrado)
+    const prodsSel = () => [...document.querySelectorAll('#s-prods input:checked')].map(i => i.value).filter(id => !bonusSel().includes(id));
     // sincroniza o porte com o cliente selecionado
     const sincPorteComCliente = () => {
       const cliente = OB.clientById(sCli.value);
@@ -682,6 +684,8 @@ const Consultor = {
     // hospedagem (plano anual) é vendida sozinha — exclusividade mútua com os demais serviços
     // todos os serviços são múltipla escolha e somam (inclusive hospedagem)
     document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { recalcular(); updateTreinoAviso(); });
+    // marcar/desmarcar bônus recalcula o total (serviço em bônus tem valor ZERADO)
+    document.querySelectorAll('#s-bonus input').forEach(cb => cb.onchange = () => { recalcular(); });
     sCli.onchange = () => { sincPorteComCliente(); recalcular(); };
     sPorte.onchange = recalcular;
     sDesc.onchange = recalcular;
@@ -693,14 +697,14 @@ const Consultor = {
     recalcular();
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
-      const produtos = prodsSel();
-      if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço', 'err'); }
+      const produtos = prodsSel(); // já exclui os serviços marcados como bônus
+      const bonus = bonusSel();    // bônus NUNCA entra no valor (cortesia)
+      if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço pago (o bônus não é cobrado)', 'err'); }
       const valorBase = payBox._valorBase || 0;
       if (!valorBase) return UI.toast('Selecione os serviços', 'O valor de tabela ficou zerado', 'err');
       const pfSave = produtos.length === 1 ? OB.produtoPrecoFixo(produtos[0]) : null;
       const desc = pfSave ? 0 : (parseInt(sDesc.value, 10) || 0);
       const calc = payBox._calc;
-      const bonus = [...document.querySelectorAll('#s-bonus input:checked')].map(i => i.value).filter(id => !produtos.includes(id));
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: sCli.value,
         produto: produtos[0], produtos,
@@ -714,10 +718,10 @@ const Consultor = {
         data: new Date().toISOString(), statusComissao: 'disponivel',
         statusProposta: document.getElementById('s-status').value
       });
-      if (bonus.length) UI.toast('Bônus registrado', 'Enviado para o admin autorizar.', 'info');
       this.autoContrato(OB.db.sales[OB.db.sales.length - 1]); // formalizou a venda -> gera o contrato
       UI.closeModal();
-      UI.toast(orcamento ? 'Orçamento criado!' : 'Venda lançada!', '', 'ok');
+      if (bonus.length) UI.toast('Bônus aguardando autorização', 'O admin precisa autorizar o bônus antes de você enviar o orçamento ao cliente.', 'info');
+      else UI.toast(orcamento ? 'Orçamento criado!' : 'Venda lançada!', '', 'ok');
       App.refreshCommission(true);
       this.render(orcamento ? 'orcamentos' : 'comissao');
     };
@@ -752,7 +756,7 @@ const Consultor = {
         <th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
         ${vendas.map(s => { const cli = OB.clientById(s.clientId); const pr = OB.STATUS_PROPOSTA[s.statusProposta] || OB.STATUS_PROPOSTA.aprovada;
           return `<tr><td>${OB.dataBR(s.data)}</td><td class="strong">${cli?cli.nome:'-'}</td><td>${OB.produtosNomes(s)}</td>
-            <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span></td>
+            <td class="strong">${OB.money(s.valor, s.moeda)}</td><td><span class="chip ${pr.chip}">${pr.nome}</span>${(s.bonus || []).length ? (s.bonusStatus === 'pendente' ? ' <span class="chip warn nowrap">Bônus: aguardando admin</span>' : (s.bonusStatus === 'aprovado' ? ' <span class="chip green nowrap">Bônus autorizado</span>' : ' <span class="chip gray nowrap">Bônus recusado</span>')) : ''}</td>
             <td class="row" style="gap:6px;justify-content:flex-end">
               <button class="iconbtn" data-view="${s.id}" title="Visualizar em nova aba">${UI.icon('external',16)}</button>
               <button class="iconbtn" data-pdf="${s.id}" title="Gerar orçamento (PDF)">${UI.icon('download',16)}</button>
@@ -786,16 +790,24 @@ const Consultor = {
       const p0 = OB.PRODUTOS.find(x => x.id === prodIds[0]);
       linhasSvc = `<tr><td><b>${p0 ? p0.nome : (prodIds[0] || 'Serviço')}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${escopoDe(p0, prodIds[0])}</span></td><td style="text-align:right">${OB.money(bruto, s.moeda)}</td></tr>`;
     } else {
-      // distribui o valor do orçamento entre os serviços, proporcional ao preço de tabela
-      // (as linhas sempre somam exatamente o subtotal, sem linha de ajuste)
-      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteCli) || 0 }; });
+      // descobre o PORTE realmente usado no orçamento: o que faz a soma da tabela bater com o valor salvo
+      // (o porte do cadastro do cliente pode ser outro; sem isso os valores por serviço saíam distorcidos)
+      let porteUsado = null;
+      for (const pt of OB.PORTES) { if (prodIds.reduce((t, id) => t + (OB.precoTabela(id, pt.id) || 0), 0) === bruto) { porteUsado = pt.id; break; } }
+      const itens = prodIds.map(id => { const p = OB.PRODUTOS.find(x => x.id === id); return { nome: p ? p.nome : id, escopo: escopoDe(p, id), val: OB.precoTabela(id, porteUsado || porteCli) || 0 }; });
       const somaTab = itens.reduce((t, i) => t + i.val, 0);
-      let acum = 0;
-      itens.forEach((it, idx) => {
-        const ultimo = idx === itens.length - 1;
-        const v = ultimo ? bruto - acum : Math.round(bruto * (somaTab ? it.val / somaTab : 1 / itens.length));
-        it.mostra = Math.max(0, v); acum += v;
-      });
+      if (porteUsado || somaTab === bruto) {
+        // soma bate: mostra o preço REAL de tabela de cada serviço (hospedagem sai 1.200 exato)
+        itens.forEach(it => { it.mostra = it.val; });
+      } else {
+        // fallback (valores antigos/personalizados): distribui proporcionalmente, fechando no subtotal
+        let acum = 0;
+        itens.forEach((it, idx) => {
+          const ultimo = idx === itens.length - 1;
+          const v = ultimo ? bruto - acum : Math.round(bruto * (somaTab ? it.val / somaTab : 1 / itens.length));
+          it.mostra = Math.max(0, v); acum += v;
+        });
+      }
       linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${i.escopo}</span></td><td style="text-align:right">${OB.money(i.mostra, s.moeda)}</td></tr>`).join('');
     }
     const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
@@ -860,9 +872,18 @@ const Consultor = {
   <div class="foot"><div>OutBox Soluções Digitais · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
 </div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
+  /* orçamento com bônus PENDENTE fica travado até o admin autorizar (admin pode ver) */
+  bonusBloqueado(s) {
+    const u = OB.session() || {};
+    if (s && s.bonusStatus === 'pendente' && (s.bonus || []).length && u.role !== 'admin') {
+      UI.toast('Aguardando autorização do bônus', 'O admin precisa autorizar o bônus antes de gerar e enviar este orçamento ao cliente.', 'err');
+      return true;
+    }
+    return false;
+  },
   /* abre o orçamento renderizado em uma nova aba (apenas visualização) */
   visualizarOrcamento(s) {
-    if (!s) return;
+    if (!s || this.bonusBloqueado(s)) return;
     const blob = new Blob([this.buildOrcamentoHTML(s)], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, '_blank', 'noopener');
@@ -871,7 +892,7 @@ const Consultor = {
   },
 
   baixarOrcamento(s) {
-    if (!s) return;
+    if (!s || this.bonusBloqueado(s)) return;
     const blob = new Blob([this.buildOrcamentoHTML(s)], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const cli = OB.clientById(s.clientId);
@@ -1267,7 +1288,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
 
   /* compartilha o orçamento: Web Share API nativa (mobile) com fallback p/ WhatsApp */
   async compartilharOrcamento(s) {
-    if (!s) return;
+    if (!s || this.bonusBloqueado(s)) return;
     const u = this.u(); const cli = OB.clientById(s.clientId);
     const p = OB.PRODUTOS.find(x => x.id === s.produto);
     const nome = cli ? cli.nome : 'cliente';
