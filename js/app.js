@@ -201,7 +201,7 @@ const App = {
     host.style.padding = '0';
     host.innerHTML = `
       <style>
-        #aceite-page .ac-wrap{max-width:860px;margin:0 auto;padding:24px 16px 160px}
+        #aceite-page .ac-wrap{width:100%;max-width:860px;margin:0 auto;padding:24px 16px 160px}
         #aceite-page .ac-doc{width:100%;border:none;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.12);display:block;min-height:70vh}
         #aceite-page .ac-bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e7ec;box-shadow:0 -8px 30px rgba(0,0,0,.1);z-index:5}
         #aceite-page .ac-bi{max-width:860px;margin:0 auto;padding:16px}
