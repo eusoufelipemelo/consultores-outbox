@@ -173,68 +173,68 @@ const App = {
     }
     const m = info.moeda || 'BRL';
     let produtosAc = []; try { produtosAc = JSON.parse(info.produtos || '[]'); } catch (e) { produtosAc = []; }
+    if (!Array.isArray(produtosAc)) produtosAc = [];
     const bonusAc = info.bonus_status === 'recusado' ? [] : (info.bonus || '').split(',').map(x => x.trim()).filter(Boolean);
     const bruto = Number(info.valor_bruto) || 0;
     const desc = info.desconto_tipo === 'percent' ? Number(info.desconto_valor || 0) : 0;
     const negociado = Math.round(bruto * (1 - desc / 100));
-    let porteAc = 'pequena';
-    for (const pt of OB.PORTES) { if (produtosAc.reduce((t, id) => t + (OB.precoTabela(id, pt.id) || 0), 0) === bruto) { porteAc = pt.id; break; } }
-    const nomeProd = id => (OB.PRODUTOS.find(x => x.id === id) || {}).nome || id;
     const pixCalc = OB.calcPagamento(negociado, 'pix', { pixDesconto: !!info.pix_desconto });
     const cartaoCalc = n => OB.calcPagamento(negociado, 'cartao', { parcelas: n });
-    let economiaBonus = 0; bonusAc.forEach(id => { economiaBonus += OB.precoTabela(id, porteAc) || 0; });
-    const svcLinhas = produtosAc.map(id => `<div class="ac-svc"><span>${nomeProd(id)}</span><b>${OB.money(OB.precoTabela(id, porteAc) || 0, m)}</b></div>`).join('');
-    const bonusLinhas = bonusAc.map(id => `<div class="ac-svc"><span>&#127873; ${nomeProd(id)} <i class="ac-cort">Bônus</i></span><b><s style="color:#8a96a3;font-weight:500">${OB.money(OB.precoTabela(id, porteAc) || 0, m)}</s> <span style="color:#16a34a">Cortesia</span></b></div>`).join('');
     const parcOpts = Array.from({ length: 12 }, (_, i) => i + 1).map(n => { const c = cartaoCalc(n); return `<option value="${n}">${n}x de ${OB.money(c.valorParcela, m)} · total ${OB.money(c.valorCliente, m)}</option>`; }).join('');
+
+    // documento COMPLETO da proposta (mesmo layout do orçamento) dentro de um iframe isolado
+    const saleObj = {
+      id: saleId, acceptToken: token,
+      produtos: produtosAc, bonus: bonusAc, bonusStatus: info.bonus_status,
+      valorBruto: bruto, valor: Number(info.valor) || bruto, moeda: m,
+      descontoTipo: info.desconto_tipo, descontoValor: Number(info.desconto_valor) || 0,
+      pixDesconto: !!info.pix_desconto, formaAceite: info.forma_aceite,
+      parcelasAceite: info.parcelas_aceite, statusProposta: info.status_proposta, linkPagamento: '',
+    };
+    const cliObj = { nome: info.cliente || '', contato: info.cliente_contato || '', telefone: info.cliente_telefone || '', porte: 'pequena' };
+    const uObj = { nome: info.consultor || '', sobrenome: '', email: info.consultor_email || '', celular: info.consultor_celular || '' };
+    let docHTML = '';
+    try { docHTML = Consultor.buildOrcamentoHTML(saleObj, { cli: cliObj, u: uObj, publico: true }); } catch (e) { docHTML = ''; }
+
+    host.style.background = '#e9edf1';
+    host.style.display = 'block';
+    host.style.padding = '0';
     host.innerHTML = `
       <style>
-        #aceite-page .ac-card{max-width:460px;width:100%;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-        #aceite-page .ac-h{text-align:center;margin-bottom:22px}
-        #aceite-page .ac-h h1{font-size:22px;font-weight:800;color:#0A0A0A;margin:10px 0 6px}
-        #aceite-page .ac-h p{color:#46505c;font-size:14px;line-height:1.55}
-        #aceite-page .ac-mark{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#F15532,#e0431f);display:grid;place-items:center;margin:0 auto}
-        #aceite-page .ac-lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a96a3;margin:0 0 10px}
-        #aceite-page .ac-opt{display:flex;align-items:center;gap:11px;border:1.5px solid #e2e7ec;border-radius:13px;padding:15px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s}
+        #aceite-page .ac-wrap{max-width:860px;margin:0 auto;padding:24px 16px 160px}
+        #aceite-page .ac-doc{width:100%;border:none;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.12);display:block;min-height:70vh}
+        #aceite-page .ac-bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e7ec;box-shadow:0 -8px 30px rgba(0,0,0,.1);z-index:5}
+        #aceite-page .ac-bi{max-width:860px;margin:0 auto;padding:16px}
+        #aceite-page .ac-lbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a96a3;margin:0 0 9px}
+        #aceite-page .ac-forms{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+        #aceite-page .ac-opt{flex:1;min-width:200px;display:flex;align-items:center;gap:11px;border:1.5px solid #e2e7ec;border-radius:13px;padding:13px 15px;cursor:pointer;transition:border-color .15s,background .15s}
         #aceite-page .ac-opt:has(input:checked){border-color:#F15532;background:#fff5f2}
         #aceite-page .ac-opt input{width:19px;height:19px;accent-color:#F15532;flex:none}
-        #aceite-page .ac-opt b{font-size:15px;color:#0A0A0A;display:block}
-        #aceite-page .ac-opt span{font-size:12.5px;color:#8a96a3}
-        #aceite-page .ac-parc{margin:2px 0 14px;padding:0 2px}
-        #aceite-page .ac-parc label{display:block;font-size:13px;font-weight:600;color:#0A0A0A;margin-bottom:6px}
+        #aceite-page .ac-opt b{font-size:14.5px;color:#0A0A0A;display:block}
+        #aceite-page .ac-opt span{font-size:12px;color:#8a96a3}
+        #aceite-page .ac-parc{margin:2px 0 12px}
         #aceite-page .ac-parc select{width:100%;height:46px;border:1px solid #e2e7ec;border-radius:11px;padding:0 13px;font-size:15px;font-family:inherit;background:#fff}
         #aceite-page .ac-btn{width:100%;background:#F15532;color:#fff;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 10px 26px rgba(241,85,50,.3)}
         #aceite-page .ac-btn:disabled{opacity:.7;cursor:default}
-        #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:12px}
-        #aceite-page .ac-foot{text-align:center;font-size:12px;color:#8a96a3;margin-top:16px}
-        #aceite-page .ac-sum{border:1px solid #e2e7ec;border-radius:13px;padding:14px 16px;margin-bottom:18px}
-        #aceite-page .ac-svc{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;color:#0A0A0A;padding:6px 0;border-bottom:1px dashed #eef1f4}
-        #aceite-page .ac-svc:last-of-type{border-bottom:none}
-        #aceite-page .ac-svc b{white-space:nowrap}
-        #aceite-page .ac-cort{font-style:normal;font-size:10.5px;font-weight:800;text-transform:uppercase;background:#e7f7ee;color:#15803d;border-radius:999px;padding:2px 8px;margin-left:4px}
-        #aceite-page .ac-tot{display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:#0A0A0A;padding-top:10px;margin-top:4px;border-top:2px solid #eef1f4}
-        #aceite-page .ac-eco{text-align:right;font-size:12.5px;font-weight:700;color:#15803d;margin-top:4px}
+        #aceite-page .ac-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:10px}
+        @media(max-width:560px){#aceite-page .ac-opt{min-width:0}}
       </style>
-      <div class="ac-card">
-        <div class="ac-h">
-          <div class="ac-mark"><svg viewBox="0 0 439 439" width="30" height="30"><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg></div>
-          <h1>Proposta OutBox${info.cliente ? ' · ' + info.cliente : ''}</h1>
-          <p>Confira o resumo, escolha como prefere pagar e confirme. ${info.consultor ? 'Seu consultor ' + info.consultor + ' recebe a escolha na hora.' : 'Seu consultor recebe a escolha na hora.'}</p>
+      <div class="ac-wrap">
+        <iframe id="ac-doc" class="ac-doc" title="Proposta OutBox"></iframe>
+      </div>
+      <div class="ac-bar"><div class="ac-bi">
+        <div class="ac-lbl">Escolha como prefere pagar</div>
+        <div class="ac-forms">
+          <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span style="flex:1"><b>PIX à vista${info.pix_desconto ? ' · 5% off' : ''}</b><span>Integral, na hora</span></span><b style="white-space:nowrap">${OB.money(pixCalc.valorCliente, m)}</b></label>
+          <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span style="flex:1"><b>Cartão de crédito</b><span>Em até 12x</span></span><b style="white-space:nowrap">até 12x</b></label>
         </div>
-        <div class="ac-lbl">Resumo da proposta</div>
-        <div class="ac-sum">
-          ${svcLinhas}
-          ${bonusLinhas}
-          <div class="ac-tot"><span>Valor dos serviços${desc ? ` (${desc}% off)` : ''}</span><span>${OB.money(negociado, m)}</span></div>
-          ${economiaBonus ? `<div class="ac-eco">&#127873; Você economiza ${OB.money(economiaBonus, m)} em bônus</div>` : ''}
-        </div>
-        <div class="ac-lbl">Forma de pagamento</div>
-        <label class="ac-opt"><input type="radio" name="ac-forma" value="pix" checked><span style="flex:1"><b>PIX à vista${info.pix_desconto ? ' · 5% de desconto' : ''}</b><span>Pagamento integral, na hora</span></span><b style="white-space:nowrap">${OB.money(pixCalc.valorCliente, m)}</b></label>
-        <label class="ac-opt"><input type="radio" name="ac-forma" value="cartao"><span style="flex:1"><b>Cartão de crédito</b><span>Em até 12x</span></span><b style="white-space:nowrap">até 12x</b></label>
-        <div class="ac-parc" id="ac-parc" hidden><label for="ac-parcelas">Número de parcelas</label><select id="ac-parcelas">${parcOpts}</select></div>
+        <div class="ac-parc" id="ac-parc" hidden><select id="ac-parcelas">${parcOpts}</select></div>
         <div class="ac-err" id="ac-err" hidden></div>
         <button class="ac-btn" id="ac-ok">&#10003; Aceitar proposta</button>
-        <p class="ac-foot">OutBox Soluções Digitais · obrigado pela confiança</p>
-      </div>`;
+      </div></div>`;
+    const iframe = document.getElementById('ac-doc');
+    iframe.srcdoc = docHTML;
+    iframe.onload = () => { try { const h = iframe.contentWindow.document.documentElement.scrollHeight; if (h > 100) iframe.style.height = (h + 6) + 'px'; } catch (e) {} };
     const parcWrap = document.getElementById('ac-parc');
     host.querySelectorAll('input[name="ac-forma"]').forEach(r => r.onchange = () => { parcWrap.hidden = host.querySelector('input[name="ac-forma"]:checked').value !== 'cartao'; });
     document.getElementById('ac-ok').onclick = async () => {

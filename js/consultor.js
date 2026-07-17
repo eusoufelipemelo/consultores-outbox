@@ -779,8 +779,9 @@ const Consultor = {
   },
 
   /* gera o orçamento branded (HTML autossuficiente p/ baixar/imprimir em PDF) */
-  buildOrcamentoHTML(s) {
-    const u = this.u(); const cli = OB.clientById(s.clientId);
+  buildOrcamentoHTML(s, opts = {}) {
+    const u = opts.u || this.u() || {}; const cli = opts.cli || OB.clientById(s.clientId);
+    const publico = !!opts.publico;
     // linhas de serviço: 1 por produto. Com vários, mostra o preço de tabela de cada um
     // (pelo porte do cliente) e uma linha de ajuste quando o total foi personalizado.
     const prodIds = OB.produtosDaVenda(s);
@@ -864,6 +865,7 @@ const Consultor = {
       </div></div>`;
     })()}
     ${(() => {
+      if (publico) return '';
       const aceito = s.statusProposta === 'aprovada';
       const aceiteUrl = s.acceptToken ? `${OB.APP_URL}/?aceite=${encodeURIComponent(s.id)}&t=${encodeURIComponent(s.acceptToken)}` : '';
       const payUrl = s.linkPagamento || OB.linkPagamento(s.formaPagamento);
@@ -876,7 +878,7 @@ const Consultor = {
     <div class="note">Esta proposta tem validade de 7 dias. Ao aprovar, iniciamos o briefing e o cronograma do seu projeto.</div>
   </div>
   <div class="foot"><div>OutBox Soluções Digitais · Proposta comercial<br><b>${u.email || 'felipe@outboxgroup.com.br'}</b>${u.celular ? ' · ' + u.celular : ''}</div><div>www.outboxgroup.com.br<br>Santa Cruz do Rio Pardo · SP</div></div>
-</div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
+</div>${publico ? '<style>.page{min-height:0}body{background:#fff}</style>' : '<button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button>'}</body></html>`;
   },
   /* orçamento com bônus PENDENTE fica travado até o admin autorizar (admin pode ver) */
   bonusBloqueado(s) {
