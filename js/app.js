@@ -932,7 +932,16 @@ const App = {
     const ini = r => (r.nome ? r.nome[0].toUpperCase() : '?');
     const isMe = r => highlightId && r.consultor_id === highlightId;
     const max = Math.max(1, Number(top[0].pontos) || 1);
-    const sub = r => `${r.treinos_concluidos || 0} treino${(r.treinos_concluidos || 0) !== 1 ? 's' : ''} · ${OB.fmt(Number(r.volume || 0))}`;
+    // detalhamento: de onde vieram os pontos (treinamentos concluídos + volume vendido)
+    const brk = r => {
+      const tr = Number(r.treinos_concluidos) || 0;
+      const ptsTre = tr * 100;
+      const ptsVen = Math.max(0, (Number(r.pontos) || 0) - ptsTre);
+      return `<div class="rk-brk">
+        <span class="rk-brk__i"><i>${UI.icon('book', 13)}</i><b>${tr} treino${tr !== 1 ? 's' : ''}</b><small>${OB.fmtNum(ptsTre)} pts</small></span>
+        <span class="rk-brk__i"><i>${UI.icon('money', 13)}</i><b>${OB.fmt(Number(r.volume || 0))}</b><small>${OB.fmtNum(ptsVen)} pts</small></span>
+      </div>`;
+    };
     const av = r => { const f = OB.fotos[r.consultor_id]; return f ? `<img src="${f}" alt="">` : ini(r); };
 
     // pódio (top 3) exibido na ordem 2 · 1 · 3
@@ -944,6 +953,7 @@ const App = {
         <div class="rk-pod__ph" data-av="${r.consultor_id}">${av(r)}<span class="rk-pod__badge">${rank}</span></div>
         <b class="rk-pod__nm">${nomeDe(r)}${isMe(r) ? ' <span class="rank-you">você</span>' : ''}</b>
         <div class="rk-pod__pts"><b data-count="${r.pontos}">0</b><small>pts</small></div>
+        ${brk(r)}
         <div class="rk-pod__base"><span>${rank}º</span></div>
       </div>`;
     }).join('');
@@ -957,7 +967,7 @@ const App = {
         <span class="rk-row__ph" data-av="${r.consultor_id}">${av(r)}</span>
         <div class="rk-row__meta">
           <b>${nomeDe(r)}${isMe(r) ? ' <span class="rank-you">você</span>' : ''}</b>
-          <span class="rk-row__sub">${sub(r)}</span>
+          ${brk(r)}
           <div class="rk-bar"><i data-w="${w}"></i></div>
         </div>
         <div class="rk-row__pts"><b data-count="${r.pontos}">0</b><small>pts</small></div>

@@ -1243,7 +1243,7 @@ td .strong { color: var(--text); font-weight: 600; }
 
 /* pódio (top 3) */
 .rk-podium { display: grid; grid-template-columns: 1fr 1.18fr 1fr; align-items: end; gap: 16px; max-width: 620px; margin: 0 auto 28px; }
-.rk-pod { display: flex; flex-direction: column; align-items: center; text-align: center; opacity: 0; transform: translateY(18px); animation: rkPop .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--i) * .12s + .05s); }
+.rk-pod { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; opacity: 0; transform: translateY(18px); animation: rkPop .6s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--i) * .12s + .05s); }
 .rk-pod--1 { --ring: #f5b301; } .rk-pod--2 { --ring: #c3ccd6; } .rk-pod--3 { --ring: #d98a4e; }
 .rk-pod__crown { height: 26px; color: #f5b301; margin-bottom: 4px; }
 .rk-pod__ph { position: relative; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--brand); font-weight: 800; font-size: 26px; box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--ring); }
@@ -1270,6 +1270,14 @@ td .strong { color: var(--text); font-weight: 600; }
 .rk-row__meta { flex: 1; min-width: 0; }
 .rk-row__meta b { font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .rk-row__sub { font-size: 11.5px; color: var(--text-mut); display: block; margin: 1px 0 6px; }
+/* detalhamento dos pontos (treinamentos + volume vendido) */
+.rk-brk { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.rk-brk__i { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; line-height: 1.25; white-space: nowrap; }
+.rk-brk__i i { display: inline-flex; color: var(--brand); flex: none; }
+.rk-brk__i b { font-size: 11.5px; font-weight: 700; color: var(--text); }
+.rk-brk__i small { font-size: 10.5px; font-weight: 700; color: var(--brand); }
+.rk-pod .rk-brk { justify-content: center; margin: 7px 0 0; }
+.rk-row .rk-brk { margin: 2px 0 7px; }
 .rk-bar { height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .rk-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--brand), #ff9068); transition: width 1s cubic-bezier(.2,.8,.2,1); transition-delay: .45s; }
 .rk-row__pts { text-align: right; flex: none; }
@@ -1289,6 +1297,13 @@ td .strong { color: var(--text); font-weight: 600; }
   .rk-pod--1 .rk-pod__nm { font-size: 12px; }
   .rk-pod__pts b { font-size: 16px; } .rk-pod--1 .rk-pod__pts b { font-size: 19px; }
   .rk-row__pts b { font-size: 15px; }
+  /* chips do detalhamento: compactos e quebráveis para o pódio não estourar a tela */
+  .rk-brk { gap: 4px; }
+  .rk-brk__i { padding: 3px 7px; gap: 3px; white-space: normal; }
+  .rk-brk__i b { font-size: 10.5px; }
+  .rk-brk__i small { font-size: 9.5px; }
+  .rk-pod .rk-brk__i i { display: none; }
+  .rk-pod .rk-brk { flex-direction: column; align-items: center; width: 100%; }
 }
 
 /* E-Books: catálogo à mostra, bloqueado até a primeira venda */
