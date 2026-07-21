@@ -898,7 +898,9 @@ const Admin = {
 
   /* acompanhamento do bônus de boas-vindas (R$100 na ativação, 60 dias para converter) */
   bonusBVBloco() {
-    const linhas = this.consultores().map(c => ({ c, bv: OB.bonusBV(c.id) })).filter(x => x.bv && x.bv.ativo);
+    const todos = this.consultores().map(c => ({ c, bv: OB.bonusBV(c.id) })).filter(x => x.bv);
+    const linhas = todos.filter(x => x.bv.ativo);
+    const aguardando = todos.filter(x => !x.bv.ativo); // ainda não fizeram o 1º acesso desde o lançamento
     const por = st => linhas.filter(x => x.bv.status === st);
     const pend = por('pendente').sort((a, b) => a.bv.falta - b.bv.falta); // mais perto de converter primeiro
     const lib = por('liberado'), resg = por('resgatado'), exp = por('expirado');
@@ -918,9 +920,10 @@ const Admin = {
     };
     return `
       <div class="nav-label" style="padding-left:0">${UI.icon('rocket',12)} Bônus de boas-vindas (ativação)</div>
-      <div class="cards cols-3" style="margin-bottom:16px">
+      <div class="cards cols-4" style="margin-bottom:16px">
         ${Consultor.kpi('clock', pend.length, 'Correndo o prazo', 'Ainda podem converter')}
         ${Consultor.kpi('check', lib.length + resg.length, 'Converteram', 'Bateram a meta e ganharam o bônus')}
+        ${Consultor.kpi('users', aguardando.length, 'Aguardando 1º acesso', 'O bônus liga quando entrarem')}
         ${Consultor.kpi('money', OB.fmt(custoAberto), 'Exposição em aberto', 'Se todos converterem agora')}
       </div>
       <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Cada consultor recebe <b>${OB.fmt(OB.bonusBVValor())}</b> ao concluir o perfil. O valor só vira saque quando ele soma <b>${OB.fmt(OB.saqueMinimo())}</b> (o bônus conta, então bastam <b>${OB.fmt(OB.saqueMinimo() - OB.bonusBVValor())}</b> de comissão). Se não converter em <b>${OB.BONUS_BV.dias} dias</b>, o sistema zera automaticamente.</div></div>
@@ -928,7 +931,8 @@ const Admin = {
       ${lib.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Liberados (aguardando o saque)</div>${lib.map(x => row(x, `Bateu a meta · ${OB.fmt(x.bv.valor)} entram no próximo saque`)).join('')}` : ''}
       ${resg.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Já pagos no saque</div>${resg.map(x => row(x, `Bônus de ${OB.fmt(x.bv.valor)} incluído numa solicitação`)).join('')}` : ''}
       ${exp.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Expirados (zerados pelo sistema)</div>${exp.map(x => row(x, `Não atingiu ${OB.fmt(x.bv.meta)} em ${OB.BONUS_BV.dias} dias`)).join('')}` : ''}
-      ${!linhas.length ? `<div class="hint">Nenhum consultor ativou o bônus ainda. A ativação acontece quando o consultor conclui o perfil.</div>` : ''}`;
+      ${aguardando.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Aguardando o primeiro acesso</div>${aguardando.map(x => row(x, `O bônus de ${OB.fmt(OB.bonusBVValor())} é ativado assim que ${(x.c.nome || 'o consultor').split(' ')[0]} entrar no sistema (o prazo de ${OB.BONUS_BV.dias} dias começa a contar aí)`)).join('')}` : ''}
+      ${!todos.length ? `<div class="hint">Nenhum consultor cadastrado ainda.</div>` : ''}`;
   },
   bonusCard(s) {
     const cli = OB.clientById(s.clientId) || {};
