@@ -1021,9 +1021,14 @@ const OB = {
   /* ---------- GRUPO DE CONSULTORES NO WHATSAPP ----------
      Entrar no grupo é obrigatório: é por lá que saem novidades, networking e sugestões.
      O portão aparece uma vez, logo depois do aceite dos termos. */
+  /* Só os consultores NOVOS passam pelo portão. Quem já estava no sistema antes do
+     lançamento da regra não é incomodado (presume-se que já está no grupo). */
+  GRUPO_REGRA_DESDE: '2026-07-20T00:00:00Z',
   precisaEntrarGrupo() {
     const u = this.db.profile;
-    return !!u && u.role !== 'admin' && !u.whatsGrupoEm;
+    if (!u || u.role === 'admin' || u.whatsGrupoEm) return false;
+    if (!u.criadoEm) return false;                       // cadastro antigo sem data: não incomoda
+    return new Date(u.criadoEm) >= new Date(this.GRUPO_REGRA_DESDE);
   },
   confirmarGrupoWhats() {
     const u = this.db.profile;
