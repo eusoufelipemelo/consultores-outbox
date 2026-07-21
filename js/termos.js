@@ -7,8 +7,8 @@
 const TERMOS = {
   /* Suba a versão sempre que o conteúdo mudar de forma relevante:
      todos os consultores precisarão aceitar de novo no próximo login. */
-  VERSAO: '1.0',
-  DATA: '01/07/2026',
+  VERSAO: '1.1',
+  DATA: '20/07/2026',
 
   EMPRESA: {
     razao: 'OutBox Group Soluções Digitais',
@@ -57,19 +57,29 @@ const TERMOS = {
       <h4>4. Das obrigações tributárias e previdenciárias do Consultor</h4>
       <p>O Consultor Parceiro é o único responsável pelo recolhimento de todos os tributos, contribuições e encargos incidentes sobre a comissão recebida, incluindo, quando aplicável, imposto de renda, ISS e contribuição previdenciária (INSS), bem como pela emissão dos documentos fiscais cabíveis, isentando a OutBox de qualquer responsabilidade a esse título.</p>
 
-      <h4>5. Da atuação em nome próprio</h4>
+      <h4>5. Do bônus de boas-vindas (incentivo comercial de ativação)</h4>
+      <p>A OutBox poderá conceder ao Consultor Parceiro, a título de <b>incentivo comercial de ativação</b>, um bônus no valor de <b>R$ 100,00 (cem reais)</b>, creditado na plataforma quando da conclusão do cadastro e do perfil. O bônus <b>não constitui remuneração pelo simples cadastro</b>, não caracteriza salário, adiantamento ou qualquer verba de natureza trabalhista, e não é devido de forma automática.</p>
+      <ul>
+        <li><b>Condição de liberação:</b> o bônus somente se torna passível de saque quando o Consultor Parceiro atingir o valor mínimo de saque vigente na plataforma, hoje de <b>R$ 500,00</b>, considerando-se o próprio bônus no cômputo desse mínimo, de modo que é necessária a apuração de, ao menos, <b>R$ 400,00 em comissões</b> de vendas efetivamente concretizadas e com pagamento confirmado.</li>
+        <li><b>Prazo:</b> o bônus permanece disponível pelo prazo de <b>60 (sessenta) dias corridos</b>, contados da conclusão do perfil na plataforma.</li>
+        <li><b>Expiração:</b> não atingida a condição de liberação dentro do prazo, o bônus <b>expira automaticamente e é zerado</b> pelo sistema, sem direito a indenização, prorrogação ou compensação, permanecendo íntegro o direito às comissões efetivamente apuradas.</li>
+        <li><b>Não cumulatividade:</b> o bônus é concedido uma única vez por Consultor Parceiro, sendo vedada a criação de cadastros múltiplos para sua obtenção, sob pena de cancelamento do bônus e da conta.</li>
+      </ul>
+      <p>A OutBox poderá alterar ou encerrar a concessão do bônus para novos cadastros a qualquer tempo, sem que isso afete bônus já liberados na forma acima.</p>
+
+      <h4>6. Da atuação em nome próprio</h4>
       <p>O Consultor Parceiro atua em nome próprio na captação e indicação de clientes, não podendo, salvo autorização expressa e por escrito da OutBox, assumir obrigações, conceder descontos, firmar contratos ou representar a OutBox perante terceiros além do que estiver previamente autorizado nas regras da plataforma.</p>
 
-      <h4>6. Da confidencialidade</h4>
+      <h4>7. Da confidencialidade</h4>
       <p>O Consultor Parceiro compromete-se a manter sigilo sobre informações comerciais, estratégicas, técnicas e cadastrais a que tiver acesso em razão desta parceria, inclusive dados de clientes, sob pena de responsabilização civil, obrigação essa que subsiste após o término da relação.</p>
 
-      <h4>7. Da vigência e da rescisão</h4>
+      <h4>8. Da vigência e da rescisão</h4>
       <p>A parceria vigora por prazo indeterminado e pode ser encerrada por qualquer das partes, a qualquer tempo, sem necessidade de aviso prévio de natureza trabalhista e sem imposição de multa, mediante simples comunicação, resguardado o pagamento das comissões já apuradas e devidas até a data do encerramento.</p>
 
-      <h4>8. Do aceite eletrônico</h4>
+      <h4>9. Do aceite eletrônico</h4>
       <p>O Consultor Parceiro declara que leu, compreendeu e concorda integralmente com este Termo, manifestando seu aceite de forma eletrônica. As partes reconhecem a validade jurídica do aceite eletrônico, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001 e da Lei nº 14.063/2020, sendo registrados data, hora, versão do documento e identificação do Consultor como prova da manifestação de vontade.</p>
 
-      <h4>9. Do foro</h4>
+      <h4>10. Do foro</h4>
       <p>Fica eleito o foro da ${e.foro}, para dirimir eventuais controvérsias oriundas deste Termo, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
 
       <p class="doc-note">Ao marcar a caixa de aceite, o Consultor Parceiro declara, para todos os fins de direito, que atua por conta própria, na condição de profissional autônomo ou de pessoa jurídica, e que <b>não possui qualquer vínculo empregatício</b> com a ${e.razao}.</p>

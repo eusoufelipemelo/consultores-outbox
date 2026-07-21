@@ -873,11 +873,10 @@ const Admin = {
   view_bonus() {
     const v = document.getElementById('main-view');
     const all = OB.sales().filter(s => s.bonusStatus && (s.bonus || []).length).slice().sort((a, b) => new Date(b.data) - new Date(a.data));
-    if (!all.length) { v.innerHTML = Consultor.empty('prize', 'Nenhum bônus solicitado', 'Quando um consultor incluir um bônus (cortesia) num orçamento, ele aparece aqui para você autorizar ou recusar.'); return; }
     const pend = all.filter(s => s.bonusStatus === 'pendente');
     const aprov = all.filter(s => s.bonusStatus === 'aprovado');
     const rec = all.filter(s => s.bonusStatus === 'recusado');
-    v.innerHTML = `
+    const cortesiaHTML = all.length ? `
       <div class="cards cols-3" style="margin-bottom:16px">
         ${Consultor.kpi('clock', pend.length, 'Aguardando autorização', 'Bônus pendentes de aprovação')}
         ${Consultor.kpi('check', aprov.length, 'Autorizados', 'Cortesias liberadas')}
@@ -886,10 +885,50 @@ const Admin = {
       <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>O consultor sinaliza um <b>bônus (cortesia)</b> no orçamento. Aqui você <b>autoriza ou recusa</b>. Se recusar, o bônus deixa de aparecer no orçamento do cliente.</div></div>
       ${pend.length ? `<div class="nav-label" style="padding-left:0">Aguardando autorização</div>${pend.map(s => this.bonusCard(s)).join('')}` : ''}
       ${aprov.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Autorizados</div>${aprov.map(s => this.bonusCard(s)).join('')}` : ''}
-      ${rec.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Recusados</div>${rec.map(s => this.bonusCard(s)).join('')}` : ''}`;
+      ${rec.length ? `<div class="nav-label" style="padding-left:0;margin-top:16px">Recusados</div>${rec.map(s => this.bonusCard(s)).join('')}` : ''}`
+      : Consultor.empty('prize', 'Nenhuma cortesia solicitada', 'Quando um consultor incluir um bônus (cortesia) num orçamento, ele aparece aqui para você autorizar ou recusar.');
+    v.innerHTML = `
+      ${this.bonusBVBloco()}
+      <div class="nav-label" style="padding-left:0;margin-top:22px">${UI.icon('prize',12)} Cortesias em orçamentos</div>
+      ${cortesiaHTML}`;
     v.querySelectorAll('[data-bonus-ok]').forEach(b => b.onclick = () => this.setBonus(b.dataset.bonusOk, 'aprovado'));
     v.querySelectorAll('[data-bonus-no]').forEach(b => b.onclick = () => this.setBonus(b.dataset.bonusNo, 'recusado'));
     App.refreshBadge();
+  },
+
+  /* acompanhamento do bônus de boas-vindas (R$100 na ativação, 60 dias para converter) */
+  bonusBVBloco() {
+    const linhas = this.consultores().map(c => ({ c, bv: OB.bonusBV(c.id) })).filter(x => x.bv && x.bv.ativo);
+    const por = st => linhas.filter(x => x.bv.status === st);
+    const pend = por('pendente').sort((a, b) => a.bv.falta - b.bv.falta); // mais perto de converter primeiro
+    const lib = por('liberado'), resg = por('resgatado'), exp = por('expirado');
+    const custoAberto = (lib.length + pend.length) * OB.bonusBVValor();
+    const nome = c => ((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || c.email;
+    const row = (x, extra) => {
+      const urg = x.bv.diasRestantes != null && x.bv.diasRestantes <= 15;
+      return `<div class="row between alc" style="padding:11px 13px;border:1px solid var(--border);border-radius:11px;margin-bottom:8px;background:var(--surface-2);gap:12px;flex-wrap:wrap">
+        <div style="min-width:0"><b style="font-size:14px">${nome(x.c)}</b>
+          <div class="mut" style="font-size:12px">${extra}</div></div>
+        ${x.bv.status === 'pendente' ? `<div class="row alc" style="gap:12px">
+          <div style="min-width:120px"><div class="bv-bar" style="margin:0 0 4px"><i style="width:${x.bv.progresso}%"></i></div>
+            <div class="mut" style="font-size:11px">${OB.fmt(x.bv.comissao + x.bv.valor)} de ${OB.fmt(x.bv.meta)}</div></div>
+          <span class="chip ${urg ? 'warn' : 'gray'} nowrap">${x.bv.diasRestantes} ${x.bv.diasRestantes === 1 ? 'dia' : 'dias'}</span>
+        </div>` : ''}
+      </div>`;
+    };
+    return `
+      <div class="nav-label" style="padding-left:0">${UI.icon('rocket',12)} Bônus de boas-vindas (ativação)</div>
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('clock', pend.length, 'Correndo o prazo', 'Ainda podem converter')}
+        ${Consultor.kpi('check', lib.length + resg.length, 'Converteram', 'Bateram a meta e ganharam o bônus')}
+        ${Consultor.kpi('money', OB.fmt(custoAberto), 'Exposição em aberto', 'Se todos converterem agora')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Cada consultor recebe <b>${OB.fmt(OB.bonusBVValor())}</b> ao concluir o perfil. O valor só vira saque quando ele soma <b>${OB.fmt(OB.saqueMinimo())}</b> (o bônus conta, então bastam <b>${OB.fmt(OB.saqueMinimo() - OB.bonusBVValor())}</b> de comissão). Se não converter em <b>${OB.BONUS_BV.dias} dias</b>, o sistema zera automaticamente.</div></div>
+      ${pend.length ? `<div class="nav-label" style="padding-left:0">Correndo o prazo (mais perto primeiro)</div>${pend.map(x => row(x, `Faltam <b style="color:var(--brand)">${OB.fmt(x.bv.falta)}</b> em comissão`)).join('')}` : ''}
+      ${lib.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Liberados (aguardando o saque)</div>${lib.map(x => row(x, `Bateu a meta · ${OB.fmt(x.bv.valor)} entram no próximo saque`)).join('')}` : ''}
+      ${resg.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Já pagos no saque</div>${resg.map(x => row(x, `Bônus de ${OB.fmt(x.bv.valor)} incluído numa solicitação`)).join('')}` : ''}
+      ${exp.length ? `<div class="nav-label" style="padding-left:0;margin-top:14px">Expirados (zerados pelo sistema)</div>${exp.map(x => row(x, `Não atingiu ${OB.fmt(x.bv.meta)} em ${OB.BONUS_BV.dias} dias`)).join('')}` : ''}
+      ${!linhas.length ? `<div class="hint">Nenhum consultor ativou o bônus ainda. A ativação acontece quando o consultor conclui o perfil.</div>` : ''}`;
   },
   bonusCard(s) {
     const cli = OB.clientById(s.clientId) || {};

@@ -354,8 +354,8 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null }; },
-  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null }; },
+  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
@@ -410,7 +410,7 @@ const OB = {
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
-    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em';
+    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira';
     const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
@@ -997,6 +997,73 @@ const OB = {
     return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
+
+  /* ---------- BÔNUS DE BOAS-VINDAS (ativação do consultor) ----------
+     R$ 100 creditados ao novo consultor. NÃO é dinheiro por se cadastrar: só vira saque
+     quando ele soma o mínimo (o bônus CONTA para a meta, então bastam R$ 400 de comissão).
+     O relógio começa quando o consultor conclui o perfil (ativação), não no cadastro,
+     e o bônus expira em 60 dias se a meta não for atingida. */
+  BONUS_BV: { valor: 100, dias: 60 },
+  bonusBVValor() { return this.BONUS_BV.valor; },
+
+  /* liga o relógio do bônus (idempotente: só age uma vez, na ativação) */
+  ativarBonusBV(user) {
+    const u = user || this.db.profile;
+    if (!u || u.role === 'admin') return null;
+    if (u.bvInicio || (u.bvStatus && u.bvStatus !== 'pendente')) return u; // já ativado ou resolvido
+    const agora = new Date();
+    u.bvValor = u.bvValor != null ? u.bvValor : this.BONUS_BV.valor;
+    u.bvStatus = 'pendente';
+    u.bvInicio = agora.toISOString();
+    u.bvExpira = new Date(agora.getTime() + this.BONUS_BV.dias * 864e5).toISOString();
+    this.upsertUser(u);
+    return u;
+  },
+
+  /* estado do bônus + transições automáticas (libera ao bater a meta, expira no prazo).
+     Persiste só quando o status realmente muda, para não escrever a cada render. */
+  bonusBV(consultorId) {
+    const u = this.userById(consultorId);
+    if (!u || u.role === 'admin') return null;
+    const valor = u.bvValor != null ? Number(u.bvValor) : this.BONUS_BV.valor;
+    const meta = this.saqueMinimo();
+    const comissao = this.comissaoResumo(consultorId).disponivel;
+    const anterior = u.bvStatus || 'pendente';
+    let status = anterior;
+    const agora = Date.now();
+    const expiraMs = u.bvExpira ? new Date(u.bvExpira).getTime() : null;
+    if (status === 'pendente' && u.bvInicio) {
+      if (comissao + valor >= meta) status = 'liberado';           // bateu a meta: bônus é dele
+      else if (expiraMs && agora > expiraMs) status = 'expirado';  // passou de 60 dias: zera
+    }
+    if (status !== anterior) { u.bvStatus = status; this.upsertUser(u); }
+    return {
+      status, valor, meta, comissao,
+      inicio: u.bvInicio || null, expira: u.bvExpira || null,
+      ativo: !!u.bvInicio,
+      falta: Math.max(0, meta - valor - comissao),
+      diasRestantes: expiraMs ? Math.max(0, Math.ceil((expiraMs - agora) / 864e5)) : null,
+      progresso: Math.max(0, Math.min(100, Math.round(((comissao + valor) / meta) * 100)))
+    };
+  },
+
+  /* marca o bônus como resgatado (entrou numa solicitação de saque) */
+  resgatarBonusBV(consultorId) {
+    const u = this.userById(consultorId);
+    if (!u || u.bvStatus !== 'liberado') return false;
+    u.bvStatus = 'resgatado';
+    this.upsertUser(u);
+    return true;
+  },
+
+  /* saldo sacável = comissão liberada + bônus (quando já liberado e ainda não resgatado) */
+  saldoSacavel(consultorId) {
+    const com = this.comissaoDisponivel(consultorId);
+    const bv = this.bonusBV(consultorId);
+    const bonus = bv && bv.status === 'liberado' ? bv.valor : 0;
+    const total = com.valor + bonus;
+    return { comissao: com.valor, bonus, total, podeSacar: total >= this.saqueMinimo(), com, bv };
+  },
 
   premioAlcancado(consultorId) { const vol = this.volumeTrimestre(consultorId); let alc = null; for (const p of this.PREMIOS) if (vol >= p.meta) alc = p; return alc; },
   proximoPremio(consultorId) { const vol = this.volumeTrimestre(consultorId); for (const p of this.PREMIOS) if (vol < p.meta) return p; return null; },

@@ -287,9 +287,41 @@ const Consultor = {
   },
 
   /* ====================== VENDAS & COMISSÃO ====================== */
+  /* card do bônus de boas-vindas: progresso até a meta + contagem regressiva */
+  bonusBVCard(bv) {
+    if (!bv || !bv.ativo || bv.status === 'resgatado') return '';
+    if (bv.status === 'expirado') {
+      return `<div class="bv-card bv-card--off">
+        <span class="bv-ic">${UI.icon('clock', 20)}</span>
+        <div class="bv-txt"><b>Bônus de boas-vindas expirado</b>
+          <span>O prazo de ${OB.BONUS_BV.dias} dias terminou antes de você atingir ${OB.fmt(bv.meta)}. Sua comissão das vendas continua normal.</span></div>
+      </div>`;
+    }
+    if (bv.status === 'liberado') {
+      return `<div class="bv-card bv-card--on">
+        <span class="bv-ic">${UI.icon('prize', 20)}</span>
+        <div class="bv-txt"><b>Bônus de ${OB.fmt(bv.valor)} liberado! 🎉</b>
+          <span>Você bateu a meta. O bônus já está somado no seu valor disponível para saque.</span></div>
+      </div>`;
+    }
+    // pendente: mostra o quanto falta e o prazo
+    const urgente = bv.diasRestantes != null && bv.diasRestantes <= 15;
+    return `<div class="bv-card">
+      <div class="bv-head">
+        <span class="bv-ic">${UI.icon('prize', 20)}</span>
+        <div class="bv-txt"><b>Bônus de boas-vindas: ${OB.fmt(bv.valor)}</b>
+          <span>Ele entra no seu saque assim que você chegar a <b>${OB.fmt(bv.meta)}</b>. Como o bônus já conta, faltam <b>${OB.fmt(bv.falta)}</b> em comissão.</span></div>
+        ${bv.diasRestantes != null ? `<span class="bv-days${urgente ? ' urg' : ''}">${bv.diasRestantes}<small>${bv.diasRestantes === 1 ? 'dia' : 'dias'}</small></span>` : ''}
+      </div>
+      <div class="bv-bar"><i style="width:${bv.progresso}%"></i></div>
+      <div class="bv-foot"><span>${OB.fmt(bv.comissao + bv.valor)} de ${OB.fmt(bv.meta)}</span><span>${bv.expira ? 'Expira em ' + new Date(bv.expira).toLocaleDateString('pt-BR') : ''}</span></div>
+    </div>`;
+  },
+
   view_comissao() {
     const u = this.u();
     const com = OB.comissaoDisponivel(u.id);
+    const saldo = OB.saldoSacavel(u.id);
     const vendas = OB.salesOf(u.id).sort((a, b) => new Date(b.data) - new Date(a.data));
     const reqs = OB.requestsOf(u.id).filter(r => r.tipo === 'comissao');
     const volMes = OB.volumeMes(u.id);
@@ -297,6 +329,7 @@ const Consultor = {
 
     const v = document.getElementById('main-view');
     v.innerHTML = `
+      ${this.bonusBVCard(saldo.bv)}
       <div class="cards cols-3" style="margin-bottom:18px">
         ${this.kpi('money', OB.fmt(com.valor), 'Comissão disponível', 'Taxa atual ' + ((nivel.rate*100)|0) + '%')}
         ${this.kpi('cart', OB.fmt(volMes), 'Vendido no mês', 'Nível ' + nivel.nome)}
@@ -312,10 +345,10 @@ const Consultor = {
         </div>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <button class="btn brand" id="add-sale">${UI.icon('plus',16)} Lançar venda</button>
-          <button class="btn green" id="req-com" ${com.valor < OB.saqueMinimo() ? 'disabled' : ''} title="${com.valor < OB.saqueMinimo() ? 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()) : ''}">${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(com.valor)})</button>
+          <button class="btn green" id="req-com" ${!saldo.podeSacar ? 'disabled' : ''} title="${!saldo.podeSacar ? 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()) : ''}">${UI.icon('receipt',16)} Solicitar comissão (${OB.fmt(saldo.total)})</button>
         </div>
       </div>
-      ${com.valor < OB.saqueMinimo() && com.valor > 0 ? `<div class="hint" style="margin:-8px 0 14px;text-align:right">Valor mínimo para saque é de <b>${OB.fmt(OB.saqueMinimo())}</b></div>` : ''}
+      ${!saldo.podeSacar && saldo.total > 0 ? `<div class="hint" style="margin:-8px 0 14px;text-align:right">Valor mínimo para saque é de <b>${OB.fmt(OB.saqueMinimo())}</b>${saldo.bonus ? ` (já incluindo o bônus de ${OB.fmt(saldo.bonus)})` : ''}</div>` : ''}
 
       <div class="card" style="padding:0;margin-bottom:18px" id="sale-table"></div>
 
@@ -1566,8 +1599,11 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
   },
 
   solicitarComissao(com) {
-    if (com.valor <= 0) return UI.toast('Nada disponível', 'Você não tem comissão liberada para solicitar', 'err');
-    if (com.valor < OB.saqueMinimo()) return UI.toast('Abaixo do mínimo', 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()), 'err');
+    const uAtual = this.u();
+    const saldo = OB.saldoSacavel(uAtual.id);   // comissão + bônus de boas-vindas (se liberado)
+    const bonus = saldo.bonus, total = saldo.total;
+    if (total <= 0) return UI.toast('Nada disponível', 'Você não tem comissão liberada para solicitar', 'err');
+    if (total < OB.saqueMinimo()) return UI.toast('Abaixo do mínimo', 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()), 'err');
     UI.modal({
       title: 'Solicitar pagamento de comissão',
       sub: 'O administrador será notificado imediatamente',
@@ -1577,7 +1613,9 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Volume do mês</span><b>${OB.fmt(com.base)}</b></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Cálculo</span><b>Progressivo por faixa</b></div>
         <hr style="border:none;border-top:1px solid var(--border);margin:14px 0"/>
-        <div class="row between" style="font-size:20px"><b>Total a receber</b><b style="color:var(--brand)">${OB.fmt(com.valor)}</b></div>
+        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Comissão</span><b>${OB.fmt(saldo.comissao)}</b></div>
+        ${bonus ? `<div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">${UI.icon('prize',14)} Bônus de boas-vindas</span><b style="color:#1fa855">+ ${OB.fmt(bonus)}</b></div>` : ''}
+        <div class="row between" style="font-size:20px"><b>Total a receber</b><b style="color:var(--brand)">${OB.fmt(total)}</b></div>
         <div class="field" style="margin-top:16px"><label>Dados / chave PIX para recebimento <span class="req">*</span></label><input id="rq-pix" placeholder="CPF, e-mail, telefone ou chave aleatória"/></div>`,
       footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="rq-go">Confirmar solicitação</button>`
     });
@@ -1587,13 +1625,14 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       const u = this.u();
       OB.addRequest({
         id: OB.uid(), tipo: 'comissao', consultorId: u.id,
-        consultorNome: u.nome + ' ' + u.sobrenome, valor: com.valor,
-        detalhe: `${com.vendas.length} venda(s) · volume ${OB.fmt(com.base)} · progressivo`,
+        consultorNome: u.nome + ' ' + u.sobrenome, valor: total,
+        detalhe: `${com.vendas.length} venda(s) · volume ${OB.fmt(com.base)} · progressivo${bonus ? ` · inclui bônus de boas-vindas de ${OB.fmt(bonus)}` : ''}`,
         pix, status: 'solicitado', criadoEm: new Date().toISOString(),
         vendaIds: com.vendas.map(s => s.id)
       });
       // marca vendas como solicitadas (regra interna → vai para o admin)
       com.vendas.forEach(s => { s.statusComissao = 'solicitada'; OB.updateSale(s); });
+      if (bonus) OB.resgatarBonusBV(u.id); // bônus entrou no saque: não pode entrar de novo
       UI.closeModal();
       UI.toast('Solicitação enviada', 'O administrador foi notificado para análise e repasse', 'ok');
       App.refreshCommission(true);

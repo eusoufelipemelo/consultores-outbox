@@ -654,6 +654,8 @@ const App = {
     }
     // portão de perfil: consultor precisa completar e salvar o perfil antes de usar o sistema
     this.perfilLock = OB.precisaCompletarPerfil();
+    // consultor já com perfil completo (inclusive os antigos) ativa o bônus de boas-vindas
+    if (!this.perfilLock) OB.ativarBonusBV();
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
     if (this.perfilLock) { this.go('perfil'); }
@@ -701,6 +703,7 @@ const App = {
   /* libera o sistema depois que o consultor completa e salva o perfil */
   liberarPerfil() {
     this.perfilLock = false;
+    OB.ativarBonusBV(); // perfil completo = ativação: começa o prazo do bônus de boas-vindas
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.remove('perfil-lock');
     this.go(this.mod().HOME || this.mod().NAV[0].id);
