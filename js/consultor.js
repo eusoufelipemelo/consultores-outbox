@@ -1578,7 +1578,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       </div>`).join('') : `<div class="chip green" style="margin-top:4px">Você já está no nível máximo (Black · 20%)</div>`;
 
     UI.modal({
-      title: 'Sua comissão do mês',
+      title: 'Sua comissão',
       sub: `Nível ${r.nivel.nome} · taxa marginal ${(r.rate*100)|0}% · volume ${OB.fmt(r.volume)}`,
       body: `
         <div class="card" style="background:linear-gradient(135deg,var(--brand),var(--brand-600));color:#fff;border:none;margin-bottom:16px">
@@ -1588,10 +1588,10 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
         </div>
         ${linha('Em conferência', r.emConferencia, 'color:#d97706', 'Vendas aprovadas aguardando o admin confirmar o pagamento do cliente')}
         ${linha('Em análise pelo admin', r.emAnalise, 'color:var(--text)', 'Comissão já solicitada · repasse em até 3 dias úteis')}
-        ${linha('Já pago no mês', r.jaPago, 'color:#1fa855')}
+        ${linha('Já pago', r.jaPago, 'color:#1fa855', 'Total já repassado a você')}
         <div class="nav-label" style="padding-left:0;margin-top:8px">${UI.icon('lock',12)} Bloqueado pelo sistema — desbloqueie batendo metas</div>
         ${bloqueadoHTML}
-        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão só fica <b>disponível para saque</b> depois que o cliente paga e o <b>administrador confirma o recebimento</b> no sistema. Até lá ela aparece em <b style="color:#d97706">Em conferência</b>. O cálculo é progressivo por faixa (8% a 20%) conforme o volume do mês.</div></div>`,
+        <div class="notice" style="margin-top:14px">${UI.icon('shield',16)}<div>A comissão só fica <b>disponível para saque</b> depois que o cliente paga e o <b>administrador confirma o recebimento</b> no sistema. Até lá ela aparece em <b style="color:#d97706">Em conferência</b>. O saldo <b>acumula</b>: ele não zera na virada do mês, e você solicita quando quiser, a partir de <b>${OB.fmt(OB.saqueMinimo())}</b>. O cálculo é progressivo por faixa (8% a 20%) conforme o volume de cada mês.</div></div>`,
       footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="cp-sol" ${r.disponivel <= 0 ? 'disabled' : ''}>${UI.icon('receipt',16)} Solicitar ${OB.fmt(r.disponivel)}</button>`
     });
     const sol = document.getElementById('cp-sol');
@@ -1602,6 +1602,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
     const uAtual = this.u();
     const saldo = OB.saldoSacavel(uAtual.id);   // comissão + bônus de boas-vindas (se liberado)
     const bonus = saldo.bonus, total = saldo.total;
+    const volumeIncluido = (com.vendas || []).reduce((t, s) => t + s.valor, 0);
     if (total <= 0) return UI.toast('Nada disponível', 'Você não tem comissão liberada para solicitar', 'err');
     if (total < OB.saqueMinimo()) return UI.toast('Abaixo do mínimo', 'Valor mínimo para saque é de ' + OB.fmt(OB.saqueMinimo()), 'err');
     UI.modal({
@@ -1610,7 +1611,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       body: `
         <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>O pagamento é feito <b>em até 3 dias úteis</b>, mediante a comprovação do serviço e dos valores que entraram na conta da OutBox.</div></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Vendas incluídas</span><b>${com.vendas.length}</b></div>
-        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Volume do mês</span><b>${OB.fmt(com.base)}</b></div>
+        <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Volume dessas vendas</span><b>${OB.fmt(volumeIncluido)}</b></div>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Cálculo</span><b>Progressivo por faixa</b></div>
         <hr style="border:none;border-top:1px solid var(--border);margin:14px 0"/>
         <div class="row between" style="font-size:15px;margin-bottom:8px"><span class="soft">Comissão</span><b>${OB.fmt(saldo.comissao)}</b></div>
@@ -1626,7 +1627,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       OB.addRequest({
         id: OB.uid(), tipo: 'comissao', consultorId: u.id,
         consultorNome: u.nome + ' ' + u.sobrenome, valor: total,
-        detalhe: `${com.vendas.length} venda(s) · volume ${OB.fmt(com.base)} · progressivo${bonus ? ` · inclui bônus de boas-vindas de ${OB.fmt(bonus)}` : ''}`,
+        detalhe: `${com.vendas.length} venda(s) · volume ${OB.fmt(volumeIncluido)} · progressivo${bonus ? ` · inclui bônus de boas-vindas de ${OB.fmt(bonus)}` : ''}`,
         pix, status: 'solicitado', criadoEm: new Date().toISOString(),
         vendaIds: com.vendas.map(s => s.id)
       });

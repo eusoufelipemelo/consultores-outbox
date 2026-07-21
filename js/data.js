@@ -974,26 +974,42 @@ const OB = {
   volumeMes(consultorId) { return this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data)).reduce((t, s) => t + s.valor, 0); },
   volumeTrimestre(consultorId) { return this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameQuarter(s.data)).reduce((t, s) => t + s.valor, 0); },
 
+  /* comissão apurada sobre um conjunto de vendas: agrupa por MÊS e aplica a progressão
+     marginal de cada mês (a faixa é mensal), depois soma. Base de todo o cálculo abaixo. */
+  comissaoDeVendas(vendas) {
+    const porMes = {};
+    (vendas || []).forEach(s => {
+      const d = new Date(s.data);
+      const k = d.getFullYear() + '-' + d.getMonth();
+      porMes[k] = (porMes[k] || 0) + s.valor;
+    });
+    return Object.keys(porMes).reduce((t, k) => t + Math.round(this.comissaoMarginal(porMes[k])), 0);
+  },
+
   comissaoResumo(consultorId) {
-    const month = this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada' && this.isSameMonth(s.data));
-    const pagas = month.filter(s => s.statusPagamento === 'recebido'); // pagamento confirmado pelo admin
-    const volume = month.reduce((t, s) => t + s.valor, 0);            // volume vendido (define o nível)
-    const volumeRecebido = pagas.reduce((t, s) => t + s.valor, 0);    // volume com pagamento confirmado
+    const todas = this.salesOf(consultorId).filter(s => s.statusProposta === 'aprovada');
+    const pagas = todas.filter(s => s.statusPagamento === 'recebido'); // pagamento confirmado pelo admin
+    // NÍVEL e TAXA continuam sendo do MÊS (a faixa é performance mensal)
+    const month = todas.filter(s => this.isSameMonth(s.data));
+    const volume = month.reduce((t, s) => t + s.valor, 0);
     const nivel = this.nivelPorVolume(volume);
-    const rate = this.taxaMarginal(volume); // taxa marginal da faixa atual
-    const totalDevido = Math.round(this.comissaoMarginal(volume));          // comissão se tudo for pago
-    const comissaoRecebivel = Math.round(this.comissaoMarginal(volumeRecebido)); // comissão lastreada em pagamento
-    const emConferencia = Math.max(0, totalDevido - comissaoRecebivel);    // aguardando o cliente pagar / admin confirmar
-    const reqs = this.requestsOf(consultorId).filter(r => r.tipo === 'comissao' && r.status !== 'recusado' && this.isSameMonth(r.criadoEm));
-    const jaPago = reqs.filter(r => r.status === 'pago').reduce((t, r) => t + r.valor, 0);
-    const emAnalise = reqs.filter(r => r.status !== 'pago').reduce((t, r) => t + r.valor, 0);
-    const disponivel = Math.max(0, comissaoRecebivel - jaPago - emAnalise); // só libera o que já foi pago
-    const efetiva = volume > 0 ? totalDevido / volume : rate; // taxa efetiva (média) sobre o volume
+    const rate = this.taxaMarginal(volume);
+    // SALDO é ACUMULADO (não zera na virada do mês). Cada venda tem seu próprio status
+    // (disponivel → solicitada → paga), então o saldo desconta sozinho quando entra num saque.
+    const volumeRecebido = pagas.reduce((t, s) => t + s.valor, 0);
+    const vendasDisp = pagas.filter(s => s.statusComissao === 'disponivel');
+    const disponivel = this.comissaoDeVendas(vendasDisp);                                  // pode sacar agora
+    const emConferencia = this.comissaoDeVendas(todas.filter(s => s.statusPagamento !== 'recebido')); // cliente ainda não pagou
+    const emAnalise = this.comissaoDeVendas(pagas.filter(s => s.statusComissao === 'solicitada'));    // saque pedido, admin analisando
+    const jaPago = this.comissaoDeVendas(pagas.filter(s => s.statusComissao === 'paga'));            // já repassado
+    const totalDevido = this.comissaoDeVendas(todas);
+    const comissaoRecebivel = this.comissaoDeVendas(pagas);
+    const reqs = this.requestsOf(consultorId).filter(r => r.tipo === 'comissao' && r.status !== 'recusado');
+    const efetiva = volume > 0 ? Math.round(this.comissaoMarginal(volume)) / volume : rate; // taxa efetiva do mês
     const bloqueados = this.NIVEIS.filter(n => n.meta > volume).sort((a, b) => a.meta - b.meta).map(n => ({
       nivel: n, faltaVolume: n.meta - volume, extraPct: Math.round((n.rate - rate) * 100),
       ganhoSobreAtual: 0
     }));
-    const vendasDisp = pagas.filter(s => s.statusComissao === 'disponivel'); // só vendas pagas podem ser sacadas
     return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
@@ -1010,16 +1026,9 @@ const OB = {
      Usada pela meta do bônus: o consultor acumula ao longo dos 60 dias, sem zerar na virada do mês. */
   comissaoAcumulada(consultorId, desdeISO) {
     const desde = desdeISO ? new Date(desdeISO) : null;
-    const vendas = this.salesOf(consultorId).filter(s =>
+    return this.comissaoDeVendas(this.salesOf(consultorId).filter(s =>
       s.statusProposta === 'aprovada' && s.statusPagamento === 'recebido' &&
-      (!desde || new Date(s.data) >= desde));
-    const porMes = {};
-    vendas.forEach(s => {
-      const d = new Date(s.data);
-      const k = d.getFullYear() + '-' + d.getMonth();
-      porMes[k] = (porMes[k] || 0) + s.valor;
-    });
-    return Object.keys(porMes).reduce((t, k) => t + Math.round(this.comissaoMarginal(porMes[k])), 0);
+      (!desde || new Date(s.data) >= desde)));
   },
 
   /* liga o relógio do bônus (idempotente: só age uma vez, na ativação) */
