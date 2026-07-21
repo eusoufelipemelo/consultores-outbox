@@ -70,6 +70,7 @@ const Consultor = {
 
     const v = document.getElementById('main-view');
     v.innerHTML = `
+      ${this.bonusBVTimeline(OB.bonusBV(u.id))}
       <div class="cards cols-4" style="margin-bottom:18px">
         ${this.kpi('cart', OB.fmt(volMes), 'Vendido no mês', `Nível ${nivel.nome} · ${(nivel.rate*100)|0}% de comissão`)}
         ${this.kpi('money', OB.fmt(com.valor), 'Comissão disponível', com.vendas.length + ' venda(s) a solicitar')}
@@ -284,6 +285,41 @@ const Consultor = {
       hint.textContent = 'Endereço preenchido ✓';
       document.getElementById('c-num').focus();
     }).catch(() => { hint.textContent = 'Não foi possível buscar o CEP'; });
+  },
+
+  /* ====================== BÔNUS DE BOAS-VINDAS ====================== */
+  /* faixa de destaque na Visão Geral: linha do tempo animada até destravar o bônus */
+  bonusBVTimeline(bv) {
+    if (!bv || !bv.ativo || bv.status === 'resgatado' || bv.status === 'expirado') return '';
+    const liberado = bv.status === 'liberado';
+    const urg = !liberado && bv.diasRestantes != null && bv.diasRestantes <= 15;
+    // 3 marcos: começou · meio do caminho · bônus liberado
+    const marcos = [
+      { pct: 20, txt: 'Você começou', on: true },
+      { pct: 60, txt: 'Meio do caminho', on: bv.comissao + bv.valor >= bv.meta * 0.6 },
+      { pct: 100, txt: `${OB.fmt(bv.meta)} · bônus seu`, on: liberado }
+    ];
+    return `<div class="bvt ${liberado ? 'bvt--on' : ''} ${urg ? 'bvt--urg' : ''}">
+      <div class="bvt-glow"></div>
+      <div class="bvt-top">
+        <div class="bvt-ic">${UI.icon('prize', 22)}</div>
+        <div class="bvt-txt">
+          <b>${liberado ? `Bônus de ${OB.fmt(bv.valor)} liberado! 🎉` : `Seu bônus de ${OB.fmt(bv.valor)} está a ${OB.fmt(bv.falta)} de distância`}</b>
+          <span>${liberado
+            ? 'Já está somado no seu valor disponível para saque. É só solicitar.'
+            : `Chegue a <b>${OB.fmt(bv.meta)}</b> e o bônus é seu. Como ele já conta, faltam <b>${OB.fmt(bv.falta)}</b> em comissão.`}</span>
+        </div>
+        ${bv.diasRestantes != null && !liberado ? `<div class="bvt-days"><b>${bv.diasRestantes}</b><small>${bv.diasRestantes === 1 ? 'dia' : 'dias'}</small></div>` : ''}
+      </div>
+      <div class="bvt-track">
+        <div class="bvt-fill" style="--w:${bv.progresso}%"><span class="bvt-shine"></span></div>
+        ${marcos.map(m => `<span class="bvt-dot ${m.on ? 'on' : ''}" style="left:${m.pct}%" title="${m.txt}"></span>`).join('')}
+      </div>
+      <div class="bvt-legend">
+        <span>${OB.fmt(bv.comissao + bv.valor)} <i>de ${OB.fmt(bv.meta)}</i></span>
+        <span>${liberado ? 'Meta batida' : (bv.expira ? 'Expira em ' + new Date(bv.expira).toLocaleDateString('pt-BR') : '')}</span>
+      </div>
+    </div>`;
   },
 
   /* ====================== VENDAS & COMISSÃO ====================== */

@@ -88,6 +88,10 @@ const OB = {
     // fallback à vista (PIX sem o desconto)
     return { forma: 'pix', valorServico: base, valorCliente: base, parcelas: 1, valorParcela: base, jurosPct: 0, pixDesconto: false };
   },
+  /* grupo oficial de consultores no WhatsApp (networking, novidades e sugestões).
+     Para trocar o convite, basta alterar esta URL. */
+  GRUPO_WHATS: 'https://chat.whatsapp.com/Bv5EM9xjqNkLiQiP3cUfKd',
+
   /* valor mínimo para solicitar o saque da comissão (regra fixa) */
   SAQUE_MINIMO: 500,
   saqueMinimo() { return this.SAQUE_MINIMO; },
@@ -354,8 +358,8 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null }; },
-  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null }; },
+  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
@@ -410,7 +414,7 @@ const OB = {
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
-    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira';
+    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em';
     const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
@@ -1013,6 +1017,21 @@ const OB = {
     return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
+
+  /* ---------- GRUPO DE CONSULTORES NO WHATSAPP ----------
+     Entrar no grupo é obrigatório: é por lá que saem novidades, networking e sugestões.
+     O portão aparece uma vez, logo depois do aceite dos termos. */
+  precisaEntrarGrupo() {
+    const u = this.db.profile;
+    return !!u && u.role !== 'admin' && !u.whatsGrupoEm;
+  },
+  confirmarGrupoWhats() {
+    const u = this.db.profile;
+    if (!u || u.whatsGrupoEm) return u;
+    u.whatsGrupoEm = new Date().toISOString();
+    this.upsertUser(u);
+    return u;
+  },
 
   /* ---------- BÔNUS DE BOAS-VINDAS (ativação do consultor) ----------
      R$ 100 creditados ao novo consultor. NÃO é dinheiro por se cadastrar: só vira saque

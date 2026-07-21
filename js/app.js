@@ -41,6 +41,47 @@ const App = {
   },
 
   /* ---------- portão de aceite dos termos (novos e antigos consultores) ---------- */
+  /* ---------- portão do grupo de consultores no WhatsApp ----------
+     Aparece depois do aceite dos termos: o consultor abre o grupo e confirma a entrada.
+     Só libera o "Já entrei" depois que ele clicou em abrir (evita pular sem ver o grupo). */
+  showGrupoGate() {
+    document.getElementById('auth').style.display = 'none';
+    const app = document.getElementById('app'); if (app) app.style.display = 'none';
+    const old = document.getElementById('grupo-gate'); if (old) old.remove();
+    const host = document.createElement('div');
+    host.id = 'grupo-gate';
+    host.innerHTML = `
+      <div class="gg-card">
+        <div class="gg-mark">${UI.icon('whats', 30)}</div>
+        <h2>Entre no grupo dos consultores</h2>
+        <p>É no grupo do WhatsApp que a OutBox solta as <b>novidades</b>, os <b>materiais novos</b> e as <b>oportunidades</b>. É lá também que rola o <b>networking</b> entre consultores e onde você manda suas <b>sugestões</b>. Participar é parte do programa.</p>
+        <ul class="gg-list">
+          <li>${UI.icon('megaphone',16)}<span>Avisos e novidades em primeira mão</span></li>
+          <li>${UI.icon('clients',16)}<span>Networking com os outros consultores</span></li>
+          <li>${UI.icon('creative',16)}<span>Materiais, campanhas e dicas de venda</span></li>
+        </ul>
+        <a class="btn brand block gg-open" id="gg-abrir" href="${OB.GRUPO_WHATS}" target="_blank" rel="noopener">${UI.icon('whats',18)} Abrir o grupo no WhatsApp</a>
+        <button class="btn green block" id="gg-ok" disabled>${UI.icon('check',16)} Já entrei no grupo, continuar</button>
+        <div class="gg-hint" id="gg-hint">Toque em <b>“Abrir o grupo no WhatsApp”</b> para liberar o botão de continuar.</div>
+        <button class="gg-sair" id="gg-sair">Sair da conta</button>
+      </div>`;
+    document.body.appendChild(host);
+    const ok = document.getElementById('gg-ok');
+    const hint = document.getElementById('gg-hint');
+    document.getElementById('gg-abrir').onclick = () => {
+      ok.disabled = false;
+      hint.innerHTML = 'Depois de entrar no grupo, volte aqui e confirme para continuar.';
+      hint.classList.add('on');
+    };
+    ok.onclick = () => {
+      OB.confirmarGrupoWhats();
+      host.remove();
+      this.boot();
+      UI.toast('Bem-vindo ao grupo!', 'Fique de olho: as novidades e oportunidades saem por lá.', 'ok');
+    };
+    document.getElementById('gg-sair').onclick = () => Auth.logout();
+  },
+
   showTermosGate() {
     document.getElementById('auth').style.display = 'none';
     const app = document.getElementById('app'); app.style.display = 'none';
@@ -558,6 +599,8 @@ const App = {
   boot(goProfile) {
     const u = OB.session();
     const isAdmin = u.role === 'admin';
+    // portão do grupo: o consultor precisa entrar no grupo do WhatsApp antes de usar o sistema
+    if (!isAdmin && OB.precisaEntrarGrupo()) { this.showGrupoGate(); return; }
     const nav = this.mod().NAV;
     document.getElementById('auth').style.display = 'none';
     const app = document.getElementById('app');
@@ -600,7 +643,8 @@ const App = {
               : `<div class="com-pills">
                   <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
                   <button class="commission-pill locked" id="bloq-pill"><div style="text-align:left"><div class="lbl">Mínimo p/ saque</div><div class="val" id="bloq-val">R$ 500,00</div></div>${UI.icon('lock',18)}</button>
-                  <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
+                  <button class="commission-pill bv-pill hidden" id="bv-pill" title="Seu bônus de boas-vindas"><span class="bv-pill__ring"></span><div style="text-align:left"><div class="lbl" id="bv-pill-lbl">Bônus de boas-vindas</div><div class="val" id="bv-pill-val">R$ 100,00</div></div>${UI.icon('prize',18)}</button>
+                  <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl" id="com-lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
                 </div>
                 <button class="rank-badge" id="rank-badge" title="Seu ranking · clique para ver o Top 10">
                   <span class="rank-badge__av" id="rankb-av"></span>
@@ -862,13 +906,47 @@ const App = {
   },
 
   /* ---------- topbar comissão (sempre atualizada) ---------- */
+  /* pill do bônus no topo: pulsa enquanto está valendo, comemora quando libera */
+  _refreshBonusPill(bv, disponivel) {
+    const pill = document.getElementById('bv-pill');
+    if (!pill) return;
+    const lbl = document.getElementById('bv-pill-lbl');
+    const val = document.getElementById('bv-pill-val');
+    // só aparece enquanto o bônus está vivo (pendente ou liberado e ainda não sacado)
+    if (!bv || !bv.ativo || bv.status === 'resgatado' || bv.status === 'expirado') {
+      pill.classList.add('hidden'); pill.classList.remove('bv-on', 'bv-urg');
+      return;
+    }
+    pill.classList.remove('hidden');
+    if (bv.status === 'liberado') {
+      pill.classList.add('bv-on'); pill.classList.remove('bv-urg');
+      lbl.textContent = 'Bônus liberado! 🎉';
+      val.textContent = '+ ' + OB.fmt(bv.valor);
+      pill.title = 'Seu bônus de boas-vindas já está somado no valor disponível';
+    } else {
+      const urg = bv.diasRestantes != null && bv.diasRestantes <= 15;
+      pill.classList.toggle('bv-urg', urg); pill.classList.remove('bv-on');
+      lbl.textContent = `Bônus · faltam ${OB.fmt(bv.falta)}`;
+      val.textContent = OB.fmt(bv.valor);
+      pill.title = `Chegue a ${OB.fmt(bv.meta)} e o bônus de ${OB.fmt(bv.valor)} é seu` + (bv.diasRestantes != null ? ` · ${bv.diasRestantes} dia(s) restantes` : '');
+    }
+    pill.style.setProperty('--bv-prog', (bv.progresso || 0) + '%');
+    pill.onclick = () => this.go('overview');
+  },
+
   refreshCommission(bump) {
     const u = OB.session();
     if (!u || u.role === 'admin') return;
     const pill = document.getElementById('com-pill');
     if (!pill) return;
     const r = OB.comissaoResumo(u.id);
-    document.getElementById('com-val').textContent = OB.fmt(r.disponivel);
+    // o bônus de boas-vindas entra SOMADO no topo, para o consultor ver o valor cheio
+    const bv = OB.bonusBV(u.id);
+    const bonusVale = bv && bv.status === 'liberado' ? bv.valor : 0;
+    document.getElementById('com-val').textContent = OB.fmt(r.disponivel + bonusVale);
+    const comLbl = document.getElementById('com-lbl');
+    if (comLbl) comLbl.textContent = bonusVale ? 'Disponível (com bônus)' : 'Comissão disponível';
+    this._refreshBonusPill(bv, r.disponivel);
     const confPill = document.getElementById('conf-pill');
     if (confPill) {
       document.getElementById('conf-val').textContent = OB.fmt(r.emConferencia);
@@ -878,7 +956,7 @@ const App = {
     const bloq = document.getElementById('bloq-pill');
     if (bloq) {
       const min = OB.saqueMinimo();
-      const liberado = r.disponivel >= min;
+      const liberado = (r.disponivel + bonusVale) >= min; // o bônus conta para o mínimo
       bloq.classList.toggle('locked', !liberado);
       bloq.classList.toggle('unlocked', liberado);
       bloq.querySelector('.lbl').textContent = liberado ? 'Saque liberado' : 'Mínimo p/ saque';
