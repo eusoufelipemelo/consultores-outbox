@@ -310,7 +310,7 @@ const Consultor = {
       <div class="bv-head">
         <span class="bv-ic">${UI.icon('prize', 20)}</span>
         <div class="bv-txt"><b>Bônus de boas-vindas: ${OB.fmt(bv.valor)}</b>
-          <span>Ele entra no seu saque assim que você chegar a <b>${OB.fmt(bv.meta)}</b>. Como o bônus já conta, faltam <b>${OB.fmt(bv.falta)}</b> em comissão.</span></div>
+          <span>Ele entra no seu saque assim que você chegar a <b>${OB.fmt(bv.meta)}</b>. Como o bônus já conta, faltam <b>${OB.fmt(bv.falta)}</b> em comissão, somando tudo que você vender no período.</span></div>
         ${bv.diasRestantes != null ? `<span class="bv-days${urgente ? ' urg' : ''}">${bv.diasRestantes}<small>${bv.diasRestantes === 1 ? 'dia' : 'dias'}</small></span>` : ''}
       </div>
       <div class="bv-bar"><i style="width:${bv.progresso}%"></i></div>

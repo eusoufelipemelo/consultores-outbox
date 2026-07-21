@@ -1006,6 +1006,22 @@ const OB = {
   BONUS_BV: { valor: 100, dias: 60 },
   bonusBVValor() { return this.BONUS_BV.valor; },
 
+  /* comissão APURADA desde uma data (soma mês a mês, respeitando a progressão marginal).
+     Usada pela meta do bônus: o consultor acumula ao longo dos 60 dias, sem zerar na virada do mês. */
+  comissaoAcumulada(consultorId, desdeISO) {
+    const desde = desdeISO ? new Date(desdeISO) : null;
+    const vendas = this.salesOf(consultorId).filter(s =>
+      s.statusProposta === 'aprovada' && s.statusPagamento === 'recebido' &&
+      (!desde || new Date(s.data) >= desde));
+    const porMes = {};
+    vendas.forEach(s => {
+      const d = new Date(s.data);
+      const k = d.getFullYear() + '-' + d.getMonth();
+      porMes[k] = (porMes[k] || 0) + s.valor;
+    });
+    return Object.keys(porMes).reduce((t, k) => t + Math.round(this.comissaoMarginal(porMes[k])), 0);
+  },
+
   /* liga o relógio do bônus (idempotente: só age uma vez, na ativação) */
   ativarBonusBV(user) {
     const u = user || this.db.profile;
@@ -1027,7 +1043,8 @@ const OB = {
     if (!u || u.role === 'admin') return null;
     const valor = u.bvValor != null ? Number(u.bvValor) : this.BONUS_BV.valor;
     const meta = this.saqueMinimo();
-    const comissao = this.comissaoResumo(consultorId).disponivel;
+    // acumulado desde a ativação (não zera na virada do mês)
+    const comissao = this.comissaoAcumulada(consultorId, u.bvInicio);
     const anterior = u.bvStatus || 'pendente';
     let status = anterior;
     const agora = Date.now();
