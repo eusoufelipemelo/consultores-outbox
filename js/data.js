@@ -347,7 +347,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -358,8 +358,8 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null }; },
-  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null }; },
+  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
@@ -414,8 +414,8 @@ const OB = {
     if (!user) { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [] }; return; }
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
-    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq] = await Promise.all([
+    const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em,equipe_cargo,equipe_nivel';
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -431,7 +431,8 @@ const OB = {
       SB.from('chat_mensagens').select('*').order('criado_em'),
       SB.from('contratos').select('*').order('criado_em', { ascending: false }),
       SB.from('criativos').select('id,titulo,formato,categoria,legenda,hashtags,ativo,criado_em').order('criado_em', { ascending: false }),
-      SB.from('projeto_arquivos').select('id,projeto_id,autor,categoria,nome,mime,tamanho,url,criado_em').order('criado_em', { ascending: false })
+      SB.from('projeto_arquivos').select('id,projeto_id,autor,categoria,nome,mime,tamanho,url,criado_em').order('criado_em', { ascending: false }),
+      SB.from('equipe').select('*').order('nivel')
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -441,6 +442,7 @@ const OB = {
       await SB.from('profiles').upsert(this._pOut(profile));
     }
     this.db.profile = profile;
+    this.db.equipe = (eqp && eqp.data) ? eqp.data.map(r => this._eqIn(r)) : [];
     this.db.profiles = (profs.data || []).map(r => this._pIn(r));
     if (!this.db.profiles.find(p => p.id === profile.id)) this.db.profiles.push(profile);
     this.db.clients = (cli.data || []).map(r => this._cIn(r));
@@ -465,7 +467,7 @@ const OB = {
     this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -1017,6 +1019,79 @@ const OB = {
     return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
+
+  /* ---------- EQUIPE INTERNA (colaboradores da OutBox) ----------
+     Cada cargo tem um NÍVEL de hierarquia (1 = mais alto) e as SEÇÕES do admin que enxerga.
+     `secoes: '*'` libera tudo. O cargo fica no perfil (equipe_cargo) e filtra o menu. */
+  CARGOS: [
+    { id: 'admin_geral', nome: 'Administrador Geral', nivel: 1, cor: '#0A0A0A',
+      desc: 'Acesso total ao sistema, inclusive gestão da equipe.', secoes: '*' },
+    { id: 'gerente', nome: 'Gerente', nivel: 2, cor: '#2563EB',
+      desc: 'Acompanha toda a operação e a rede de consultores.',
+      secoes: ['painel','consultores','vendas','financeiro','bonus','contratos','projetos','briefings','timeline','atendimento','criativos','campanha','avisos','treinamentos','mapa','ranking'] },
+    { id: 'supervisor', nome: 'Supervisor', nivel: 3, cor: '#7c3aed',
+      desc: 'Cuida da rede de consultores e do acompanhamento das entregas.',
+      secoes: ['painel','consultores','vendas','projetos','briefings','timeline','atendimento','avisos','treinamentos','mapa','ranking'] },
+    { id: 'financeiro', nome: 'Financeiro', nivel: 3, cor: '#15803d',
+      desc: 'Comissões, pagamentos, contratos e autorização de bônus.',
+      secoes: ['painel','financeiro','vendas','bonus','contratos','consultores'] },
+    { id: 'producao', nome: 'Produção', nivel: 4, cor: '#d97706',
+      desc: 'Executa os projetos: briefings, linha do tempo e entregas.',
+      secoes: ['painel','projetos','briefings','timeline','criativos'] },
+    { id: 'marketing', nome: 'Marketing', nivel: 4, cor: '#db2777',
+      desc: 'Criativos, campanhas, avisos e conteúdo de treinamento.',
+      secoes: ['painel','criativos','campanha','avisos','treinamentos','ranking'] },
+    { id: 'suporte', nome: 'Suporte', nivel: 5, cor: '#0891b2',
+      desc: 'Atende os consultores no chat e acompanha o básico da operação.',
+      secoes: ['painel','atendimento','consultores','avisos'] }
+  ],
+  cargoById(id) { return this.CARGOS.find(c => c.id === id) || null; },
+  cargoNome(id) { const c = this.cargoById(id); return c ? c.nome : (id || 'Sem cargo'); },
+  /* seções que o usuário logado pode ver no admin (dono/admin sem cargo vê tudo) */
+  secoesPermitidas() {
+    const u = this.db.profile;
+    if (!u || u.role !== 'admin') return '*';
+    const c = this.cargoById(u.equipeCargo);
+    if (!c || c.secoes === '*') return '*';
+    return c.secoes;
+  },
+  podeVer(secao) {
+    const s = this.secoesPermitidas();
+    return s === '*' || s.indexOf(secao) >= 0;
+  },
+  /* só o topo da hierarquia mexe na equipe */
+  podeGerirEquipe() {
+    const u = this.db.profile;
+    if (!u || u.role !== 'admin') return false;
+    const c = this.cargoById(u.equipeCargo);
+    return !c || c.nivel <= 1; // sem cargo = dono do sistema
+  },
+
+  _eqIn(r) { return { id: r.id, userId: r.user_id || null, nome: r.nome || '', sobrenome: r.sobrenome || '', email: r.email || '', doc: r.doc || '', celular: r.celular || '', nascimento: r.nascimento || null, cargo: r.cargo || 'suporte', nivel: r.nivel != null ? Number(r.nivel) : 3, foto: r.foto || '', cep: r.cep || '', logradouro: r.logradouro || '', numero: r.numero || '', complemento: r.complemento || '', bairro: r.bairro || '', cidade: r.cidade || '', uf: r.uf || '', obs: r.obs || '', ativo: r.ativo !== false, criadoEm: r.criado_em || null, vinculadoEm: r.vinculado_em || null }; },
+  _eqOut(m) { return { id: m.id, user_id: m.userId || null, nome: m.nome || null, sobrenome: m.sobrenome || null, email: (m.email || '').toLowerCase(), doc: m.doc || null, celular: m.celular || null, nascimento: m.nascimento || null, cargo: m.cargo || 'suporte', nivel: m.nivel != null ? m.nivel : 3, foto: m.foto || null, cep: m.cep || null, logradouro: m.logradouro || null, numero: m.numero || null, complemento: m.complemento || null, bairro: m.bairro || null, cidade: m.cidade || null, uf: m.uf || null, obs: m.obs || null, ativo: m.ativo !== false }; },
+
+  equipe() { return this.db.equipe || []; },
+  membroById(id) { return this.equipe().find(m => m.id === id) || null; },
+  saveMembro(m) {
+    const i = this.db.equipe.findIndex(x => x.id === m.id);
+    if (i >= 0) this.db.equipe[i] = m; else this.db.equipe.push(m);
+    this._save('equipe', this._eqOut(m));
+    return m;
+  },
+  removeMembro(id) {
+    this.db.equipe = this.db.equipe.filter(m => m.id !== id);
+    this._delete('equipe', id);
+  },
+  /* chamado no login: se o e-mail está cadastrado na equipe, promove e aplica o cargo */
+  async vincularEquipe() {
+    try {
+      const { data, error } = await SB.rpc('vincular_equipe');
+      if (error || !data || !data.ok) return null;
+      const u = this.db.profile;
+      if (u) { u.role = 'admin'; u.equipeCargo = data.cargo; u.equipeNivel = data.nivel; }
+      return data;
+    } catch (e) { return null; }
+  },
 
   /* ---------- GRUPO DE CONSULTORES NO WHATSAPP ----------
      Entrar no grupo é obrigatório: é por lá que saem novidades, networking e sugestões.

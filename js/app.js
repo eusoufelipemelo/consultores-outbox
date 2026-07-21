@@ -601,7 +601,8 @@ const App = {
     const isAdmin = u.role === 'admin';
     // portão do grupo: o consultor precisa entrar no grupo do WhatsApp antes de usar o sistema
     if (!isAdmin && OB.precisaEntrarGrupo()) { this.showGrupoGate(); return; }
-    const nav = this.mod().NAV;
+    // o menu do admin respeita o cargo do colaborador (dono do sistema vê tudo)
+    const nav = this.mod().NAV.filter(n => !isAdmin || OB.podeVer(n.id));
     document.getElementById('auth').style.display = 'none';
     const app = document.getElementById('app');
     app.style.display = 'block';
@@ -884,6 +885,12 @@ const App = {
     if (this.perfilLock && OB.session() && OB.session().role !== 'admin' && viewId !== 'perfil') {
       UI.toast('Complete seu perfil', 'Preencha e salve todos os dados para liberar o sistema.', 'info');
       viewId = 'perfil';
+    }
+    // colaborador interno só acessa as seções liberadas para o cargo dele
+    const s = OB.session();
+    if (s && s.role === 'admin' && viewId !== 'perfil' && !OB.podeVer(viewId)) {
+      UI.toast('Sem acesso', 'Seu cargo não tem permissão para esta seção.', 'err');
+      viewId = OB.podeVer('painel') ? 'painel' : (this.mod().NAV.filter(n => OB.podeVer(n.id))[0] || {}).id || 'perfil';
     }
     this.current = viewId;
     document.getElementById('main-view').classList.remove('view-wide'); // funil reativa abaixo

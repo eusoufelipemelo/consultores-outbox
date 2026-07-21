@@ -23,7 +23,9 @@ const Admin = {
     { id: 'avisos',     label: 'Avisos',           icon: 'bell',     sec: 'Gestão & Conteúdo' },
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy',  sec: 'Gestão & Conteúdo' },
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map',      sec: 'Gestão & Conteúdo' },
-    { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Gestão & Conteúdo' }
+    { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Gestão & Conteúdo' },
+    // Administração do próprio time interno
+    { id: 'equipe',     label: 'Equipe',           icon: 'clients',  sec: 'Administração' }
   ],
   titles: {
     painel:      ['Painel Geral', 'Visão consolidada de toda a operação'],
@@ -870,6 +872,220 @@ const Admin = {
   },
 
   /* ====================== BÔNUS (cortesias a autorizar) ====================== */
+  /* ====================== EQUIPE INTERNA ====================== */
+  view_equipe() {
+    const v = document.getElementById('main-view');
+    if (!OB.podeGerirEquipe()) {
+      v.innerHTML = Consultor.empty('lock', 'Acesso restrito', 'Só o Administrador Geral pode gerir a equipe interna.');
+      return;
+    }
+    const todos = OB.equipe().slice().sort((a, b) => (a.nivel - b.nivel) || (a.nome || '').localeCompare(b.nome || ''));
+    const f = this._eqFiltro || { q: '', cargo: '', status: '' };
+    const lista = todos.filter(m => {
+      if (f.cargo && m.cargo !== f.cargo) return false;
+      if (f.status === 'ativo' && !m.ativo) return false;
+      if (f.status === 'inativo' && m.ativo) return false;
+      if (f.status === 'pendente' && m.userId) return false;
+      if (f.q) { const t = `${m.nome} ${m.sobrenome} ${m.email} ${OB.cargoNome(m.cargo)}`.toLowerCase(); if (t.indexOf(f.q.toLowerCase()) < 0) return false; }
+      return true;
+    });
+    const ativos = todos.filter(m => m.ativo).length;
+    const pend = todos.filter(m => !m.userId).length;
+    v.innerHTML = `
+      <div class="cards cols-3" style="margin-bottom:16px">
+        ${Consultor.kpi('clients', todos.length, 'Colaboradores', ativos + ' ativo(s)')}
+        ${Consultor.kpi('shield', OB.CARGOS.length, 'Cargos disponíveis', 'Com níveis de acesso')}
+        ${Consultor.kpi('clock', pend, 'Aguardando 1º acesso', 'Ainda não criaram a conta')}
+      </div>
+      <div class="notice" style="margin-bottom:16px">${UI.icon('info',16)}<div>Cadastre o colaborador com o <b>e-mail que ele vai usar</b>. Quando ele criar a conta no sistema com esse mesmo e-mail, o acesso e o <b>cargo</b> são aplicados automaticamente.</div></div>
+      <div class="row between alc" style="margin-bottom:14px;flex-wrap:wrap;gap:12px">
+        <div class="row" style="gap:10px;flex-wrap:wrap">
+          <input class="input" id="eq-q" placeholder="Buscar por nome, e-mail ou cargo" value="${f.q}" style="min-width:240px"/>
+          <select class="input" id="eq-cargo"><option value="">Todos os cargos</option>${OB.CARGOS.map(c => `<option value="${c.id}" ${f.cargo === c.id ? 'selected' : ''}>${c.nome}</option>`).join('')}</select>
+          <select class="input" id="eq-status">
+            <option value="" ${!f.status ? 'selected' : ''}>Todos</option>
+            <option value="ativo" ${f.status === 'ativo' ? 'selected' : ''}>Ativos</option>
+            <option value="inativo" ${f.status === 'inativo' ? 'selected' : ''}>Inativos</option>
+            <option value="pendente" ${f.status === 'pendente' ? 'selected' : ''}>Aguardando 1º acesso</option>
+          </select>
+        </div>
+        <button class="btn brand" id="eq-novo">${UI.icon('plus',16)} Cadastrar colaborador</button>
+      </div>
+      ${lista.length ? `<div class="cards cols-2">${lista.map(m => this.membroCard(m)).join('')}</div>`
+        : Consultor.empty('clients', 'Nenhum colaborador', todos.length ? 'Nenhum resultado para esse filtro.' : 'Cadastre o primeiro membro da sua equipe interna.')}`;
+    const setF = (k, val) => { this._eqFiltro = Object.assign({ q: '', cargo: '', status: '' }, f, { [k]: val }); this.view_equipe(); };
+    const q = document.getElementById('eq-q');
+    q.oninput = () => { clearTimeout(this._eqT); this._eqT = setTimeout(() => setF('q', q.value), 350); };
+    document.getElementById('eq-cargo').onchange = e => setF('cargo', e.target.value);
+    document.getElementById('eq-status').onchange = e => setF('status', e.target.value);
+    document.getElementById('eq-novo').onclick = () => this.membroModal(null);
+    v.querySelectorAll('[data-eq-edit]').forEach(b => b.onclick = () => this.membroModal(OB.membroById(b.dataset.eqEdit)));
+    v.querySelectorAll('[data-eq-del]').forEach(b => b.onclick = () => this.excluirMembro(b.dataset.eqDel));
+  },
+
+  membroCard(m) {
+    const c = OB.cargoById(m.cargo) || { nome: m.cargo, cor: '#8a96a3', desc: '', nivel: m.nivel };
+    const ini = (m.nome || '?')[0].toUpperCase();
+    const av = m.foto ? `<img src="${m.foto}" alt="">` : ini;
+    const chip = !m.ativo ? '<span class="chip gray nowrap">Inativo</span>'
+      : (m.userId ? '<span class="chip green nowrap">Acesso ativo</span>' : '<span class="chip warn nowrap">Aguardando 1º acesso</span>');
+    return `<div class="card eq-card">
+      <div class="eq-top">
+        <span class="eq-av">${av}</span>
+        <div class="eq-id">
+          <b>${(m.nome + ' ' + m.sobrenome).trim() || m.email}</b>
+          <span>${m.email}</span>
+          ${m.celular ? `<span>${m.celular}</span>` : ''}
+        </div>
+        ${chip}
+      </div>
+      <div class="eq-cargo" style="--cc:${c.cor}">
+        <span class="eq-badge">${UI.icon('shield',13)} ${c.nome}</span>
+        <span class="eq-nivel">Nível ${c.nivel}</span>
+      </div>
+      <p class="eq-desc">${c.desc || ''}</p>
+      ${m.cidade ? `<div class="eq-loc">${UI.icon('map',13)} ${m.cidade}${m.uf ? '/' + m.uf : ''}</div>` : ''}
+      <div class="row" style="gap:8px;margin-top:12px">
+        <button class="btn ghost sm" data-eq-edit="${m.id}">${UI.icon('edit',15)} Editar</button>
+        <button class="btn ghost sm danger" data-eq-del="${m.id}">${UI.icon('trash',15)} Excluir</button>
+      </div>
+    </div>`;
+  },
+
+  membroModal(m) {
+    const e = m || { id: OB.uid(), nome: '', sobrenome: '', email: '', doc: '', celular: '', nascimento: '', cargo: 'suporte', nivel: 5, foto: '', cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', obs: '', ativo: true };
+    const g = k => (e[k] == null ? '' : String(e[k]).replace(/"/g, '&quot;'));
+    UI.modal({
+      title: m ? 'Editar colaborador' : 'Cadastrar colaborador',
+      sub: 'Dados cadastrais, cargo e nível de acesso',
+      size: 'lg',
+      body: `
+        <div class="eq-form">
+          <div class="eq-foto-wrap">
+            <div class="eq-foto" id="eq-foto-prev">${e.foto ? `<img src="${e.foto}" alt="">` : UI.icon('clients', 26)}</div>
+            <label class="btn ghost sm" style="cursor:pointer">${UI.icon('gallery',15)} Foto<input type="file" id="eq-foto" accept="image/*" hidden></label>
+            ${e.foto ? '<button class="btn ghost sm danger" id="eq-foto-rm">Remover</button>' : ''}
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Dados pessoais</div>
+          <div class="grid-2">
+            <div class="field"><label>Nome <span class="req">*</span></label><input id="eq-nome" value="${g('nome')}"/><div class="err">Obrigatório</div></div>
+            <div class="field"><label>Sobrenome</label><input id="eq-sobre" value="${g('sobrenome')}"/></div>
+            <div class="field"><label>CPF / CNPJ</label><input id="eq-doc" value="${g('doc')}" placeholder="000.000.000-00"/></div>
+            <div class="field"><label>Nascimento</label><input id="eq-nasc" type="date" value="${g('nascimento')}"/></div>
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Contato</div>
+          <div class="grid-2">
+            <div class="field"><label>E-mail de acesso <span class="req">*</span></label><input id="eq-email" type="email" value="${g('email')}" placeholder="nome@outboxgroup.com.br" ${m && m.userId ? 'readonly' : ''}/><div class="err">Informe um e-mail válido</div>
+              <div class="hint">${m && m.userId ? 'Já vinculado a uma conta, não pode ser alterado.' : 'É com este e-mail que ele vai criar a conta.'}</div></div>
+            <div class="field"><label>Celular / WhatsApp</label><input id="eq-cel" value="${g('celular')}" placeholder="(00) 00000-0000"/></div>
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Endereço</div>
+          <div class="grid-2">
+            <div class="field"><label>CEP</label><input id="eq-cep" value="${g('cep')}" placeholder="00000-000"/><div class="hint" id="eq-cep-hint"></div></div>
+            <div class="field"><label>Logradouro</label><input id="eq-log" value="${g('logradouro')}"/></div>
+            <div class="field"><label>Número</label><input id="eq-num" value="${g('numero')}"/></div>
+            <div class="field"><label>Complemento</label><input id="eq-comp" value="${g('complemento')}"/></div>
+            <div class="field"><label>Bairro</label><input id="eq-bairro" value="${g('bairro')}"/></div>
+            <div class="field"><label>Cidade</label><input id="eq-cidade" value="${g('cidade')}"/></div>
+            <div class="field"><label>UF</label><input id="eq-uf" value="${g('uf')}" maxlength="2" style="text-transform:uppercase"/></div>
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Função e nível de acesso</div>
+          <div class="eq-cargos" id="eq-cargos">
+            ${OB.CARGOS.map(c => `
+              <label class="eq-opt ${e.cargo === c.id ? 'on' : ''}" data-cargo="${c.id}">
+                <input type="radio" name="eq-cargo" value="${c.id}" ${e.cargo === c.id ? 'checked' : ''}>
+                <span class="eq-opt-dot" style="background:${c.cor}"></span>
+                <span class="eq-opt-txt"><b>${c.nome}</b><small>Nível ${c.nivel} · ${c.desc}</small>
+                  <em>${c.secoes === '*' ? 'Vê todas as seções do sistema' : c.secoes.length + ' seções liberadas'}</em></span>
+              </label>`).join('')}
+          </div>
+
+          <div class="field" style="margin-top:14px"><label>Observações internas</label><textarea id="eq-obs" rows="2">${e.obs || ''}</textarea></div>
+          <label class="row alc" style="gap:10px;margin-top:6px;cursor:pointer">
+            <input type="checkbox" id="eq-ativo" ${e.ativo !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--brand)">
+            <span style="font-size:14px">Colaborador ativo (desmarque para bloquear o acesso)</span>
+          </label>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="eq-save">${UI.icon('check',16)} ${m ? 'Salvar alterações' : 'Cadastrar'}</button>`
+    });
+
+    // foto
+    const prev = document.getElementById('eq-foto-prev');
+    let fotoAtual = e.foto || '';
+    document.getElementById('eq-foto').onchange = async ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try { fotoAtual = await OB._comprimirArte(rd.result); } catch (err) { fotoAtual = rd.result; }
+        prev.innerHTML = `<img src="${fotoAtual}" alt="">`;
+      };
+      rd.readAsDataURL(f);
+    };
+    const rm = document.getElementById('eq-foto-rm');
+    if (rm) rm.onclick = () => { fotoAtual = ''; prev.innerHTML = UI.icon('clients', 26); };
+    // CEP
+    const cep = document.getElementById('eq-cep');
+    cep.onblur = () => {
+      const d = cep.value.replace(/\D/g, ''); if (d.length !== 8) return;
+      const hint = document.getElementById('eq-cep-hint'); hint.textContent = 'Buscando endereço...';
+      fetch(`https://viacep.com.br/ws/${d}/json/`).then(r => r.json()).then(j => {
+        if (j.erro) { hint.textContent = 'CEP não encontrado'; return; }
+        document.getElementById('eq-log').value = j.logradouro || '';
+        document.getElementById('eq-bairro').value = j.bairro || '';
+        document.getElementById('eq-cidade').value = j.localidade || '';
+        document.getElementById('eq-uf').value = j.uf || '';
+        hint.textContent = 'Endereço preenchido ✓';
+        document.getElementById('eq-num').focus();
+      }).catch(() => { hint.textContent = 'Não foi possível buscar o CEP'; });
+    };
+    // destaque visual do cargo escolhido
+    document.querySelectorAll('#eq-cargos .eq-opt').forEach(l => l.onclick = () => {
+      document.querySelectorAll('#eq-cargos .eq-opt').forEach(x => x.classList.remove('on'));
+      l.classList.add('on');
+    });
+
+    document.getElementById('eq-save').onclick = () => {
+      const val = id => (document.getElementById(id).value || '').trim();
+      const nome = val('eq-nome'), email = val('eq-email').toLowerCase();
+      const inval = (id, bad) => { const el = document.getElementById(id); el.closest('.field').classList.toggle('has-error', bad); el.classList.toggle('invalid', bad); };
+      inval('eq-nome', !nome);
+      const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+      inval('eq-email', !emailOk);
+      if (!nome || !emailOk) return UI.toast('Confira os campos', 'Nome e e-mail válido são obrigatórios', 'err');
+      // e-mail único na equipe
+      const dup = OB.equipe().find(x => x.email.toLowerCase() === email && x.id !== e.id);
+      if (dup) return UI.toast('E-mail já cadastrado', 'Já existe um colaborador com esse e-mail.', 'err');
+      const cargo = (document.querySelector('#eq-cargos input[name="eq-cargo"]:checked') || {}).value || 'suporte';
+      const c = OB.cargoById(cargo);
+      const membro = {
+        id: e.id, userId: e.userId || null, nome, sobrenome: val('eq-sobre'), email,
+        doc: val('eq-doc'), celular: val('eq-cel'), nascimento: val('eq-nasc') || null,
+        cargo, nivel: c ? c.nivel : 5, foto: fotoAtual,
+        cep: val('eq-cep'), logradouro: val('eq-log'), numero: val('eq-num'), complemento: val('eq-comp'),
+        bairro: val('eq-bairro'), cidade: val('eq-cidade'), uf: val('eq-uf').toUpperCase(),
+        obs: val('eq-obs'), ativo: document.getElementById('eq-ativo').checked,
+        criadoEm: e.criadoEm || new Date().toISOString(), vinculadoEm: e.vinculadoEm || null
+      };
+      OB.saveMembro(membro);
+      UI.closeModal();
+      UI.toast(m ? 'Colaborador atualizado' : 'Colaborador cadastrado',
+        m ? 'As alterações foram salvas.' : `Peça para ${nome} criar a conta com o e-mail ${email}. O acesso de ${c ? c.nome : 'colaborador'} é aplicado automaticamente.`, 'ok');
+      this.view_equipe();
+    };
+  },
+
+  excluirMembro(id) {
+    const m = OB.membroById(id); if (!m) return;
+    UI.confirm('Excluir colaborador',
+      `Remover <b>${(m.nome + ' ' + m.sobrenome).trim() || m.email}</b> da equipe? ${m.userId ? 'A conta dele continua existindo, mas perde o cargo no próximo login.' : 'Ele ainda não criou a conta.'}`,
+      () => { OB.removeMembro(id); UI.toast('Colaborador removido', '', 'ok'); this.view_equipe(); },
+      'Excluir');
+  },
+
   view_bonus() {
     const v = document.getElementById('main-view');
     const all = OB.sales().filter(s => s.bonusStatus && (s.bonus || []).length).slice().sort((a, b) => new Date(b.data) - new Date(a.data));

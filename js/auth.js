@@ -230,6 +230,9 @@ const Auth = {
   async finish(goProfile) {
     UI.closeModal();
     await OB.loadAll();
+    // se o e-mail estiver cadastrado na equipe interna, promove e aplica o cargo
+    const eq = await OB.vincularEquipe();
+    if (eq && eq.ok) await OB.loadAll();
     document.getElementById('auth').style.display = 'none';
     // login de verdade (não é refresh): libera o pop-up de propaganda toda vez que logar
     App._loginFlow = true;

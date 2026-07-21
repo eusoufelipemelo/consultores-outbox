@@ -1301,6 +1301,39 @@ td .strong { color: var(--text); font-weight: 600; }
 .rk-row__meta { flex: 1; min-width: 0; }
 .rk-row__meta b { font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .rk-row__sub { font-size: 11.5px; color: var(--text-mut); display: block; margin: 1px 0 6px; }
+/* ===== EQUIPE INTERNA (admin) ===== */
+.eq-card { display: flex; flex-direction: column; }
+.eq-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.eq-av { flex: none; width: 52px; height: 52px; border-radius: 15px; overflow: hidden; display: grid; place-items: center;
+  background: var(--surface-3); color: var(--brand); font-weight: 800; font-size: 20px; }
+.eq-av img { width: 100%; height: 100%; object-fit: cover; }
+.eq-id { flex: 1; min-width: 0; }
+.eq-id b { display: block; font-size: 15px; margin-bottom: 2px; }
+.eq-id span { display: block; font-size: 12.5px; color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-cargo { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.eq-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #fff;
+  background: var(--cc, var(--brand)); border-radius: 999px; padding: 5px 11px; }
+.eq-nivel { font-size: 11.5px; font-weight: 700; color: var(--text-mut); }
+.eq-desc { font-size: 12.5px; color: var(--text-mut); line-height: 1.5; margin: 9px 0 0; }
+.eq-loc { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-mut); margin-top: 8px; }
+/* formulário */
+.eq-foto-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.eq-foto { width: 72px; height: 72px; border-radius: 20px; overflow: hidden; display: grid; place-items: center;
+  background: var(--surface-3); color: var(--text-mut); border: 1px solid var(--border); }
+.eq-foto img { width: 100%; height: 100%; object-fit: cover; }
+.eq-cargos { display: grid; gap: 9px; }
+.eq-opt { display: flex; align-items: flex-start; gap: 11px; border: 1.5px solid var(--border); border-radius: 13px;
+  padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
+.eq-opt:hover { border-color: var(--border-strong); }
+.eq-opt.on { border-color: var(--brand); background: var(--brand-soft); }
+.eq-opt input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--brand); flex: none; }
+.eq-opt-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; }
+.eq-opt-txt { flex: 1; min-width: 0; }
+.eq-opt-txt b { display: block; font-size: 14px; }
+.eq-opt-txt small { display: block; font-size: 12px; color: var(--text-mut); line-height: 1.45; margin-top: 1px; }
+.eq-opt-txt em { display: block; font-style: normal; font-size: 11px; font-weight: 700; color: var(--brand); margin-top: 4px; }
+@media (max-width: 700px) { .eq-cargos { gap: 8px; } .eq-opt { padding: 10px 12px; } }
+
 /* pill do bônus no topo (header) — azul, para destacar do laranja da comissão */
 .commission-pill.bv-pill { position: relative; overflow: hidden;
   background: linear-gradient(135deg, var(--blue), var(--blue-600));
