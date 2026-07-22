@@ -2183,6 +2183,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 .foot{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:26px;padding-top:16px}
 .sign{min-width:0}
 .sign .sig{font-family:'Pinyon Script',cursive;font-size:30px;line-height:1;color:var(--ink);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sign .sig-img{display:block;height:86px;width:auto;max-width:100%;object-fit:contain;object-position:center bottom;margin:-16px auto 0}
 .sign .ln{border-top:1.5px solid rgba(36,23,8,.55);padding-top:7px;margin-top:2px}
 .sign b{font-size:13px;font-weight:800;color:var(--ink);display:block}
 .sign span{display:block;font-size:9.5px;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-top:2px;text-transform:uppercase}
@@ -2242,7 +2243,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       <div class="horas">Carga horária: ${o.horas} horas</div>
     </div>
     <div class="foot">
-      <div class="sign"><div class="sig">Felipe Melo Rocha</div><div class="ln"><b>Felipe Melo Rocha</b><span>CEO · OutBox Group Soluções Digitais</span></div></div>
+      <div class="sign">${OB.ASSINATURA_OUTBOX ? `<img class="sig-img" src="${OB.ASSINATURA_OUTBOX}" alt="Assinatura de Felipe Melo Rocha"/>` : '<div class="sig">Felipe Melo Rocha</div>'}<div class="ln"><b>Felipe Melo Rocha</b><span>CEO · OutBox Group Soluções Digitais</span></div></div>
       <div class="seal">
         <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
           <defs><linearGradient id="sealg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7A18"/><stop offset="1" stop-color="#E8431C"/></linearGradient></defs>
