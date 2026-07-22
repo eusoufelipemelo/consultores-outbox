@@ -433,11 +433,45 @@ const App = {
       #briefing-page .bfx-btn.brand:hover{filter:brightness(1.05)}
       #briefing-page .bfx-btn.brand:disabled{opacity:.7;cursor:default}
       #briefing-page .bfx-btn.ghost{background:#eef1f4;color:#46505c}
-      @media(max-width:520px){#briefing-page .bfx-cover h1{font-size:28px}#briefing-page .bfx-btn{padding:14px 20px}}
+      #briefing-page .bfx-chips{display:flex;flex-wrap:wrap;gap:8px;padding:2px;border-radius:12px}
+      #briefing-page .bfx-chips.inv{outline:2px solid #dc2626;outline-offset:3px}
+      #briefing-page .bfx-chip2{border:1.5px solid #e2e7ec;background:#fff;color:#46505c;border-radius:999px;padding:9px 15px;font-size:13.5px;font-family:inherit;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s,color .15s,transform .08s}
+      #briefing-page .bfx-chip2:hover{border-color:#f7b6a5}
+      #briefing-page .bfx-chip2:active{transform:scale(.97)}
+      #briefing-page .bfx-chip2.on{background:#F15532;border-color:#F15532;color:#fff;box-shadow:0 4px 12px rgba(241,85,50,.28)}
+      #briefing-page .bfx-sel{font-size:12.5px;color:#8a96a3;margin-top:9px;line-height:1.5}
+      @media(max-width:520px){#briefing-page .bfx-cover h1{font-size:28px}#briefing-page .bfx-btn{padding:14px 20px}#briefing-page .bfx-chip2{padding:8px 13px;font-size:13px}}
     </style>`;
+    // guarda o que foi digitado; chips/radio já gravam direto em `answers`
     const saveInputs = () => host.querySelectorAll('[data-b]').forEach(el => { answers[el.getAttribute('data-b')] = el.value; });
     const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const fieldHTML = c => `<div class="bfx-field"><label>${c.label}${c.req ? ' <span class="bfx-req">*</span>' : ''}</label>${c.tipo === 'textarea' ? `<textarea data-b="${c.id}" rows="3">${esc(answers[c.id])}</textarea>` : `<input data-b="${c.id}" type="text" value="${esc(answers[c.id])}"/>`}</div>`;
+    const selecionados = id => (answers[id] || '').split(' · ').map(x => x.trim()).filter(Boolean);
+    const fieldHTML = c => {
+      const lbl = `<label>${c.label}${c.req ? ' <span class="bfx-req">*</span>' : ''}</label>`;
+      // múltipla escolha (chips) e escolha única: clicáveis, sem digitação
+      if (c.tipo === 'chips' || c.tipo === 'radio') {
+        const ops = OB.briefingOps(c.ops);
+        const sel = selecionados(c.id);
+        const chips = ops.map(o => `<button type="button" class="bfx-chip2${sel.indexOf(o) >= 0 ? ' on' : ''}" data-chip="${c.id}" data-val="${esc(o)}">${o}</button>`).join('');
+        return `<div class="bfx-field" data-multi="${c.tipo === 'chips' ? 1 : 0}">${lbl}
+          <div class="bfx-chips" data-chipgroup="${c.id}">${chips}</div>
+          <div class="bfx-sel" id="sel-${c.id}">${sel.length ? sel.join(' · ') : 'Nenhuma opção selecionada'}</div></div>`;
+      }
+      if (c.tipo === 'textarea') return `<div class="bfx-field">${lbl}<textarea data-b="${c.id}" rows="3">${esc(answers[c.id])}</textarea></div>`;
+      return `<div class="bfx-field">${lbl}<input data-b="${c.id}" type="text" value="${esc(answers[c.id])}"/></div>`;
+    };
+    // liga os chips depois de cada render de etapa
+    const wireChips = () => host.querySelectorAll('[data-chip]').forEach(b => b.onclick = () => {
+      const id = b.dataset.chip, val = b.dataset.val;
+      const multi = b.closest('.bfx-field').dataset.multi === '1';
+      let sel = selecionados(id);
+      if (multi) sel = sel.indexOf(val) >= 0 ? sel.filter(x => x !== val) : sel.concat([val]);
+      else sel = sel.indexOf(val) >= 0 ? [] : [val];
+      answers[id] = sel.join(' · ');
+      host.querySelectorAll(`[data-chipgroup="${id}"] .bfx-chip2`).forEach(x => x.classList.toggle('on', sel.indexOf(x.dataset.val) >= 0));
+      const box = document.getElementById('sel-' + id);
+      if (box) box.textContent = sel.length ? sel.join(' · ') : 'Nenhuma opção selecionada';
+    });
     let step = 0;
     const renderCover = () => {
       host.innerHTML = style + `
@@ -488,10 +522,21 @@ const App = {
             <button class="bfx-btn brand" id="bfx-next">${step === total ? 'Enviar briefing' : 'Próximo'}</button>
           </div></div>
         </div>`;
+      wireChips();
       const prev = document.getElementById('bfx-prev'); if (prev) prev.onclick = () => { saveInputs(); step--; renderStep(); };
       document.getElementById('bfx-next').onclick = async () => {
         let ok = true;
-        sec.campos.forEach(c => { if (!c.req) return; const el = host.querySelector('[data-b="' + c.id + '"]'); if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv'); });
+        sec.campos.forEach(c => {
+          if (!c.req) return;
+          if (c.tipo === 'chips' || c.tipo === 'radio') { // obrigatório = ao menos uma opção marcada
+            const grupo = host.querySelector('[data-chipgroup="' + c.id + '"]');
+            const vazio = !(answers[c.id] || '').trim();
+            if (grupo) grupo.classList.toggle('inv', vazio);
+            if (vazio) ok = false;
+            return;
+          }
+          const el = host.querySelector('[data-b="' + c.id + '"]'); if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv');
+        });
         if (!ok) { const e = document.getElementById('bfx-err'); e.textContent = 'Preencha os campos obrigatórios (*).'; e.hidden = false; return; }
         saveInputs();
         if (step < total) { step++; renderStep(); document.querySelector('.bfx-main').scrollTop = 0; }

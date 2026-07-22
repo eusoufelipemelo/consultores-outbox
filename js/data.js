@@ -227,76 +227,167 @@ const OB = {
     // formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin
     return this.APP_URL + '/?briefing=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token) + '&p=' + this.briefingTipo(produtoId);
   },
-  /* formulário de briefing (público) — seções e campos; extras por tipo de serviço */
+  /* ---------- BRIEFING (público) ----------
+     Estrutura vinda dos formulários oficiais da OutBox (forms.app), agora nativa e interativa:
+     `chips` = múltipla escolha, `radio` = escolha única, além de text/textarea. */
+  BRIEF_PERSONA: ['Acadêmica','Acessível','Agressiva','Analítica','Antiga','Arrojada','Artística','Atrevida','Atual','Aventureira','Básica','Calma','Casual','Científica','Complexa','Confiável','Convencional','Criativa','Curiosa','Deslumbrante','Determinada','Diferente','Disciplinada','Divertida','Emocional','Energética','Enigmática','Esperta','Estável','Exclusiva','Extrovertida','Formal','Futurista','Idealista','Industrial','Inocente','Intuitiva','Irreverente','Líder','Livre','Madura','Mente aberta','Moderna','Modesta','Multifacetada','Nostálgica','Ousada','Persistente','Profissional','Promissora','Racional','Radical','Rebelde','Refinada','Relaxada','Reservada','Respeitadora','Rigorosa','Romântica','Rústica','Sábia','Sensível','Séria','Simples','Sóbria','Sonhadora','Sutil','Técnica','Tradicional','Tranquila'],
+  BRIEF_VISUAL: ['Séria','Extrovertida','Conservadora','Alegre','Aconchegante','Delicada','Moderna','Orgânica','Sofisticada','Elegante','Vibrante','Tradicional','Retrô','Digital','Pesada','Leve','Rústica','Discreta','Extravagante','Nobre','Popular','Romântica','Formal','Ousada','Humana','Rebelde','Irreverente'],
+  BRIEF_ESTILO_SITE: ['Sério','Conservador','Elegante','Ecológico','Hightech','Moderno','Amigável','Divertido','Clean','Colorido','Escuro','Simples','Tradicional','Vintage','Instagramável','Minimalista','Sofisticado','Jovem'],
+  BRIEF_GENERO: ['Feminino','Masculino','Feminino predominante','Masculino predominante','Ambos os gêneros'],
+  BRIEF_CLASSE: ['A','B','C','D/E','Todas as classes'],
+  BRIEF_IDADE: ['Até 17 anos','18 a 24','25 a 34','35 a 44','45 a 59','60+','Todas as idades'],
+
+  /* base comum a todos os briefings */
   BRIEFING_FORM: [
     { sec: 'Sobre o seu negócio', campos: [
       { id: 'empresa', label: 'Nome da empresa ou marca', tipo: 'text', req: true },
       { id: 'segmento', label: 'Segmento / nicho de atuação', tipo: 'text', req: true },
-      { id: 'sobre', label: 'O que a sua empresa faz? (produtos e serviços)', tipo: 'textarea', req: true },
-      { id: 'diferenciais', label: 'Quais os principais diferenciais?', tipo: 'textarea' }
+      { id: 'sobre', label: 'Descreva resumidamente do que se trata a sua empresa', tipo: 'textarea', req: true },
+      { id: 'tempo', label: 'Há quanto tempo a empresa existe?', tipo: 'text' },
+      { id: 'produtos', label: 'Quais produtos ou serviços você oferece?', tipo: 'textarea', req: true },
+      { id: 'diferenciais', label: 'O que faz a sua empresa ser especial? (diferenciais)', tipo: 'textarea', req: true },
+      { id: 'slogan', label: 'A empresa tem algum slogan? Qual?', tipo: 'text' }
+    ] },
+    { sec: 'Concorrência', campos: [
+      { id: 'concorrentes', label: 'Cite 3 concorrentes principais (nomes e links, se puder)', tipo: 'textarea', req: true },
+      { id: 'conc_gap', label: 'Seus concorrentes oferecem algo que você ainda não oferece?', tipo: 'textarea' }
+    ] },
+    { sec: 'Público-alvo', campos: [
+      { id: 'publico', label: 'Quem é o seu público-alvo? Descreva com detalhes', tipo: 'textarea', req: true },
+      { id: 'classe', label: 'Qual a classe social do seu público?', tipo: 'chips', ops: 'BRIEF_CLASSE' },
+      { id: 'idade', label: 'Qual a faixa etária?', tipo: 'chips', ops: 'BRIEF_IDADE' },
+      { id: 'genero', label: 'Gênero predominante', tipo: 'radio', ops: 'BRIEF_GENERO' },
+      { id: 'descrever', label: 'Como você gostaria que os clientes descrevessem a sua empresa?', tipo: 'textarea', req: true }
     ] },
     { sec: 'Objetivo do projeto', campos: [
       { id: 'objetivo', label: 'Qual o principal objetivo deste projeto?', tipo: 'textarea', req: true },
-      { id: 'publico', label: 'Quem é o seu público-alvo?', tipo: 'textarea', req: true },
-      { id: 'acao', label: 'O que o cliente deve fazer ao acessar? (falar no WhatsApp, comprar, agendar...)', tipo: 'text' }
-    ] },
-    { sec: 'Conteúdo e identidade', campos: [
-      { id: 'secoes', label: 'Seções, páginas ou itens que não podem faltar', tipo: 'textarea' },
-      { id: 'textos', label: 'Você já tem os textos prontos ou precisa da nossa redação?', tipo: 'text' },
-      { id: 'logo', label: 'Já possui logotipo e identidade visual?', tipo: 'text' },
-      { id: 'cores', label: 'Cores e estilo de preferência', tipo: 'text' },
-      { id: 'referencias', label: 'Sites ou perfis de referência que você gosta (cole os links)', tipo: 'textarea' },
-      { id: 'evitar', label: 'Algo que você NÃO gosta ou quer evitar', tipo: 'text' }
+      { id: 'acao', label: 'O que o cliente deve fazer? (chamar no WhatsApp, comprar, agendar...)', tipo: 'text', req: true }
     ] },
     { sec: 'Materiais e contato', campos: [
       { id: 'materiais', label: 'Onde estão as imagens, logos e materiais? (link do Drive, WeTransfer...)', tipo: 'text' },
-      { id: 'dominio', label: 'Já possui domínio (www)? Qual?', tipo: 'text' },
       { id: 'whatsapp', label: 'WhatsApp para contato', tipo: 'text', req: true },
-      { id: 'email', label: 'E-mail', tipo: 'text' },
+      { id: 'email', label: 'E-mail', tipo: 'text', req: true },
       { id: 'redes', label: 'Redes sociais (@)', tipo: 'text' },
-      { id: 'obs', label: 'Observações finais e prazo desejado', tipo: 'textarea' }
+      { id: 'historia', label: 'A empresa ou algum produto tem uma história? Conte resumidamente', tipo: 'textarea' },
+      { id: 'obs', label: 'Considerações finais e prazo desejado', tipo: 'textarea' }
     ] }
   ],
+
+  /* blocos específicos por tipo de serviço */
+  BRIEF_BLOCO_SITE: [
+    { id: 'nome_site', label: 'O nome do site/página a ser desenvolvido será:', tipo: 'text', req: true },
+    { id: 'dominio', label: 'Endereço (domínio), caso já tenha', tipo: 'text' },
+    { id: 'secoes', label: 'Seções ou páginas que não podem faltar', tipo: 'textarea', req: true },
+    { id: 'estilo', label: 'Quais atributos devem descrever o projeto? Marque quantos quiser', tipo: 'chips', ops: 'BRIEF_ESTILO_SITE', req: true },
+    { id: 'aparencia', label: 'Já tem em mente alguma aparência? Descreva e cole links de referência', tipo: 'textarea', req: true },
+    { id: 'referencias', label: 'Cite no mínimo 3 sites que você gosta do layout e da navegação (com links)', tipo: 'textarea', req: true },
+    { id: 'evitar', label: 'O que você definitivamente NÃO quer ver no seu site?', tipo: 'textarea', req: true },
+    { id: 'padrao', label: 'Existe um padrão a seguir? (cores, tipografias, manual da marca)', tipo: 'textarea' },
+    { id: 'cores', label: 'Tem preferência de cores? A marca já tem identidade visual?', tipo: 'textarea', req: true },
+    { id: 'textos', label: 'Você já tem os textos (copy) prontos ou precisa da nossa redação?', tipo: 'text', req: true },
+    { id: 'copy_link', label: 'Se já tem a copy pronta, cole aqui o link do arquivo', tipo: 'text' }
+  ],
+  BRIEF_BLOCO_MARCA: [
+    { id: 'nome_marca', label: 'Nome da marca que será desenvolvida (ou sugestões, se ainda não tem)', tipo: 'text', req: true },
+    { id: 'significado', label: 'Por que a empresa tem esse nome? O que ele significa para você?', tipo: 'textarea', req: true },
+    { id: 'carro', label: 'Se dinheiro não fosse problema, qual seria o carro dos seus sonhos?', tipo: 'text' },
+    { id: 'persona_sim', label: 'Se a sua empresa fosse uma pessoa, como ela SERIA?', tipo: 'chips', ops: 'BRIEF_PERSONA', req: true },
+    { id: 'persona_top', label: 'Dessas palavras, cite as 3 mais fortes', tipo: 'text', req: true },
+    { id: 'persona_nao', label: 'E como ela NÃO seria?', tipo: 'chips', ops: 'BRIEF_PERSONA' },
+    { id: 'visual', label: 'Pensando só no visual, quais atributos têm relação com a sua marca?', tipo: 'chips', ops: 'BRIEF_VISUAL', req: true },
+    { id: 'cor_sim', label: 'Tem alguma SUGESTÃO de cor para a marca?', tipo: 'text', req: true },
+    { id: 'cor_nao', label: 'Qual cor você NÃO quer na sua marca?', tipo: 'text', req: true },
+    { id: 'aplicacoes', label: 'Onde o cliente mais verá o seu logotipo? Liste por ordem de importância', tipo: 'textarea', req: true },
+    { id: 'refs_marca', label: 'Marcas que você admira o visual (com links, mesmo de outros nichos)', tipo: 'textarea' }
+  ],
+
   BRIEFING_EXTRA: {
+    onepage: 'BRIEF_BLOCO_SITE',
+    site: 'BRIEF_BLOCO_SITE',
+    'site-blog': 'BRIEF_BLOCO_SITE',
+    landing: 'BRIEF_BLOCO_SITE',
+    vendas: 'BRIEF_BLOCO_SITE',
+    ecommerce: 'BRIEF_BLOCO_SITE',
+    marketplace: 'BRIEF_BLOCO_SITE',
+    identidade: 'BRIEF_BLOCO_MARCA',
+    brandbook: 'BRIEF_BLOCO_MARCA',
+    sistemas: null
+  },
+  /* perguntas exclusivas de cada serviço, somadas ao bloco acima */
+  BRIEFING_ESPECIFICO: {
+    'site-blog': [
+      { id: 'blog_temas', label: 'Sobre quais temas o blog vai falar?', tipo: 'textarea', req: true },
+      { id: 'blog_freq', label: 'Com que frequência pretende publicar?', tipo: 'text' },
+      { id: 'blog_quem', label: 'Quem vai escrever os artigos: você ou a OutBox?', tipo: 'text', req: true }
+    ],
     ecommerce: [
-      { id: 'qtd_produtos', label: 'Quantos produtos, aproximadamente?', tipo: 'text' },
-      { id: 'pagamento', label: 'Meios de pagamento e frete desejados', tipo: 'text' }
+      { id: 'qtd_produtos', label: 'Quantos produtos, aproximadamente?', tipo: 'text', req: true },
+      { id: 'variacoes', label: 'Os produtos têm variações? (tamanho, cor, sabor...)', tipo: 'text' },
+      { id: 'pagamento', label: 'Meios de pagamento desejados', tipo: 'text', req: true },
+      { id: 'frete', label: 'Como funciona o frete? (Correios, transportadora, retirada, entrega própria)', tipo: 'textarea', req: true },
+      { id: 'estoque', label: 'Já usa algum sistema de estoque ou ERP? Qual?', tipo: 'text' }
+    ],
+    marketplace: [
+      { id: 'mkt_modelo', label: 'Qual o modelo do marketplace? (produtos, serviços, aluguel, assinatura)', tipo: 'textarea', req: true },
+      { id: 'mkt_vendedores', label: 'Como os vendedores entram na plataforma? Haverá aprovação?', tipo: 'textarea', req: true },
+      { id: 'mkt_comissao', label: 'Como será a comissão ou taxa por venda?', tipo: 'text', req: true },
+      { id: 'mkt_repasse', label: 'Como será o repasse aos vendedores? (prazo e forma)', tipo: 'text' },
+      { id: 'mkt_categorias', label: 'Quais categorias a plataforma vai ter?', tipo: 'textarea' }
+    ],
+    brandbook: [
+      { id: 'bb_itens', label: 'O que o manual precisa cobrir? (uso do logo, cores, tipografia, tom de voz, papelaria, redes)', tipo: 'textarea', req: true },
+      { id: 'bb_equipe', label: 'Quem vai usar o manual no dia a dia?', tipo: 'text' },
+      { id: 'bb_tom', label: 'Como a marca fala com o cliente? (formal, próxima, divertida, técnica)', tipo: 'textarea', req: true }
     ],
     sistemas: [
       { id: 'processo', label: 'Descreva o processo ou rotina que o sistema deve atender', tipo: 'textarea', req: true },
-      { id: 'usuarios', label: 'Quem vai usar o sistema? (perfis de acesso)', tipo: 'text' }
-    ],
-    identidade: [
-      { id: 'valores', label: 'Valores e personalidade da marca (3 palavras)', tipo: 'text' },
-      { id: 'aplicacoes', label: 'Onde a marca será aplicada? (cartão, fachada, redes...)', tipo: 'text' }
+      { id: 'usuarios', label: 'Quem vai usar o sistema? (perfis de acesso)', tipo: 'textarea', req: true },
+      { id: 'hoje', label: 'Como isso é feito hoje? (planilha, papel, outro sistema)', tipo: 'textarea', req: true },
+      { id: 'integra', label: 'Precisa integrar com algo? (ERP, WhatsApp, pagamento, nota fiscal)', tipo: 'text' }
     ]
   },
+  /* resolve uma lista de opções declarada por nome */
+  briefingOps(nome) { return (typeof nome === 'string' ? this[nome] : nome) || []; },
   briefingCampos(tipo) {
-    const extra = this.BRIEFING_EXTRA[tipo];
-    return extra ? this.BRIEFING_FORM.concat([{ sec: 'Detalhes do serviço', campos: extra }]) : this.BRIEFING_FORM;
+    const secs = this.BRIEFING_FORM.slice();
+    const blocoNome = this.BRIEFING_EXTRA[tipo];
+    const bloco = blocoNome ? this[blocoNome] : null;
+    const espec = this.BRIEFING_ESPECIFICO[tipo];
+    const extras = [];
+    if (bloco) extras.push({ sec: bloco === this.BRIEF_BLOCO_MARCA ? 'Personalidade da marca' : 'O projeto e o estilo', campos: bloco });
+    if (espec) extras.push({ sec: 'Detalhes do serviço', campos: espec });
+    if (!extras.length) return secs;
+    // entra antes da última seção (materiais e contato)
+    return secs.slice(0, -1).concat(extras, secs.slice(-1));
   },
-  briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site', identidade: 'Identidade Visual', ecommerce: 'E-commerce', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
+  briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site Institucional', 'site-blog': 'Site Institucional + Blog', identidade: 'Identidade Visual', brandbook: 'BrandBook', ecommerce: 'E-commerce', marketplace: 'Marketplace', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
   /* produto correspondente a um tipo de briefing (biblioteca) */
-  briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' }[tipo]) || 'onepage'; },
+  briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', 'site-blog': 'institucional-blog', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', brandbook: 'brandbook', ecommerce: 'ecommerce', marketplace: 'ecommerce', sistemas: 'sistemas' }[tipo]) || 'onepage'; },
   /* tela de início (capa) exclusiva por tipo de briefing */
   BRIEFING_INTRO: {
     onepage:     { emoji: '🚀', titulo: 'Vamos criar o seu Site OnePage', frase: 'Uma página única, direta e persuasiva, feita para transformar visitantes em clientes.' },
     landing:     { emoji: '🎯', titulo: 'Vamos criar a sua Landing Page', frase: 'Uma página focada em uma única ação: capturar e converter o seu cliente.' },
     site:        { emoji: '🌐', titulo: 'Vamos criar o seu Site', frase: 'Um site institucional completo para posicionar a sua marca com autoridade.' },
+    'site-blog': { emoji: '📝', titulo: 'Vamos criar o seu Site + Blog', frase: 'Site institucional com blog para gerar conteúdo, autoridade e tráfego no Google.' },
     identidade:  { emoji: '🎨', titulo: 'Vamos criar a sua Identidade Visual', frase: 'Logo, cores e a personalidade que vão dar cara à sua marca.' },
+    brandbook:   { emoji: '📘', titulo: 'Vamos criar o seu BrandBook', frase: 'O manual que garante que a sua marca seja usada com consistência em todo lugar.' },
     ecommerce:   { emoji: '🛒', titulo: 'Vamos criar a sua Loja Virtual', frase: 'Sua loja online pronta para vender 24 horas por dia, 7 dias por semana.' },
+    marketplace: { emoji: '🏬', titulo: 'Vamos criar o seu Marketplace', frase: 'Uma plataforma onde vários vendedores anunciam e você fica com a comissão.' },
     sistemas:    { emoji: '⚙️', titulo: 'Vamos criar o seu Sistema', frase: 'Um sistema sob medida, desenhado para o processo do seu negócio.' },
     vendas:      { emoji: '💥', titulo: 'Vamos criar a sua Página de Vendas', frase: 'Uma página construída com técnica para vender o seu produto ou serviço.' }
   },
   briefingIntro(tipo) { return this.BRIEFING_INTRO[tipo] || { emoji: '✨', titulo: 'Vamos começar o seu projeto', frase: 'Preencha o briefing para darmos início com tudo alinhado.' }; },
   /* briefings prontos (biblioteca): formulário publicado por serviço */
   BRIEFINGS_PRONTOS: [
+    { tipo: 'onepage', nome: 'Site OnePage' },
     { tipo: 'site', nome: 'Site Institucional' },
+    { tipo: 'site-blog', nome: 'Site Institucional + Blog' },
     { tipo: 'landing', nome: 'Landing Page' },
     { tipo: 'vendas', nome: 'Página de Vendas' },
-    { tipo: 'onepage', nome: 'OnePage' },
-    { tipo: 'identidade', nome: 'Identidade Visual' },
     { tipo: 'ecommerce', nome: 'E-commerce' },
+    { tipo: 'marketplace', nome: 'Marketplace' },
+    { tipo: 'identidade', nome: 'Identidade Visual' },
+    { tipo: 'brandbook', nome: 'BrandBook' },
     { tipo: 'sistemas', nome: 'Sistema Sob Medida' }
   ],
   briefingLinkTipo(tipo) { return this.BRIEFING_BASE + '?p=' + tipo; },
