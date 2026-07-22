@@ -2314,7 +2314,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   /* tela inicial do treinamento */
   treinoIntro(id) {
-    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.PRODUTOS.find(p => p.id === id);
+    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.buscar(id);
     if (!quiz || !prod) return;
     const pr = OB.treinoProgress(id);
     const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
@@ -2341,7 +2341,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
 
   /* modo objeções: flashcards só das questões avançadas (objeções/venda), sem nota */
   treinoObjecoes(id) {
-    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.PRODUTOS.find(p => p.id === id);
+    const quiz = TREINOS.QUIZ[id]; const prod = TREINOS.buscar(id);
     if (!quiz) return;
     const objs = quiz.perguntas.filter(p => p.nivel === 'avancado');
     const v = document.getElementById('main-view'); v.scrollTop = 0; window.scrollTo(0, 0);
@@ -2433,7 +2433,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   },
 
   treinoResultado() {
-    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id]; const prod = TREINOS.PRODUTOS.find(p => p.id === st.id);
+    const st = this._quiz; const quiz = TREINOS.QUIZ[st.id]; const prod = TREINOS.buscar(st.id);
     const total = quiz.perguntas.length;
     const acertos = quiz.perguntas.reduce((n, p, k) => n + (st.respostas[k] === p.correta ? 1 : 0), 0);
     const nota = Math.round(acertos / total * 100);
