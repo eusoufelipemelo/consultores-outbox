@@ -311,10 +311,22 @@ const Consultor = {
       </div>` : ''}
       ${lista.length ? `<div class="cards cols-3">${lista.map(p => this.lojaCard(p)).join('')}</div>`
         : this.empty('cart', 'Loja em preparação', 'Assim que a OutBox publicar os produtos, eles aparecem aqui.')}
-      ${this.lojaMeusPedidos()}`;
+      ${this.lojaMeusPedidos()}
+      <button class="lj-fab ${nCarr ? '' : 'hidden'}" id="lj-fab" title="Ver carrinho">
+        ${UI.icon('cart',22)}<span class="lj-fab-n" id="lj-fab-n">${nCarr}</span></button>`;
     v.querySelectorAll('#lj-cats button').forEach(b => b.onclick = () => { this._lojaCat = b.dataset.cat; this.view_loja(); });
     document.getElementById('lj-carrinho').onclick = () => this.carrinhoModal();
+    document.getElementById('lj-fab').onclick = () => this.carrinhoModal();
     this.wireLojaCards(v);
+  },
+
+  /* atualiza o contador do carrinho sem re-renderizar a tela (mantém o contexto) */
+  atualizarBadgeCarrinho() {
+    const n = this._carrinho.reduce((t, i) => t + i.qtd, 0);
+    const btn = document.getElementById('lj-carrinho');
+    if (btn) btn.innerHTML = `${UI.icon('cart',16)} Carrinho${n ? ` (${n})` : ''}`;
+    const fab = document.getElementById('lj-fab');
+    if (fab) { fab.classList.toggle('hidden', !n); const el = document.getElementById('lj-fab-n'); if (el) el.textContent = n; }
   },
 
   /* card com carrossel de fotos 4:5 */
@@ -449,10 +461,41 @@ const Consultor = {
       const ex = this._carrinho.find(i => i.chave === chave);
       if (ex) ex.qtd = Math.min(est, ex.qtd + qtd);
       else this._carrinho.push({ chave, produtoId: p.id, titulo: p.titulo, foto: (p.fotos || [])[0] || '', preco: OB.lojaPreco(p), pesoG: p.pesoG || 300, cor: sel.cor, tam: sel.tam, genero: sel.genero, qtd });
-      UI.closeModal();
-      UI.toast('Adicionado ao carrinho', `${qtd}x ${p.titulo} (${[sel.cor, sel.tam].filter(Boolean).join(' · ')})`, 'ok');
-      this.view_loja();
+      this.atualizarBadgeCarrinho();
+      // checkout transparente: confirma dentro do próprio modal, com o caminho claro
+      this.confirmadoNoCarrinho(p, sel, qtd);
     };
+  },
+
+  /* passo de confirmação: o consultor escolhe seguir comprando ou ir ao carrinho */
+  confirmadoNoCarrinho(p, sel, qtd) {
+    const body = document.querySelector('#modal-bg .modal-body');
+    const foot = document.querySelector('#modal-bg .modal-foot');
+    const head = document.querySelector('#modal-bg .modal-head h3');
+    const sub = document.querySelector('#modal-bg .modal-head p');
+    const total = this._carrinho.reduce((t, i) => t + i.preco * i.qtd, 0);
+    const nItens = this._carrinho.reduce((t, i) => t + i.qtd, 0);
+    if (head) head.textContent = 'Adicionado ao carrinho';
+    if (sub) sub.textContent = 'Você pode continuar comprando ou finalizar agora';
+    if (body) body.innerHTML = `
+      <div class="ck-ok">
+        <span class="ck-ic">${UI.icon('check', 26)}</span>
+        <div class="ck-txt"><b>${qtd}x ${p.titulo}</b>
+          <span>${[sel.cor, sel.tam, OB.lojaGeneroNome(sel.genero)].filter(Boolean).join(' · ')}</span></div>
+        ${(p.fotos || [])[0] ? `<img class="ck-foto" src="${p.fotos[0]}" alt="${p.titulo}">` : ''}
+      </div>
+      <div class="ck-resumo">
+        <div class="row between"><span>Itens no carrinho</span><b>${nItens}</b></div>
+        <div class="row between"><span>Subtotal</span><b style="color:var(--brand)">${OB.fmt(total)}</b></div>
+        ${total < OB.LOJA_FRETE_GRATIS ? `<div class="hint" style="margin-top:6px">Faltam <b>${OB.fmt(OB.LOJA_FRETE_GRATIS - total)}</b> para o frete sair de graça 🎉</div>`
+          : '<div class="hint" style="margin-top:6px;color:#15803d"><b>Frete grátis liberado!</b> 🎉</div>'}
+      </div>`;
+    if (foot) {
+      foot.innerHTML = `<button class="btn ghost" id="ck-continuar">${UI.icon('cart',15)} Continuar comprando</button>
+        <button class="btn brand" id="ck-ir">${UI.icon('receipt',16)} Ir para o carrinho</button>`;
+      document.getElementById('ck-continuar').onclick = () => UI.closeModal();
+      document.getElementById('ck-ir').onclick = () => { UI.closeModal(); this.carrinhoModal(); };
+    }
   },
 
   /* carrinho + frete por CEP + fechamento do pedido */
@@ -467,15 +510,25 @@ const Consultor = {
       size: 'lg',
       body: `
         <div id="cr-itens"></div>
-        <div class="field" style="margin-top:16px"><label>CEP de entrega <span class="req">*</span></label>
-          <div class="row" style="gap:8px">
-            <input id="cr-cep" class="input" value="${cepSalvo}" placeholder="00000-000" maxlength="9" style="max-width:170px"/>
-            <button class="btn ghost sm" id="cr-calc">${UI.icon('map',15)} Calcular frete</button>
-          </div>
-          <div class="hint" id="cr-frete-hint">Informe o CEP para calcularmos o envio.</div>
+        <div class="nav-label" style="padding-left:0;margin-top:18px">Entrega</div>
+        <div class="cr-endereco-topo">
+          <span class="mut" style="font-size:12.5px" id="cr-onde">Enviando para o seu endereço cadastrado</span>
+          <button type="button" class="btn ghost sm" id="cr-meu" hidden>${UI.icon('clients',14)} Usar meu endereço</button>
         </div>
-        <div class="field"><label>Endereço de entrega</label>
-          <input id="cr-end" class="input" value="${[u.logradouro, u.numero, u.bairro, u.cidade, u.uf].filter(Boolean).join(', ').replace(/"/g, '&quot;')}" placeholder="Rua, número, bairro, cidade/UF"/></div>
+        <div class="field"><label>CEP de entrega <span class="req">*</span></label>
+          <div class="row" style="gap:8px">
+            <input id="cr-cep" class="input" value="${cepSalvo}" placeholder="00000-000" maxlength="9" inputmode="numeric" style="max-width:170px"/>
+            <button class="btn ghost sm" id="cr-calc">${UI.icon('map',15)} Buscar</button>
+          </div>
+          <div class="hint" id="cr-frete-hint">Digite o CEP: buscamos o endereço e calculamos o frete.</div>
+        </div>
+        <div class="grid-2">
+          <div class="field" style="grid-column:1/-1"><label>Rua / logradouro</label><input id="cr-rua" class="input" value="${(u.logradouro || '').replace(/"/g, '&quot;')}"/></div>
+          <div class="field"><label>Número <span class="req">*</span></label><input id="cr-num" class="input" value="${(u.numero || '').replace(/"/g, '&quot;')}"/><div class="err">Informe o número</div></div>
+          <div class="field"><label>Complemento</label><input id="cr-comp" class="input" value="${(u.complemento || '').replace(/"/g, '&quot;')}" placeholder="Apto, bloco, referência"/></div>
+          <div class="field"><label>Bairro</label><input id="cr-bairro" class="input" value="${(u.bairro || '').replace(/"/g, '&quot;')}"/></div>
+          <div class="field"><label>Cidade / UF</label><input id="cr-cidade" class="input" value="${[u.cidade, u.uf].filter(Boolean).join(' / ').replace(/"/g, '&quot;')}"/></div>
+        </div>
         <div class="field"><label>Forma de pagamento</label>
           <select id="cr-pag" class="input">
             <option value="pix">PIX</option>
@@ -537,15 +590,75 @@ const Consultor = {
       renderResumo();
       return true;
     };
-    document.getElementById('cr-calc').onclick = calcular;
-    document.getElementById('cr-cep').onblur = () => { if (document.getElementById('cr-cep').value.replace(/\D/g, '').length === 8) calcular(); };
-    if (cepSalvo.length === 8) calcular();
+
+    /* busca o endereço pelo CEP (ViaCEP) e preenche os campos; depois calcula o frete */
+    const setEnd = (o) => {
+      document.getElementById('cr-rua').value = o.rua || '';
+      document.getElementById('cr-bairro').value = o.bairro || '';
+      document.getElementById('cr-cidade').value = [o.cidade, o.uf].filter(Boolean).join(' / ');
+      if (o.numero !== undefined) document.getElementById('cr-num').value = o.numero || '';
+      if (o.complemento !== undefined) document.getElementById('cr-comp').value = o.complemento || '';
+    };
+    const marcarOutro = (outro) => {
+      const onde = document.getElementById('cr-onde');
+      const btn = document.getElementById('cr-meu');
+      onde.innerHTML = outro ? 'Enviando para <b>outro endereço</b>' : 'Enviando para o seu <b>endereço cadastrado</b>';
+      btn.hidden = !outro || !cepSalvo;
+    };
+    const buscarCEP = async () => {
+      const cep = document.getElementById('cr-cep').value.replace(/\D/g, '');
+      if (cep.length !== 8) { calcular(); return; }
+      const hint = document.getElementById('cr-frete-hint');
+      // é o CEP do cadastro? então devolve o endereço do perfil (inclui número e complemento)
+      if (cep === cepSalvo) {
+        setEnd({ rua: u.logradouro, bairro: u.bairro, cidade: u.cidade, uf: u.uf, numero: u.numero, complemento: u.complemento });
+        marcarOutro(false); calcular(); return;
+      }
+      hint.textContent = 'Buscando endereço...'; hint.style.color = '';
+      try {
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const j = await r.json();
+        if (j.erro) { hint.textContent = 'CEP não encontrado. Confira o número.'; hint.style.color = '#dc2626'; frete = null; renderResumo(); return; }
+        setEnd({ rua: j.logradouro, bairro: j.bairro, cidade: j.localidade, uf: j.uf, numero: '', complemento: '' });
+        marcarOutro(true);
+        calcular();
+        const num = document.getElementById('cr-num');
+        if (!num.value) setTimeout(() => num.focus(), 80);
+      } catch (e) {
+        // sem internet para o ViaCEP: ainda assim calculamos o frete pela faixa do CEP
+        calcular();
+        const h = document.getElementById('cr-frete-hint');
+        h.innerHTML += ' <span class="mut">(preencha o endereço manualmente)</span>';
+      }
+    };
+    document.getElementById('cr-calc').onclick = buscarCEP;
+    document.getElementById('cr-cep').oninput = () => {
+      const el = document.getElementById('cr-cep');
+      const d = el.value.replace(/\D/g, '').slice(0, 8);
+      el.value = d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;   // máscara 00000-000
+      if (d.length === 8) buscarCEP();                                   // dispara sozinho ao completar
+    };
+    document.getElementById('cr-meu').onclick = () => {
+      document.getElementById('cr-cep').value = cepSalvo.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+      setEnd({ rua: u.logradouro, bairro: u.bairro, cidade: u.cidade, uf: u.uf, numero: u.numero, complemento: u.complemento });
+      marcarOutro(false); calcular();
+    };
+    if (cepSalvo.length === 8) {
+      document.getElementById('cr-cep').value = cepSalvo.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+      calcular();
+    }
 
     document.getElementById('cr-fechar').onclick = () => {
       if (!this._carrinho.length) return UI.toast('Carrinho vazio', '', 'err');
       if (!frete && !calcular()) return UI.toast('Informe o CEP', 'Precisamos do CEP para calcular o envio.', 'err');
-      const end = document.getElementById('cr-end').value.trim();
-      if (!end) return UI.toast('Informe o endereço', 'Preencha o endereço de entrega.', 'err');
+      const val = id => (document.getElementById(id).value || '').trim();
+      const rua = val('cr-rua'), num = val('cr-num');
+      const campoNum = document.getElementById('cr-num');
+      campoNum.closest('.field').classList.toggle('has-error', !num);
+      campoNum.classList.toggle('invalid', !num);
+      if (!rua) return UI.toast('Endereço incompleto', 'Informe a rua (ou busque pelo CEP).', 'err');
+      if (!num) return UI.toast('Informe o número', 'O número da entrega é obrigatório.', 'err');
+      const end = [rua + ', ' + num, val('cr-comp'), val('cr-bairro'), val('cr-cidade')].filter(Boolean).join(' · ');
       const sub = subtotal();
       const pedido = {
         id: OB.uid(), numero: OB.gerarNumeroPedido(), consultorId: u.id,
