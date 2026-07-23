@@ -16,6 +16,7 @@ const Consultor = {
     { id: 'briefings',  label: 'Briefings',        icon: 'docs',     sec: 'Operação' },
     { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'premiacoes', label: 'Premiações',       icon: 'prize',    sec: 'Operação' },
+    { id: 'loja',       label: 'Loja OutBox',      icon: 'cart',     sec: 'Operação' },
     { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Operação' },
     // Aprendizado & materiais — separado dos demais
     { id: 'treinamentos', label: 'Treinamentos',   icon: 'academy',  sec: 'Cursos & Materiais' },
@@ -285,6 +286,301 @@ const Consultor = {
       hint.textContent = 'Endereço preenchido ✓';
       document.getElementById('c-num').focus();
     }).catch(() => { hint.textContent = 'Não foi possível buscar o CEP'; });
+  },
+
+  /* ====================== LOJA OUTBOX (consultor) ====================== */
+  _carrinho: [],
+  view_loja() {
+    const v = document.getElementById('main-view');
+    const prods = OB.lojaProdutosAtivos();
+    const cats = OB.lojaCategorias().filter(c => c.ativo);
+    const filtro = this._lojaCat || '';
+    const lista = filtro ? prods.filter(p => p.categoriaId === filtro) : prods;
+    const nCarr = this._carrinho.reduce((t, i) => t + i.qtd, 0);
+    v.innerHTML = `
+      <div class="row between alc" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:2px">Loja OutBox</h2>
+          <div class="mut" style="font-size:12.5px">Vista a marca e represente a OutBox com orgulho. Frete calculado pelo seu CEP.</div>
+        </div>
+        <button class="btn brand" id="lj-carrinho">${UI.icon('cart',16)} Carrinho${nCarr ? ` (${nCarr})` : ''}</button>
+      </div>
+      ${cats.length ? `<div class="seg" id="lj-cats" style="margin-bottom:16px">
+        <button class="${!filtro ? 'on' : ''}" data-cat="">Todos</button>
+        ${cats.map(c => `<button class="${filtro === c.id ? 'on' : ''}" data-cat="${c.id}">${c.nome}</button>`).join('')}
+      </div>` : ''}
+      ${lista.length ? `<div class="cards cols-3">${lista.map(p => this.lojaCard(p)).join('')}</div>`
+        : this.empty('cart', 'Loja em preparação', 'Assim que a OutBox publicar os produtos, eles aparecem aqui.')}
+      ${this.lojaMeusPedidos()}`;
+    v.querySelectorAll('#lj-cats button').forEach(b => b.onclick = () => { this._lojaCat = b.dataset.cat; this.view_loja(); });
+    document.getElementById('lj-carrinho').onclick = () => this.carrinhoModal();
+    this.wireLojaCards(v);
+  },
+
+  /* card com carrossel de fotos 4:5 */
+  lojaCard(p) {
+    const fotos = p.fotos || [];
+    const preco = OB.lojaPreco(p);
+    const temPromo = p.precoPromo != null && p.precoPromo < p.preco;
+    const est = OB.lojaEstoqueTotal(p);
+    return `<div class="card lj-card" data-prod="${p.id}">
+      <div class="lj-carrossel" data-carr="${p.id}">
+        <div class="lj-slides" data-slides="${p.id}">
+          ${fotos.map((f, i) => `<img src="${f}" alt="${p.titulo} ${i + 1}" data-zoom="${p.id}:${i}" loading="lazy">`).join('')}
+        </div>
+        ${fotos.length > 1 ? `
+          <button class="lj-nav prev" data-carr-prev="${p.id}" aria-label="Foto anterior">${UI.icon('chevron',18)}</button>
+          <button class="lj-nav next" data-carr-next="${p.id}" aria-label="Próxima foto">${UI.icon('chevron',18)}</button>
+          <div class="lj-dots" data-dots="${p.id}">${fotos.map((_, i) => `<span class="${i === 0 ? 'on' : ''}"></span>`).join('')}</div>` : ''}
+        ${temPromo ? `<span class="lj-tag">-${Math.round((1 - p.precoPromo / p.preco) * 100)}%</span>` : ''}
+        ${!est ? '<span class="lj-esgotado">Esgotado</span>' : ''}
+      </div>
+      <div class="lj-body">
+        <b class="lj-titulo">${p.titulo}</b>
+        ${p.descricao ? `<p class="lj-desc">${p.descricao}</p>` : ''}
+        <div class="lj-preco">${temPromo ? `<s>${OB.fmt(p.preco)}</s>` : ''}<b>${OB.fmt(preco)}</b></div>
+        <button class="btn brand block" data-comprar="${p.id}" ${!est ? 'disabled' : ''} style="margin-top:10px">
+          ${UI.icon('cart',15)} ${est ? 'Comprar' : 'Sem estoque'}</button>
+      </div>
+    </div>`;
+  },
+
+  wireLojaCards(v) {
+    // carrossel
+    const irPara = (pid, dir) => {
+      const slides = v.querySelector(`[data-slides="${pid}"]`); if (!slides) return;
+      const n = slides.children.length; if (n < 2) return;
+      const atual = Math.round(slides.scrollLeft / slides.clientWidth);
+      const novo = (atual + dir + n) % n;
+      slides.scrollTo({ left: novo * slides.clientWidth, behavior: 'smooth' });
+    };
+    v.querySelectorAll('[data-carr-prev]').forEach(b => b.onclick = e => { e.stopPropagation(); irPara(b.dataset.carrPrev, -1); });
+    v.querySelectorAll('[data-carr-next]').forEach(b => b.onclick = e => { e.stopPropagation(); irPara(b.dataset.carrNext, 1); });
+    // pontinhos acompanham a rolagem
+    v.querySelectorAll('[data-slides]').forEach(sl => sl.onscroll = () => {
+      const pid = sl.dataset.slides;
+      const dots = v.querySelector(`[data-dots="${pid}"]`); if (!dots) return;
+      const i = Math.round(sl.scrollLeft / sl.clientWidth);
+      [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
+    });
+    // zoom da foto
+    v.querySelectorAll('[data-zoom]').forEach(img => img.onclick = () => {
+      const [pid, idx] = img.dataset.zoom.split(':');
+      this.lojaZoom(pid, parseInt(idx, 10));
+    });
+    v.querySelectorAll('[data-comprar]').forEach(b => b.onclick = () => this.produtoCompraModal(OB.lojaProdutoById(b.dataset.comprar)));
+  },
+
+  /* lightbox: foto ampliada, navegação e botão fechar */
+  lojaZoom(prodId, idx) {
+    const p = OB.lojaProdutoById(prodId); if (!p || !(p.fotos || []).length) return;
+    let i = idx || 0;
+    const host = document.createElement('div');
+    host.className = 'lj-zoom';
+    host.innerHTML = `
+      <button class="lj-zoom-x" aria-label="Fechar">${UI.icon('x',22)}</button>
+      <button class="lj-zoom-nav prev" aria-label="Anterior">${UI.icon('chevron',26)}</button>
+      <figure class="lj-zoom-fig"><img id="lj-zoom-img" src="${p.fotos[i]}" alt="${p.titulo}"><figcaption>${p.titulo} · <span id="lj-zoom-n">${i + 1}/${p.fotos.length}</span></figcaption></figure>
+      <button class="lj-zoom-nav next" aria-label="Próxima">${UI.icon('chevron',26)}</button>`;
+    document.body.appendChild(host);
+    const mostra = k => { i = (k + p.fotos.length) % p.fotos.length; host.querySelector('#lj-zoom-img').src = p.fotos[i]; host.querySelector('#lj-zoom-n').textContent = (i + 1) + '/' + p.fotos.length; };
+    const fechar = () => { host.remove(); document.removeEventListener('keydown', tecla); };
+    const tecla = ev => { if (ev.key === 'Escape') fechar(); if (ev.key === 'ArrowRight') mostra(i + 1); if (ev.key === 'ArrowLeft') mostra(i - 1); };
+    host.querySelector('.lj-zoom-x').onclick = fechar;
+    host.querySelector('.prev').onclick = () => mostra(i - 1);
+    host.querySelector('.next').onclick = () => mostra(i + 1);
+    host.onclick = ev => { if (ev.target === host) fechar(); };
+    document.addEventListener('keydown', tecla);
+    if (p.fotos.length < 2) host.querySelectorAll('.lj-zoom-nav').forEach(b => b.style.display = 'none');
+  },
+
+  /* escolha de cor, tamanho, gênero e quantidade */
+  produtoCompraModal(p) {
+    if (!p) return;
+    const cores = OB.lojaCores(p);
+    const generos = [...new Set((p.variacoes || []).map(v => v.genero))];
+    let sel = { cor: cores[0] || '', genero: generos[0] || 'unissex', tam: '', qtd: 1 };
+    UI.modal({
+      title: p.titulo,
+      sub: OB.fmt(OB.lojaPreco(p)) + ' · escolha as opções',
+      body: `
+        <div class="cm-topo">
+          ${(p.fotos || [])[0] ? `<img class="cm-foto" src="${p.fotos[0]}" alt="${p.titulo}">` : ''}
+          <div>${p.descricao ? `<p class="mut" style="font-size:13px;line-height:1.55">${p.descricao}</p>` : ''}</div>
+        </div>
+        ${generos.length > 1 ? `<div class="field"><label>Gênero</label><div class="cm-chips" id="cm-gen">
+          ${generos.map((x, i) => `<button type="button" class="cm-chip ${i === 0 ? 'on' : ''}" data-gen="${x}">${OB.lojaGeneroNome(x)}</button>`).join('')}</div></div>` : ''}
+        ${cores.length ? `<div class="field"><label>Cor</label><div class="cm-chips" id="cm-cor">
+          ${cores.map((c, i) => `<button type="button" class="cm-chip ${i === 0 ? 'on' : ''}" data-cor="${c}">${c}</button>`).join('')}</div></div>` : ''}
+        <div class="field"><label>Tamanho <span class="req">*</span></label><div class="cm-chips" id="cm-tam"></div>
+          <div class="hint" id="cm-est"></div></div>
+        <div class="field"><label>Quantidade</label>
+          <div class="cm-qtd"><button type="button" id="cm-menos">−</button><input id="cm-q" type="number" value="1" min="1"><button type="button" id="cm-mais">+</button></div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="cm-add">${UI.icon('cart',16)} Adicionar ao carrinho</button>`
+    });
+    const renderTams = () => {
+      const box = document.getElementById('cm-tam');
+      box.innerHTML = OB.LOJA_TAMANHOS.map(t => {
+        const q = OB.lojaEstoque(p, sel.cor, t, sel.genero);
+        return `<button type="button" class="cm-chip ${sel.tam === t ? 'on' : ''} ${q ? '' : 'off'}" data-tam="${t}" ${q ? '' : 'disabled'}>${t}</button>`;
+      }).join('');
+      box.querySelectorAll('[data-tam]').forEach(b => b.onclick = () => { sel.tam = b.dataset.tam; renderTams(); });
+      const est = sel.tam ? OB.lojaEstoque(p, sel.cor, sel.tam, sel.genero) : 0;
+      document.getElementById('cm-est').textContent = sel.tam ? `${est} disponível(is) nesta combinação` : 'Selecione o tamanho';
+    };
+    renderTams();
+    const troca = (grupo, campo) => {
+      const box = document.getElementById(grupo); if (!box) return;
+      box.querySelectorAll('button').forEach(b => b.onclick = () => {
+        box.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on'); sel[campo] = b.dataset[campo === 'genero' ? 'gen' : 'cor']; sel.tam = ''; renderTams();
+      });
+    };
+    troca('cm-gen', 'genero'); troca('cm-cor', 'cor');
+    const q = document.getElementById('cm-q');
+    document.getElementById('cm-menos').onclick = () => { q.value = Math.max(1, (parseInt(q.value, 10) || 1) - 1); };
+    document.getElementById('cm-mais').onclick = () => { q.value = (parseInt(q.value, 10) || 1) + 1; };
+    document.getElementById('cm-add').onclick = () => {
+      if (!sel.tam) return UI.toast('Escolha o tamanho', 'Selecione um tamanho disponível.', 'err');
+      const qtd = Math.max(1, parseInt(q.value, 10) || 1);
+      const est = OB.lojaEstoque(p, sel.cor, sel.tam, sel.genero);
+      if (qtd > est) return UI.toast('Estoque insuficiente', `Só temos ${est} unidade(s) desta combinação.`, 'err');
+      const chave = `${p.id}|${sel.cor}|${sel.tam}|${sel.genero}`;
+      const ex = this._carrinho.find(i => i.chave === chave);
+      if (ex) ex.qtd = Math.min(est, ex.qtd + qtd);
+      else this._carrinho.push({ chave, produtoId: p.id, titulo: p.titulo, foto: (p.fotos || [])[0] || '', preco: OB.lojaPreco(p), pesoG: p.pesoG || 300, cor: sel.cor, tam: sel.tam, genero: sel.genero, qtd });
+      UI.closeModal();
+      UI.toast('Adicionado ao carrinho', `${qtd}x ${p.titulo} (${[sel.cor, sel.tam].filter(Boolean).join(' · ')})`, 'ok');
+      this.view_loja();
+    };
+  },
+
+  /* carrinho + frete por CEP + fechamento do pedido */
+  carrinhoModal() {
+    const u = this.u();
+    if (!this._carrinho.length) return UI.toast('Carrinho vazio', 'Escolha um produto na loja para começar.', 'info');
+    const cepSalvo = (u.cep || '').replace(/\D/g, '');
+    let frete = null;
+    UI.modal({
+      title: 'Seu carrinho',
+      sub: 'Confira os itens, calcule o frete e finalize',
+      size: 'lg',
+      body: `
+        <div id="cr-itens"></div>
+        <div class="field" style="margin-top:16px"><label>CEP de entrega <span class="req">*</span></label>
+          <div class="row" style="gap:8px">
+            <input id="cr-cep" class="input" value="${cepSalvo}" placeholder="00000-000" maxlength="9" style="max-width:170px"/>
+            <button class="btn ghost sm" id="cr-calc">${UI.icon('map',15)} Calcular frete</button>
+          </div>
+          <div class="hint" id="cr-frete-hint">Informe o CEP para calcularmos o envio.</div>
+        </div>
+        <div class="field"><label>Endereço de entrega</label>
+          <input id="cr-end" class="input" value="${[u.logradouro, u.numero, u.bairro, u.cidade, u.uf].filter(Boolean).join(', ').replace(/"/g, '&quot;')}" placeholder="Rua, número, bairro, cidade/UF"/></div>
+        <div class="field"><label>Forma de pagamento</label>
+          <select id="cr-pag" class="input">
+            <option value="pix">PIX</option>
+            <option value="cartao">Cartão de crédito</option>
+            <option value="comissao">Descontar da minha comissão</option>
+          </select></div>
+        <div class="field"><label>Observações (opcional)</label><textarea id="cr-obs" rows="2" placeholder="Alguma instrução para a entrega?"></textarea></div>
+        <div class="cr-resumo" id="cr-resumo"></div>`,
+      footer: `<button class="btn ghost" data-close>Continuar comprando</button><button class="btn brand" id="cr-fechar">${UI.icon('check',16)} Finalizar pedido</button>`
+    });
+
+    const subtotal = () => this._carrinho.reduce((t, i) => t + i.preco * i.qtd, 0);
+    const pesoTotal = () => this._carrinho.reduce((t, i) => t + (i.pesoG || 300) * i.qtd, 0);
+    const renderResumo = () => {
+      const sub = subtotal();
+      const f = frete ? frete.valor : 0;
+      document.getElementById('cr-resumo').innerHTML = `
+        <div class="row between"><span>Subtotal</span><b>${OB.fmt(sub)}</b></div>
+        <div class="row between"><span>Frete${frete && frete.regiao ? ' · ' + frete.regiao : ''}</span><b>${frete ? (frete.gratis ? 'Grátis' : OB.fmt(f)) : '—'}</b></div>
+        <div class="row between cr-total"><span>Total</span><b>${OB.fmt(sub + f)}</b></div>
+        ${sub < OB.LOJA_FRETE_GRATIS ? `<div class="hint" style="margin-top:6px">Faltam <b>${OB.fmt(OB.LOJA_FRETE_GRATIS - sub)}</b> para o frete sair de graça 🎉</div>` : ''}`;
+    };
+    const renderItens = () => {
+      const el = document.getElementById('cr-itens');
+      if (!this._carrinho.length) { el.innerHTML = '<div class="pf-vazio">Carrinho vazio</div>'; renderResumo(); return; }
+      el.innerHTML = this._carrinho.map((i, k) => `<div class="cr-item">
+        ${i.foto ? `<img src="${i.foto}" alt="${i.titulo}">` : '<span class="cr-sem"></span>'}
+        <div class="cr-info"><b>${i.titulo}</b>
+          <span>${[i.cor, i.tam, OB.lojaGeneroNome(i.genero)].filter(Boolean).join(' · ')}</span>
+          <span class="cr-un">${OB.fmt(i.preco)} cada</span></div>
+        <div class="cr-acoes">
+          <div class="cm-qtd sm"><button type="button" data-cr-menos="${k}">−</button><input type="number" data-cr-q="${k}" value="${i.qtd}" min="1"><button type="button" data-cr-mais="${k}">+</button></div>
+          <b>${OB.fmt(i.preco * i.qtd)}</b>
+          <button class="iconbtn" data-cr-rm="${k}" title="Remover">${UI.icon('trash',15)}</button>
+        </div></div>`).join('');
+      el.querySelectorAll('[data-cr-rm]').forEach(b => b.onclick = () => { this._carrinho.splice(+b.dataset.crRm, 1); renderItens(); });
+      const ajusta = (k, novo) => {
+        const it = this._carrinho[k]; const p = OB.lojaProdutoById(it.produtoId);
+        const est = p ? OB.lojaEstoque(p, it.cor, it.tam, it.genero) : it.qtd;
+        it.qtd = Math.max(1, Math.min(est || 1, novo));
+        renderItens();
+      };
+      el.querySelectorAll('[data-cr-menos]').forEach(b => b.onclick = () => ajusta(+b.dataset.crMenos, this._carrinho[+b.dataset.crMenos].qtd - 1));
+      el.querySelectorAll('[data-cr-mais]').forEach(b => b.onclick = () => ajusta(+b.dataset.crMais, this._carrinho[+b.dataset.crMais].qtd + 1));
+      el.querySelectorAll('[data-cr-q]').forEach(inp => inp.onchange = () => ajusta(+inp.dataset.crQ, parseInt(inp.value, 10) || 1));
+      renderResumo();
+    };
+    renderItens();
+
+    const calcular = () => {
+      const cep = document.getElementById('cr-cep').value;
+      const f = OB.calcFrete(cep, pesoTotal(), subtotal());
+      const hint = document.getElementById('cr-frete-hint');
+      if (!f.ok) { frete = null; hint.textContent = f.erro; hint.style.color = '#dc2626'; renderResumo(); return false; }
+      frete = f;
+      hint.innerHTML = f.gratis ? `<b style="color:#15803d">Frete grátis</b> para ${f.regiao} · entrega em ${f.prazo}`
+        : `Envio para <b>${f.regiao}</b> · ${OB.fmt(f.valor)} · ${f.prazo}`;
+      hint.style.color = '';
+      renderResumo();
+      return true;
+    };
+    document.getElementById('cr-calc').onclick = calcular;
+    document.getElementById('cr-cep').onblur = () => { if (document.getElementById('cr-cep').value.replace(/\D/g, '').length === 8) calcular(); };
+    if (cepSalvo.length === 8) calcular();
+
+    document.getElementById('cr-fechar').onclick = () => {
+      if (!this._carrinho.length) return UI.toast('Carrinho vazio', '', 'err');
+      if (!frete && !calcular()) return UI.toast('Informe o CEP', 'Precisamos do CEP para calcular o envio.', 'err');
+      const end = document.getElementById('cr-end').value.trim();
+      if (!end) return UI.toast('Informe o endereço', 'Preencha o endereço de entrega.', 'err');
+      const sub = subtotal();
+      const pedido = {
+        id: OB.uid(), numero: OB.gerarNumeroPedido(), consultorId: u.id,
+        consultorNome: `${u.nome || ''} ${u.sobrenome || ''}`.trim(),
+        itens: this._carrinho.map(i => ({ produtoId: i.produtoId, titulo: i.titulo, cor: i.cor, tam: i.tam, genero: i.genero, qtd: i.qtd, preco: i.preco })),
+        subtotal: sub, frete: frete.valor, total: sub + frete.valor,
+        cep: document.getElementById('cr-cep').value, endereco: end,
+        formaPagamento: document.getElementById('cr-pag').value,
+        status: 'novo', obs: document.getElementById('cr-obs').value.trim(),
+        criadoEm: new Date().toISOString()
+      };
+      OB.saveLojaPedido(pedido);
+      OB.lojaBaixarEstoque(pedido.itens);
+      this._carrinho = [];
+      UI.closeModal();
+      UI.toast('Pedido enviado! 🎉', `${pedido.numero} · a OutBox já foi avisada e vai separar o seu pedido.`, 'ok');
+      this.view_loja();
+    };
+  },
+
+  lojaMeusPedidos() {
+    const meus = OB.lojaPedidosDe(this.u().id);
+    if (!meus.length) return '';
+    return `<div class="card" style="margin-top:20px">
+      <div class="card-head"><h3>Meus pedidos</h3></div>
+      <table class="tbl"><thead><tr><th>Pedido</th><th>Itens</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody>
+        ${meus.map(p => {
+          const st = OB.LOJA_STATUS.find(s => s.id === p.status) || { nome: p.status, cor: 'gray' };
+          return `<tr><td><b>${p.numero}</b></td>
+            <td>${(p.itens || []).reduce((t, i) => t + i.qtd, 0)} item(ns)</td>
+            <td><b>${OB.fmt(p.total)}</b></td>
+            <td><span class="chip ${st.cor} nowrap">${st.nome}</span></td>
+            <td>${OB.dataBR(p.criadoEm)}</td></tr>`;
+        }).join('')}
+      </tbody></table></div>`;
   },
 
   /* ====================== BÔNUS DE BOAS-VINDAS ====================== */

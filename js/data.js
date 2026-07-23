@@ -438,7 +438,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -506,7 +506,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em,equipe_cargo,equipe_nivel';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp, lcat, lprd, lped] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -523,7 +523,10 @@ const OB = {
       SB.from('contratos').select('*').order('criado_em', { ascending: false }),
       SB.from('criativos').select('id,titulo,formato,categoria,legenda,hashtags,ativo,criado_em').order('criado_em', { ascending: false }),
       SB.from('projeto_arquivos').select('id,projeto_id,autor,categoria,nome,mime,tamanho,url,criado_em').order('criado_em', { ascending: false }),
-      SB.from('equipe').select('*').order('nivel')
+      SB.from('equipe').select('*').order('nivel'),
+      SB.from('loja_categorias').select('*').order('ordem'),
+      SB.from('loja_produtos').select('*').order('ordem'),
+      SB.from('loja_pedidos').select('*').order('criado_em', { ascending: false })
     ]);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
@@ -534,6 +537,9 @@ const OB = {
     }
     this.db.profile = profile;
     this.db.equipe = (eqp && eqp.data) ? eqp.data.map(r => this._eqIn(r)) : [];
+    this.db.lojaCategorias = (lcat && lcat.data) ? lcat.data.map(r => this._lcIn(r)) : [];
+    this.db.lojaProdutos = (lprd && lprd.data) ? lprd.data.map(r => this._lpIn(r)) : [];
+    this.db.lojaPedidos = (lped && lped.data) ? lped.data.map(r => this._loIn(r)) : [];
     this.db.profiles = (profs.data || []).map(r => this._pIn(r));
     if (!this.db.profiles.find(p => p.id === profile.id)) this.db.profiles.push(profile);
     this.db.clients = (cli.data || []).map(r => this._cIn(r));
@@ -558,7 +564,7 @@ const OB = {
     this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [] }; },
+  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -1110,6 +1116,135 @@ const OB = {
     return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
+
+  /* ---------- LOJA DA OUTBOX (produtos para os consultores) ----------
+     Cada produto tem até 5 fotos 4:5 e uma grade de variações (cor × tamanho × gênero),
+     cada uma com o seu estoque. O frete é calculado por faixa de CEP + peso. */
+  LOJA_TAMANHOS: ['P', 'M', 'G', 'GG'],
+  LOJA_GENEROS: [
+    { id: 'masculino', nome: 'Masculino' },
+    { id: 'feminino', nome: 'Feminino' },
+    { id: 'unissex', nome: 'Unissex' }
+  ],
+  LOJA_TIPOS: [
+    { id: 'camiseta', nome: 'Camiseta' },
+    { id: 'camisa', nome: 'Camisa polo' },
+    { id: 'moletom', nome: 'Moletom' },
+    { id: 'bone', nome: 'Boné' },
+    { id: 'caneca', nome: 'Caneca' },
+    { id: 'brinde', nome: 'Brinde' },
+    { id: 'outro', nome: 'Outro' }
+  ],
+  LOJA_MAX_FOTOS: 5,
+  LOJA_STATUS: [
+    { id: 'novo', nome: 'Novo', cor: 'warn' },
+    { id: 'pago', nome: 'Pagamento confirmado', cor: 'green' },
+    { id: 'separacao', nome: 'Em separação', cor: 'gray' },
+    { id: 'enviado', nome: 'Enviado', cor: 'green' },
+    { id: 'entregue', nome: 'Entregue', cor: 'green' },
+    { id: 'cancelado', nome: 'Cancelado', cor: 'gray' }
+  ],
+  lojaStatusNome(id) { const s = this.LOJA_STATUS.find(x => x.id === id); return s ? s.nome : (id || 'Novo'); },
+  lojaTipoNome(id) { const t = this.LOJA_TIPOS.find(x => x.id === id); return t ? t.nome : (id || 'Produto'); },
+  lojaGeneroNome(id) { const g = this.LOJA_GENEROS.find(x => x.id === id); return g ? g.nome : (id || ''); },
+
+  /* --- frete: faixa por região do CEP + adicional por peso --- */
+  LOJA_FRETE: [
+    { uf: 'SP', ini: 1000000, fim: 19999999, base: 18, kg: 4, prazo: '2 a 4 dias úteis' },
+    { uf: 'RJ/ES/MG', ini: 20000000, fim: 39999999, base: 24, kg: 5, prazo: '3 a 6 dias úteis' },
+    { uf: 'Sul', ini: 80000000, fim: 99999999, base: 26, kg: 5, prazo: '4 a 7 dias úteis' },
+    { uf: 'Centro-Oeste', ini: 70000000, fim: 79999999, base: 30, kg: 6, prazo: '5 a 9 dias úteis' },
+    { uf: 'Nordeste', ini: 40000000, fim: 65999999, base: 34, kg: 7, prazo: '6 a 12 dias úteis' },
+    { uf: 'Norte', ini: 66000000, fim: 69999999, base: 42, kg: 9, prazo: '8 a 15 dias úteis' }
+  ],
+  LOJA_FRETE_GRATIS: 400, // acima disso o frete é por nossa conta
+  /* calcula o frete pelo CEP e pelo peso total (g). Devolve valor, prazo e região. */
+  calcFrete(cep, pesoTotalG, subtotal) {
+    const d = String(cep || '').replace(/\D/g, '');
+    if (d.length !== 8) return { ok: false, erro: 'CEP incompleto', valor: 0, prazo: '', regiao: '' };
+    const n = parseInt(d, 10);
+    const faixa = this.LOJA_FRETE.find(f => n >= f.ini && n <= f.fim) || this.LOJA_FRETE[this.LOJA_FRETE.length - 1];
+    const kg = Math.max(1, Math.ceil((pesoTotalG || 300) / 1000));
+    let valor = faixa.base + (kg - 1) * faixa.kg;
+    const gratis = (subtotal || 0) >= this.LOJA_FRETE_GRATIS;
+    if (gratis) valor = 0;
+    return { ok: true, valor: Math.round(valor), prazo: faixa.prazo, regiao: faixa.uf, gratis, peso: kg };
+  },
+
+  _lcIn(r) { return { id: r.id, nome: r.nome, slug: r.slug, ordem: r.ordem || 0, ativo: r.ativo !== false, criadoEm: r.criado_em }; },
+  _lcOut(c) { return { id: c.id, nome: c.nome, slug: c.slug, ordem: c.ordem || 0, ativo: c.ativo !== false }; },
+  _lpIn(r) {
+    let fotos = []; try { fotos = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : (r.fotos || []); } catch (e) { fotos = []; }
+    let vars = []; try { vars = typeof r.variacoes === 'string' ? JSON.parse(r.variacoes) : (r.variacoes || []); } catch (e) { vars = []; }
+    return { id: r.id, titulo: r.titulo, descricao: r.descricao || '', categoriaId: r.categoria_id || null,
+      tipo: r.tipo || 'camiseta', preco: Number(r.preco) || 0, precoPromo: r.preco_promo != null ? Number(r.preco_promo) : null,
+      pesoG: r.peso_g != null ? Number(r.peso_g) : 300, fotos: Array.isArray(fotos) ? fotos : [],
+      generos: r.generos || ['unissex'], variacoes: Array.isArray(vars) ? vars : [],
+      destaque: !!r.destaque, ativo: r.ativo !== false, ordem: r.ordem || 0, criadoEm: r.criado_em };
+  },
+  _lpOut(p) { return { id: p.id, titulo: p.titulo, descricao: p.descricao || null, categoria_id: p.categoriaId || null,
+    tipo: p.tipo || 'camiseta', preco: p.preco || 0, preco_promo: p.precoPromo != null ? p.precoPromo : null,
+    peso_g: p.pesoG != null ? p.pesoG : 300, fotos: p.fotos || [], generos: p.generos || ['unissex'],
+    variacoes: p.variacoes || [], destaque: !!p.destaque, ativo: p.ativo !== false, ordem: p.ordem || 0,
+    atualizado_em: new Date().toISOString() }; },
+  _loIn(r) {
+    let itens = []; try { itens = typeof r.itens === 'string' ? JSON.parse(r.itens) : (r.itens || []); } catch (e) { itens = []; }
+    return { id: r.id, numero: r.numero, consultorId: r.consultor_id, consultorNome: r.consultor_nome || '',
+      itens: Array.isArray(itens) ? itens : [], subtotal: Number(r.subtotal) || 0, frete: Number(r.frete) || 0,
+      total: Number(r.total) || 0, cep: r.cep || '', endereco: r.endereco || '', formaPagamento: r.forma_pagamento || '',
+      status: r.status || 'novo', obs: r.obs || '', criadoEm: r.criado_em };
+  },
+  _loOut(p) { return { id: p.id, numero: p.numero, consultor_id: p.consultorId, consultor_nome: p.consultorNome || null,
+    itens: p.itens || [], subtotal: p.subtotal || 0, frete: p.frete || 0, total: p.total || 0,
+    cep: p.cep || null, endereco: p.endereco || null, forma_pagamento: p.formaPagamento || null,
+    status: p.status || 'novo', obs: p.obs || null, atualizado_em: new Date().toISOString() }; },
+
+  lojaCategorias() { return (this.db.lojaCategorias || []).slice().sort((a, b) => a.ordem - b.ordem); },
+  lojaCategoriaById(id) { return this.lojaCategorias().find(c => c.id === id) || null; },
+  lojaProdutos() { return (this.db.lojaProdutos || []).slice().sort((a, b) => (a.ordem - b.ordem) || a.titulo.localeCompare(b.titulo)); },
+  lojaProdutosAtivos() { return this.lojaProdutos().filter(p => p.ativo); },
+  lojaProdutoById(id) { return (this.db.lojaProdutos || []).find(p => p.id === id) || null; },
+  lojaPedidos() { return (this.db.lojaPedidos || []).slice().sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm)); },
+  lojaPedidosDe(consultorId) { return this.lojaPedidos().filter(p => p.consultorId === consultorId); },
+  /* estoque de uma variação específica */
+  lojaEstoque(prod, cor, tam, genero) {
+    const v = (prod.variacoes || []).find(x => x.cor === cor && x.tam === tam && (!genero || x.genero === genero));
+    return v ? (Number(v.qtd) || 0) : 0;
+  },
+  lojaEstoqueTotal(prod) { return (prod.variacoes || []).reduce((t, v) => t + (Number(v.qtd) || 0), 0); },
+  lojaCores(prod) { const s = []; (prod.variacoes || []).forEach(v => { if (v.cor && s.indexOf(v.cor) < 0) s.push(v.cor); }); return s; },
+  lojaPreco(prod) { return (prod.precoPromo != null && prod.precoPromo > 0 && prod.precoPromo < prod.preco) ? prod.precoPromo : prod.preco; },
+
+  saveLojaCategoria(c) {
+    const i = (this.db.lojaCategorias || []).findIndex(x => x.id === c.id);
+    if (i >= 0) this.db.lojaCategorias[i] = c; else this.db.lojaCategorias.push(c);
+    this._save('loja_categorias', this._lcOut(c)); return c;
+  },
+  removeLojaCategoria(id) { this.db.lojaCategorias = (this.db.lojaCategorias || []).filter(c => c.id !== id); this._delete('loja_categorias', id); },
+  saveLojaProduto(p) {
+    const i = (this.db.lojaProdutos || []).findIndex(x => x.id === p.id);
+    if (i >= 0) this.db.lojaProdutos[i] = p; else this.db.lojaProdutos.push(p);
+    this._save('loja_produtos', this._lpOut(p)); return p;
+  },
+  removeLojaProduto(id) { this.db.lojaProdutos = (this.db.lojaProdutos || []).filter(p => p.id !== id); this._delete('loja_produtos', id); },
+  saveLojaPedido(p) {
+    const i = (this.db.lojaPedidos || []).findIndex(x => x.id === p.id);
+    if (i >= 0) this.db.lojaPedidos[i] = p; else this.db.lojaPedidos.unshift(p);
+    this._save('loja_pedidos', this._loOut(p)); return p;
+  },
+  gerarNumeroPedido() {
+    const ano = new Date().getFullYear();
+    const n = (this.db.lojaPedidos || []).length + 1;
+    return 'LJ-' + ano + '-' + String(n).padStart(4, '0');
+  },
+  /* baixa o estoque das variações compradas (chamado ao fechar o pedido) */
+  lojaBaixarEstoque(itens) {
+    (itens || []).forEach(it => {
+      const p = this.lojaProdutoById(it.produtoId); if (!p) return;
+      const v = (p.variacoes || []).find(x => x.cor === it.cor && x.tam === it.tam && x.genero === it.genero);
+      if (v) { v.qtd = Math.max(0, (Number(v.qtd) || 0) - (it.qtd || 1)); this.saveLojaProduto(p); }
+    });
+  },
 
   /* ---------- EQUIPE INTERNA (colaboradores da OutBox) ----------
      Cada cargo tem um NÍVEL de hierarquia (1 = mais alto) e as SEÇÕES do admin que enxerga.

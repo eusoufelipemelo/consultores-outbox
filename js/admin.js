@@ -25,6 +25,7 @@ const Admin = {
     { id: 'mapa',       label: 'Mapa da Rede',     icon: 'map',      sec: 'Gestão & Conteúdo' },
     { id: 'ranking',    label: 'Ranking',          icon: 'ranking',  sec: 'Gestão & Conteúdo' },
     // Administração do próprio time interno
+    { id: 'loja',       label: 'Loja',             icon: 'cart',     sec: 'Administração' },
     { id: 'equipe',     label: 'Equipe',           icon: 'clients',  sec: 'Administração' }
   ],
   titles: {
@@ -872,6 +873,298 @@ const Admin = {
   },
 
   /* ====================== BÔNUS (cortesias a autorizar) ====================== */
+  /* ====================== LOJA (admin) ====================== */
+  view_loja() {
+    const v = document.getElementById('main-view');
+    const aba = this._lojaAba || 'produtos';
+    const prods = OB.lojaProdutos();
+    const peds = OB.lojaPedidos();
+    const novos = peds.filter(p => p.status === 'novo').length;
+    const semEstoque = prods.filter(p => p.ativo && OB.lojaEstoqueTotal(p) === 0).length;
+    v.innerHTML = `
+      <div class="cards cols-4" style="margin-bottom:16px">
+        ${Consultor.kpi('cart', prods.filter(p => p.ativo).length, 'Produtos na loja', prods.length + ' cadastrado(s)')}
+        ${Consultor.kpi('receipt', novos, 'Pedidos novos', 'Aguardando você')}
+        ${Consultor.kpi('money', OB.fmt(peds.filter(p => p.status !== 'cancelado').reduce((t, p) => t + p.total, 0)), 'Vendido na loja', peds.length + ' pedido(s)')}
+        ${Consultor.kpi('clock', semEstoque, 'Sem estoque', 'Ativos e zerados')}
+      </div>
+      <div class="seg" id="loja-abas" style="margin-bottom:16px">
+        <button class="${aba === 'produtos' ? 'on' : ''}" data-aba="produtos">Produtos (${prods.length})</button>
+        <button class="${aba === 'pedidos' ? 'on' : ''}" data-aba="pedidos">Pedidos (${peds.length})</button>
+        <button class="${aba === 'categorias' ? 'on' : ''}" data-aba="categorias">Categorias (${OB.lojaCategorias().length})</button>
+      </div>
+      <div id="loja-conteudo">${aba === 'produtos' ? this.lojaProdutosHTML() : aba === 'pedidos' ? this.lojaPedidosHTML() : this.lojaCategoriasHTML()}</div>`;
+    v.querySelectorAll('#loja-abas button').forEach(b => b.onclick = () => { this._lojaAba = b.dataset.aba; this.view_loja(); });
+    this.wireLoja(v);
+  },
+
+  wireLoja(v) {
+    const q = (sel, fn) => v.querySelectorAll(sel).forEach(fn);
+    q('[data-prod-novo]', b => b.onclick = () => this.produtoModal(null));
+    q('[data-prod-edit]', b => b.onclick = () => this.produtoModal(OB.lojaProdutoById(b.dataset.prodEdit)));
+    q('[data-prod-del]', b => b.onclick = () => {
+      const p = OB.lojaProdutoById(b.dataset.prodDel); if (!p) return;
+      UI.confirm('Excluir produto', `Remover <b>${p.titulo}</b> da loja? Os pedidos já feitos continuam no histórico.`,
+        () => { OB.removeLojaProduto(p.id); UI.toast('Produto removido', '', 'ok'); this.view_loja(); }, 'Excluir');
+    });
+    q('[data-prod-toggle]', b => b.onclick = () => {
+      const p = OB.lojaProdutoById(b.dataset.prodToggle); if (!p) return;
+      p.ativo = !p.ativo; OB.saveLojaProduto(p);
+      UI.toast(p.ativo ? 'Produto publicado' : 'Produto ocultado', p.ativo ? 'Já aparece na loja dos consultores.' : 'Não aparece mais na loja.', 'ok');
+      this.view_loja();
+    });
+    q('[data-cat-nova]', b => b.onclick = () => this.categoriaModal(null));
+    q('[data-cat-edit]', b => b.onclick = () => this.categoriaModal(OB.lojaCategoriaById(b.dataset.catEdit)));
+    q('[data-cat-del]', b => b.onclick = () => {
+      const c = OB.lojaCategoriaById(b.dataset.catDel); if (!c) return;
+      const usados = OB.lojaProdutos().filter(p => p.categoriaId === c.id).length;
+      UI.confirm('Excluir categoria', `Remover <b>${c.nome}</b>?${usados ? ` <b>${usados} produto(s)</b> ficam sem categoria.` : ''}`,
+        () => { OB.removeLojaCategoria(c.id); UI.toast('Categoria removida', '', 'ok'); this.view_loja(); }, 'Excluir');
+    });
+    q('[data-ped-status]', s => s.onchange = () => {
+      const p = OB.lojaPedidos().find(x => x.id === s.dataset.pedStatus); if (!p) return;
+      p.status = s.value; OB.saveLojaPedido(p);
+      UI.toast('Status atualizado', `Pedido ${p.numero}: ${OB.lojaStatusNome(p.status)}`, 'ok');
+    });
+  },
+
+  lojaProdutosHTML() {
+    const prods = OB.lojaProdutos();
+    const head = `<div class="row between alc" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="mut" style="font-size:12.5px">Publique um produto e ele aparece <b>na hora</b> na loja dos consultores.</div>
+      <button class="btn brand" data-prod-novo>${UI.icon('plus',16)} Novo produto</button></div>`;
+    if (!prods.length) return head + Consultor.empty('cart', 'Nenhum produto ainda', 'Cadastre o primeiro produto da loja da OutBox.');
+    return head + `<div class="cards cols-3">${prods.map(p => {
+      const cat = OB.lojaCategoriaById(p.categoriaId);
+      const est = OB.lojaEstoqueTotal(p);
+      const preco = OB.lojaPreco(p);
+      const capa = (p.fotos || [])[0];
+      return `<div class="card lp-card">
+        <div class="lp-thumb">${capa ? `<img src="${capa}" alt="${p.titulo}">` : UI.icon('gallery', 26)}
+          ${!p.ativo ? '<span class="lp-off">Oculto</span>' : ''}
+          ${(p.fotos || []).length > 1 ? `<span class="lp-n">${p.fotos.length} fotos</span>` : ''}</div>
+        <div class="lp-body">
+          <b>${p.titulo}</b>
+          <div class="lp-meta">${cat ? cat.nome : 'Sem categoria'} · ${OB.lojaTipoNome(p.tipo)}</div>
+          <div class="lp-preco">${p.precoPromo && p.precoPromo < p.preco ? `<s>${OB.fmt(p.preco)}</s> ` : ''}<b>${OB.fmt(preco)}</b></div>
+          <div class="lp-est ${est ? '' : 'zero'}">${est ? est + ' em estoque · ' + (p.variacoes || []).length + ' variações' : 'Sem estoque'}</div>
+        </div>
+        <div class="row" style="gap:7px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn ghost sm" data-prod-edit="${p.id}">${UI.icon('edit',14)} Editar</button>
+          <button class="btn ghost sm" data-prod-toggle="${p.id}">${UI.icon(p.ativo ? 'lock' : 'check',14)} ${p.ativo ? 'Ocultar' : 'Publicar'}</button>
+          <button class="btn ghost sm danger" data-prod-del="${p.id}">${UI.icon('trash',14)}</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  },
+
+  lojaCategoriasHTML() {
+    const cats = OB.lojaCategorias();
+    const head = `<div class="row between alc" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="mut" style="font-size:12.5px">As categorias organizam a vitrine e viram filtros para o consultor.</div>
+      <button class="btn brand" data-cat-nova>${UI.icon('plus',16)} Nova categoria</button></div>`;
+    if (!cats.length) return head + Consultor.empty('docs', 'Nenhuma categoria', 'Crie a primeira categoria da loja.');
+    return head + `<div class="card" style="padding:0"><table class="tbl"><thead><tr><th>Categoria</th><th>Produtos</th><th>Status</th><th></th></tr></thead><tbody>
+      ${cats.map(c => {
+        const n = OB.lojaProdutos().filter(p => p.categoriaId === c.id).length;
+        return `<tr><td><b>${c.nome}</b><div class="mut" style="font-size:11.5px">/${c.slug}</div></td>
+          <td>${n}</td>
+          <td><span class="chip ${c.ativo ? 'green' : 'gray'} nowrap">${c.ativo ? 'Ativa' : 'Inativa'}</span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="iconbtn" data-cat-edit="${c.id}" title="Editar">${UI.icon('edit',15)}</button>
+            <button class="iconbtn" data-cat-del="${c.id}" title="Excluir">${UI.icon('trash',15)}</button></td></tr>`;
+      }).join('')}</tbody></table></div>`;
+  },
+
+  lojaPedidosHTML() {
+    const peds = OB.lojaPedidos();
+    if (!peds.length) return Consultor.empty('receipt', 'Nenhum pedido ainda', 'Quando um consultor comprar na loja, o pedido aparece aqui.');
+    return `<div class="cards cols-2">${peds.map(p => `
+      <div class="card">
+        <div class="row between alc" style="gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div><b style="font-size:15px">${p.numero || 'Pedido'}</b>
+            <div class="mut" style="font-size:12px">${p.consultorNome || ''} · ${OB.dataBR(p.criadoEm)}</div></div>
+          <select class="input" data-ped-status="${p.id}" style="max-width:190px;height:38px">
+            ${OB.LOJA_STATUS.map(s => `<option value="${s.id}" ${p.status === s.id ? 'selected' : ''}>${s.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="ped-itens">${(p.itens || []).map(i => `<div class="ped-item">
+          <span>${i.qtd}x ${i.titulo}</span>
+          <span class="mut">${[i.cor, i.tam, OB.lojaGeneroNome(i.genero)].filter(Boolean).join(' · ')}</span>
+          <b>${OB.fmt((i.preco || 0) * (i.qtd || 1))}</b></div>`).join('')}</div>
+        <div class="row between" style="font-size:13px;margin-top:10px;color:var(--text-mut)"><span>Subtotal</span><span>${OB.fmt(p.subtotal)}</span></div>
+        <div class="row between" style="font-size:13px;color:var(--text-mut)"><span>Frete${p.cep ? ' · CEP ' + p.cep : ''}</span><span>${p.frete ? OB.fmt(p.frete) : 'Grátis'}</span></div>
+        <div class="row between" style="font-size:16px;font-weight:800;margin-top:6px;padding-top:8px;border-top:1px solid var(--border)"><span>Total</span><span style="color:var(--brand)">${OB.fmt(p.total)}</span></div>
+        ${p.endereco ? `<div class="mut" style="font-size:12px;margin-top:8px">${UI.icon('map',12)} ${p.endereco}</div>` : ''}
+        ${p.obs ? `<div class="mut" style="font-size:12px;margin-top:4px">Obs: ${p.obs}</div>` : ''}
+      </div>`).join('')}</div>`;
+  },
+
+  /* cadastro do produto: fotos 4:5, dados e grade de variações (cor × tamanho × gênero) */
+  produtoModal(p) {
+    const e = p || { id: OB.uid(), titulo: '', descricao: '', categoriaId: (OB.lojaCategorias()[0] || {}).id || null,
+      tipo: 'camiseta', preco: 0, precoPromo: null, pesoG: 300, fotos: [], generos: ['unissex'], variacoes: [], ativo: true, ordem: 0, destaque: false };
+    const g = k => (e[k] == null ? '' : String(e[k]).replace(/"/g, '&quot;'));
+    let fotos = (e.fotos || []).slice();
+    let vars = (e.variacoes || []).slice();
+
+    UI.modal({
+      title: p ? 'Editar produto' : 'Novo produto',
+      sub: 'Fotos no formato 4:5 · grade de tamanhos e cores com estoque',
+      size: 'lg',
+      body: `
+        <div class="nav-label" style="padding-left:0">Fotos do produto (até ${OB.LOJA_MAX_FOTOS} · formato 4:5)</div>
+        <div class="pf-grid" id="pf-grid"></div>
+        <label class="btn ghost sm" style="cursor:pointer;margin-bottom:18px">${UI.icon('gallery',15)} Adicionar fotos
+          <input type="file" id="pf-input" accept="image/*" multiple hidden></label>
+        <div class="hint" style="margin:-12px 0 18px">As imagens são recortadas automaticamente em 4:5 (proporção do card). A primeira foto é a capa.</div>
+
+        <div class="nav-label" style="padding-left:0">Dados do produto</div>
+        <div class="field"><label>Título <span class="req">*</span></label><input id="pr-titulo" value="${g('titulo')}" placeholder="Ex.: Camiseta OutBox Preta"/><div class="err">Obrigatório</div></div>
+        <div class="field"><label>Descrição</label><textarea id="pr-desc" rows="3" placeholder="Tecido, modelagem, cuidados...">${e.descricao || ''}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Categoria</label><select id="pr-cat">${OB.lojaCategorias().map(c => `<option value="${c.id}" ${e.categoriaId === c.id ? 'selected' : ''}>${c.nome}</option>`).join('') || '<option value="">Sem categoria</option>'}</select></div>
+          <div class="field"><label>Tipo de produto</label><select id="pr-tipo">${OB.LOJA_TIPOS.map(t => `<option value="${t.id}" ${e.tipo === t.id ? 'selected' : ''}>${t.nome}</option>`).join('')}</select></div>
+          <div class="field"><label>Preço (R$) <span class="req">*</span></label><input id="pr-preco" type="number" step="0.01" value="${e.preco || ''}"/><div class="err">Informe o preço</div></div>
+          <div class="field"><label>Preço promocional (opcional)</label><input id="pr-promo" type="number" step="0.01" value="${e.precoPromo != null ? e.precoPromo : ''}"/></div>
+          <div class="field"><label>Peso unitário (g)</label><input id="pr-peso" type="number" value="${e.pesoG || 300}"/><div class="hint">Usado no cálculo do frete</div></div>
+          <div class="field"><label>Ordem na vitrine</label><input id="pr-ordem" type="number" value="${e.ordem || 0}"/></div>
+        </div>
+
+        <div class="nav-label" style="padding-left:0">Grade: tamanhos, cores, gênero e estoque</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input class="input" id="pv-cor" placeholder="Cor (ex.: Preto)" style="max-width:170px"/>
+          <select class="input" id="pv-genero" style="max-width:150px">${OB.LOJA_GENEROS.map(x => `<option value="${x.id}">${x.nome}</option>`).join('')}</select>
+          <input class="input" id="pv-qtd" type="number" placeholder="Qtd por tamanho" value="10" style="max-width:150px"/>
+          <button class="btn ghost sm" id="pv-add">${UI.icon('plus',15)} Gerar P/M/G/GG</button>
+        </div>
+        <div id="pv-lista"></div>
+        <div class="hint" style="margin-top:8px">Adicione uma cor por vez: o sistema cria as 4 linhas de tamanho. Depois é só ajustar o estoque de cada uma.</div>
+
+        <label class="row alc" style="gap:10px;margin-top:16px;cursor:pointer">
+          <input type="checkbox" id="pr-ativo" ${e.ativo !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--brand)">
+          <span style="font-size:14px">Publicar na loja (os consultores veem imediatamente)</span></label>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="pr-save">${UI.icon('check',16)} ${p ? 'Salvar alterações' : 'Cadastrar produto'}</button>`
+    });
+
+    const renderFotos = () => {
+      const el = document.getElementById('pf-grid');
+      el.innerHTML = fotos.map((f, i) => `<div class="pf-item">
+        <img src="${f}" alt="Foto ${i + 1}">
+        ${i === 0 ? '<span class="pf-capa">Capa</span>' : ''}
+        <div class="pf-acts">
+          ${i > 0 ? `<button type="button" data-pf-up="${i}" title="Mover para frente">${UI.icon('chevron',13)}</button>` : ''}
+          <button type="button" data-pf-rm="${i}" title="Remover">${UI.icon('x',13)}</button>
+        </div></div>`).join('') || '<div class="pf-vazio">Nenhuma foto ainda</div>';
+      el.querySelectorAll('[data-pf-rm]').forEach(b => b.onclick = () => { fotos.splice(+b.dataset.pfRm, 1); renderFotos(); });
+      el.querySelectorAll('[data-pf-up]').forEach(b => b.onclick = () => { const i = +b.dataset.pfUp; const t = fotos[i - 1]; fotos[i - 1] = fotos[i]; fotos[i] = t; renderFotos(); });
+    };
+    renderFotos();
+
+    // recorta a imagem em 4:5 (mesma proporção do card) antes de guardar
+    const corta45 = (dataUrl) => new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const LARG = 800, ALT = 1000; // 4:5
+        const cv = document.createElement('canvas'); cv.width = LARG; cv.height = ALT;
+        const ctx = cv.getContext('2d');
+        const escala = Math.max(LARG / img.width, ALT / img.height);
+        const w = img.width * escala, h = img.height * escala;
+        ctx.drawImage(img, (LARG - w) / 2, (ALT - h) / 2, w, h);
+        try { res(cv.toDataURL('image/jpeg', 0.85)); } catch (err) { res(dataUrl); }
+      };
+      img.onerror = () => res(dataUrl);
+      img.src = dataUrl;
+    });
+    document.getElementById('pf-input').onchange = async ev => {
+      const files = [...ev.target.files];
+      for (const f of files) {
+        if (fotos.length >= OB.LOJA_MAX_FOTOS) { UI.toast('Limite de fotos', `Máximo de ${OB.LOJA_MAX_FOTOS} fotos por produto.`, 'err'); break; }
+        const dataUrl = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.onerror = () => r(null); rd.readAsDataURL(f); });
+        if (dataUrl) fotos.push(await corta45(dataUrl));
+      }
+      ev.target.value = ''; renderFotos();
+    };
+
+    const renderVars = () => {
+      const el = document.getElementById('pv-lista');
+      if (!vars.length) { el.innerHTML = '<div class="pf-vazio">Nenhuma variação. Informe uma cor acima e clique em gerar.</div>'; return; }
+      const porCor = {};
+      vars.forEach((v, i) => { const k = v.cor + '|' + v.genero; (porCor[k] = porCor[k] || []).push({ v, i }); });
+      el.innerHTML = Object.keys(porCor).map(k => {
+        const [cor, gen] = k.split('|');
+        return `<div class="pv-grupo">
+          <div class="pv-head"><b>${cor}</b><span class="chip gray nowrap">${OB.lojaGeneroNome(gen)}</span>
+            <button type="button" class="iconbtn" data-pv-rmcor="${k}" title="Remover esta cor">${UI.icon('trash',14)}</button></div>
+          <div class="pv-tams">${porCor[k].map(({ v, i }) => `<label class="pv-tam"><span>${v.tam}</span>
+            <input type="number" min="0" data-pv-qtd="${i}" value="${v.qtd || 0}"></label>`).join('')}</div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('[data-pv-qtd]').forEach(inp => inp.onchange = () => { vars[+inp.dataset.pvQtd].qtd = Math.max(0, parseInt(inp.value, 10) || 0); });
+      el.querySelectorAll('[data-pv-rmcor]').forEach(b => b.onclick = () => {
+        const [cor, gen] = b.dataset.pvRmcor.split('|');
+        vars = vars.filter(v => !(v.cor === cor && v.genero === gen)); renderVars();
+      });
+    };
+    renderVars();
+    document.getElementById('pv-add').onclick = () => {
+      const cor = document.getElementById('pv-cor').value.trim();
+      const gen = document.getElementById('pv-genero').value;
+      const qtd = Math.max(0, parseInt(document.getElementById('pv-qtd').value, 10) || 0);
+      if (!cor) return UI.toast('Informe a cor', 'Digite a cor antes de gerar os tamanhos.', 'err');
+      if (vars.some(v => v.cor.toLowerCase() === cor.toLowerCase() && v.genero === gen)) return UI.toast('Já existe', `A cor ${cor} (${OB.lojaGeneroNome(gen)}) já foi adicionada.`, 'err');
+      OB.LOJA_TAMANHOS.forEach(t => vars.push({ cor, tam: t, genero: gen, qtd }));
+      document.getElementById('pv-cor').value = ''; renderVars();
+    };
+
+    document.getElementById('pr-save').onclick = () => {
+      const val = id => (document.getElementById(id).value || '').trim();
+      const titulo = val('pr-titulo');
+      const preco = parseFloat(val('pr-preco')) || 0;
+      const inval = (id, bad) => { const el = document.getElementById(id); el.closest('.field').classList.toggle('has-error', bad); el.classList.toggle('invalid', bad); };
+      inval('pr-titulo', !titulo); inval('pr-preco', preco <= 0);
+      if (!titulo || preco <= 0) return UI.toast('Confira os campos', 'Título e preço são obrigatórios.', 'err');
+      if (!fotos.length) return UI.toast('Adicione ao menos 1 foto', 'O card da loja precisa de uma imagem.', 'err');
+      if (!vars.length) return UI.toast('Adicione as variações', 'Informe ao menos uma cor com os tamanhos.', 'err');
+      const promo = parseFloat(val('pr-promo'));
+      const generos = [...new Set(vars.map(v => v.genero))];
+      OB.saveLojaProduto({
+        id: e.id, titulo, descricao: val('pr-desc'),
+        categoriaId: document.getElementById('pr-cat').value || null,
+        tipo: document.getElementById('pr-tipo').value,
+        preco, precoPromo: (!isNaN(promo) && promo > 0) ? promo : null,
+        pesoG: parseInt(val('pr-peso'), 10) || 300,
+        fotos, generos, variacoes: vars,
+        destaque: !!e.destaque, ativo: document.getElementById('pr-ativo').checked,
+        ordem: parseInt(val('pr-ordem'), 10) || 0, criadoEm: e.criadoEm || new Date().toISOString()
+      });
+      UI.closeModal();
+      UI.toast(p ? 'Produto atualizado' : 'Produto cadastrado',
+        document.getElementById ? 'Já está disponível na loja dos consultores.' : '', 'ok');
+      this.view_loja();
+    };
+  },
+
+  categoriaModal(c) {
+    const e = c || { id: OB.uid(), nome: '', slug: '', ordem: OB.lojaCategorias().length + 1, ativo: true };
+    UI.modal({
+      title: c ? 'Editar categoria' : 'Nova categoria',
+      body: `<div class="field"><label>Nome <span class="req">*</span></label><input id="ct-nome" value="${(e.nome || '').replace(/"/g, '&quot;')}" placeholder="Ex.: Camisetas"/><div class="err">Obrigatório</div></div>
+        <div class="grid-2">
+          <div class="field"><label>Ordem na vitrine</label><input id="ct-ordem" type="number" value="${e.ordem}"/></div>
+          <div class="field"><label>Status</label><select id="ct-ativo"><option value="1" ${e.ativo ? 'selected' : ''}>Ativa</option><option value="0" ${!e.ativo ? 'selected' : ''}>Inativa</option></select></div>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="ct-save">${UI.icon('check',16)} Salvar</button>`
+    });
+    document.getElementById('ct-save').onclick = () => {
+      const nome = document.getElementById('ct-nome').value.trim();
+      if (!nome) { document.getElementById('ct-nome').closest('.field').classList.add('has-error'); return UI.toast('Informe o nome', '', 'err'); }
+      const slug = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      OB.saveLojaCategoria({ id: e.id, nome, slug: slug || ('cat-' + Date.now()), ordem: parseInt(document.getElementById('ct-ordem').value, 10) || 0, ativo: document.getElementById('ct-ativo').value === '1' });
+      UI.closeModal(); UI.toast(c ? 'Categoria atualizada' : 'Categoria criada', '', 'ok'); this.view_loja();
+    };
+  },
+
   /* ====================== EQUIPE INTERNA ====================== */
   view_equipe() {
     const v = document.getElementById('main-view');
