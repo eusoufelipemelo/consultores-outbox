@@ -1101,7 +1101,9 @@ const OB = {
     // (disponivel → solicitada → paga), então o saldo desconta sozinho quando entra num saque.
     const volumeRecebido = pagas.reduce((t, s) => t + s.valor, 0);
     const vendasDisp = pagas.filter(s => s.statusComissao === 'disponivel');
-    const disponivel = this.comissaoDeVendas(vendasDisp);                                  // pode sacar agora
+    // compras na loja pagas com comissão saem do saldo (o pedido é o próprio lançamento do débito)
+    const debitoLoja = this.comissaoDebitadaLoja(consultorId);
+    const disponivel = Math.max(0, this.comissaoDeVendas(vendasDisp) - debitoLoja);         // pode sacar agora
     const emConferencia = this.comissaoDeVendas(todas.filter(s => s.statusPagamento !== 'recebido')); // cliente ainda não pagou
     const emAnalise = this.comissaoDeVendas(pagas.filter(s => s.statusComissao === 'solicitada'));    // saque pedido, admin analisando
     const jaPago = this.comissaoDeVendas(pagas.filter(s => s.statusComissao === 'paga'));            // já repassado
@@ -1113,7 +1115,7 @@ const OB = {
       nivel: n, faltaVolume: n.meta - volume, extraPct: Math.round((n.rate - rate) * 100),
       ganhoSobreAtual: 0
     }));
-    return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, bloqueados, vendasDisp, reqs };
+    return { volume, volumeRecebido, nivel, rate, efetiva, totalDevido, comissaoRecebivel, emConferencia, jaPago, emAnalise, disponivel, debitoLoja, bloqueados, vendasDisp, reqs };
   },
   comissaoDisponivel(consultorId) { const r = this.comissaoResumo(consultorId); return { valor: r.disponivel, base: r.volume, rate: r.rate, vendas: r.vendasDisp, resumo: r }; },
 
@@ -1138,6 +1140,7 @@ const OB = {
   LOJA_MAX_FOTOS: 5,
   LOJA_STATUS: [
     { id: 'novo', nome: 'Novo', cor: 'warn' },
+    { id: 'aguardando', nome: 'Aguardando pagamento', cor: 'warn' },
     { id: 'pago', nome: 'Pagamento confirmado', cor: 'green' },
     { id: 'separacao', nome: 'Em separação', cor: 'gray' },
     { id: 'enviado', nome: 'Enviado', cor: 'green' },
@@ -1192,12 +1195,17 @@ const OB = {
     return { id: r.id, numero: r.numero, consultorId: r.consultor_id, consultorNome: r.consultor_nome || '',
       itens: Array.isArray(itens) ? itens : [], subtotal: Number(r.subtotal) || 0, frete: Number(r.frete) || 0,
       total: Number(r.total) || 0, cep: r.cep || '', endereco: r.endereco || '', formaPagamento: r.forma_pagamento || '',
-      status: r.status || 'novo', obs: r.obs || '', criadoEm: r.criado_em };
+      status: r.status || 'novo', obs: r.obs || '', criadoEm: r.criado_em,
+      pagamentoStatus: r.pagamento_status || 'pendente', cobrancaRef: r.cobranca_ref || '',
+      comissaoDebitada: Number(r.comissao_debitada) || 0, pagoEm: r.pago_em || null };
   },
   _loOut(p) { return { id: p.id, numero: p.numero, consultor_id: p.consultorId, consultor_nome: p.consultorNome || null,
     itens: p.itens || [], subtotal: p.subtotal || 0, frete: p.frete || 0, total: p.total || 0,
     cep: p.cep || null, endereco: p.endereco || null, forma_pagamento: p.formaPagamento || null,
-    status: p.status || 'novo', obs: p.obs || null, atualizado_em: new Date().toISOString() }; },
+    status: p.status || 'novo', obs: p.obs || null,
+    pagamento_status: p.pagamentoStatus || 'pendente', cobranca_ref: p.cobrancaRef || null,
+    comissao_debitada: p.comissaoDebitada || 0, pago_em: p.pagoEm || null,
+    atualizado_em: new Date().toISOString() }; },
 
   lojaCategorias() { return (this.db.lojaCategorias || []).slice().sort((a, b) => a.ordem - b.ordem); },
   lojaCategoriaById(id) { return this.lojaCategorias().find(c => c.id === id) || null; },
@@ -1205,6 +1213,16 @@ const OB = {
   lojaProdutosAtivos() { return this.lojaProdutos().filter(p => p.ativo); },
   lojaProdutoById(id) { return (this.db.lojaProdutos || []).find(p => p.id === id) || null; },
   lojaPedidos() { return (this.db.lojaPedidos || []).slice().sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm)); },
+  /* total já descontado da comissão em compras da loja (pedidos cancelados não contam) */
+  comissaoDebitadaLoja(consultorId) {
+    return (this.db.lojaPedidos || [])
+      .filter(p => p.consultorId === consultorId && p.formaPagamento === 'comissao' && p.status !== 'cancelado')
+      .reduce((t, p) => t + (Number(p.comissaoDebitada) || Number(p.total) || 0), 0);
+  },
+  /* saldo de comissão que pode ser usado na loja.
+     ATENÇÃO: aqui NÃO vale o mínimo de saque (R$500) — comprar na loja é um abatimento
+     interno, então o consultor pode usar o que tiver, mesmo abaixo do mínimo. */
+  saldoComissaoLoja(consultorId) { return this.comissaoResumo(consultorId).disponivel; },
   lojaPedidosDe(consultorId) { return this.lojaPedidos().filter(p => p.consultorId === consultorId); },
   /* estoque de uma variação específica */
   lojaEstoque(prod, cor, tam, genero) {

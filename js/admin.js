@@ -879,12 +879,12 @@ const Admin = {
     const aba = this._lojaAba || 'produtos';
     const prods = OB.lojaProdutos();
     const peds = OB.lojaPedidos();
-    const novos = peds.filter(p => p.status === 'novo').length;
+    const aguardandoPg = peds.filter(p => p.formaPagamento !== 'comissao' && p.pagamentoStatus !== 'confirmado' && p.status !== 'cancelado').length;
     const semEstoque = prods.filter(p => p.ativo && OB.lojaEstoqueTotal(p) === 0).length;
     v.innerHTML = `
       <div class="cards cols-4" style="margin-bottom:16px">
         ${Consultor.kpi('cart', prods.filter(p => p.ativo).length, 'Produtos na loja', prods.length + ' cadastrado(s)')}
-        ${Consultor.kpi('receipt', novos, 'Pedidos novos', 'Aguardando você')}
+        ${Consultor.kpi('receipt', aguardandoPg, 'Cobranças em aberto', 'Confirme o pagamento')}
         ${Consultor.kpi('money', OB.fmt(peds.filter(p => p.status !== 'cancelado').reduce((t, p) => t + p.total, 0)), 'Vendido na loja', peds.length + ' pedido(s)')}
         ${Consultor.kpi('clock', semEstoque, 'Sem estoque', 'Ativos e zerados')}
       </div>
@@ -920,6 +920,17 @@ const Admin = {
       const usados = OB.lojaProdutos().filter(p => p.categoriaId === c.id).length;
       UI.confirm('Excluir categoria', `Remover <b>${c.nome}</b>?${usados ? ` <b>${usados} produto(s)</b> ficam sem categoria.` : ''}`,
         () => { OB.removeLojaCategoria(c.id); UI.toast('Categoria removida', '', 'ok'); this.view_loja(); }, 'Excluir');
+    });
+    q('[data-ped-pago]', b => b.onclick = () => {
+      const p = OB.lojaPedidos().find(x => x.id === b.dataset.pedPago); if (!p) return;
+      UI.confirm('Confirmar pagamento', `Confirmar o recebimento de <b>${OB.fmt(p.total)}</b> do pedido <b>${p.numero}</b>?`,
+        () => {
+          p.pagamentoStatus = 'confirmado'; p.pagoEm = new Date().toISOString();
+          if (p.status === 'aguardando' || p.status === 'novo') p.status = 'pago';
+          OB.saveLojaPedido(p);
+          UI.toast('Pagamento confirmado', `${p.numero} liberado para separação.`, 'ok');
+          this.view_loja();
+        }, 'Confirmar');
     });
     q('[data-ped-status]', s => s.onchange = () => {
       const p = OB.lojaPedidos().find(x => x.id === s.dataset.pedStatus); if (!p) return;
@@ -979,6 +990,7 @@ const Admin = {
   lojaPedidosHTML() {
     const peds = OB.lojaPedidos();
     if (!peds.length) return Consultor.empty('receipt', 'Nenhum pedido ainda', 'Quando um consultor comprar na loja, o pedido aparece aqui.');
+    const formaNome = { pix: 'PIX', cartao: 'Cartão de crédito', comissao: 'Descontado da comissão' };
     return `<div class="cards cols-2">${peds.map(p => `
       <div class="card">
         <div class="row between alc" style="gap:10px;flex-wrap:wrap;margin-bottom:10px">
@@ -987,6 +999,17 @@ const Admin = {
           <select class="input" data-ped-status="${p.id}" style="max-width:190px;height:38px">
             ${OB.LOJA_STATUS.map(s => `<option value="${s.id}" ${p.status === s.id ? 'selected' : ''}>${s.nome}</option>`).join('')}
           </select>
+        </div>
+        <div class="pg-linha ${p.pagamentoStatus === 'confirmado' ? 'ok' : 'pend'}">
+          <span>${UI.icon(p.formaPagamento === 'comissao' ? 'money' : 'receipt', 15)}</span>
+          <div><b>${formaNome[p.formaPagamento] || p.formaPagamento || 'Pagamento'}</b>
+            <span>${p.formaPagamento === 'comissao'
+              ? `${OB.fmt(p.comissaoDebitada || p.total)} abatidos da comissão do consultor`
+              : (p.pagamentoStatus === 'confirmado'
+                  ? `Pagamento confirmado${p.pagoEm ? ' em ' + OB.dataBR(p.pagoEm) : ''}`
+                  : `Cobrança ${p.cobrancaRef || ''} · aguardando confirmação`)}</span></div>
+          ${p.formaPagamento !== 'comissao' && p.pagamentoStatus !== 'confirmado'
+            ? `<button class="btn green sm" data-ped-pago="${p.id}">${UI.icon('check',14)} Confirmar pagamento</button>` : ''}
         </div>
         <div class="ped-itens">${(p.itens || []).map(i => `<div class="ped-item">
           <span>${i.qtd}x ${i.titulo}</span>

@@ -535,6 +535,7 @@ const Consultor = {
             <option value="cartao">Cartão de crédito</option>
             <option value="comissao">Descontar da minha comissão</option>
           </select></div>
+        <div id="cr-pag-box"></div>
         <div class="field"><label>Observações (opcional)</label><textarea id="cr-obs" rows="2" placeholder="Alguma instrução para a entrega?"></textarea></div>
         <div class="cr-resumo" id="cr-resumo"></div>`,
       footer: `<button class="btn ghost" data-close>Continuar comprando</button><button class="btn brand" id="cr-fechar">${UI.icon('check',16)} Finalizar pedido</button>`
@@ -542,6 +543,7 @@ const Consultor = {
 
     const subtotal = () => this._carrinho.reduce((t, i) => t + i.preco * i.qtd, 0);
     const pesoTotal = () => this._carrinho.reduce((t, i) => t + (i.pesoG || 300) * i.qtd, 0);
+    let renderPagamento = () => {}; // definido abaixo; declarado aqui para o resumo poder chamar
     const renderResumo = () => {
       const sub = subtotal();
       const f = frete ? frete.valor : 0;
@@ -550,6 +552,7 @@ const Consultor = {
         <div class="row between"><span>Frete${frete && frete.regiao ? ' · ' + frete.regiao : ''}</span><b>${frete ? (frete.gratis ? 'Grátis' : OB.fmt(f)) : '—'}</b></div>
         <div class="row between cr-total"><span>Total</span><b>${OB.fmt(sub + f)}</b></div>
         ${sub < OB.LOJA_FRETE_GRATIS ? `<div class="hint" style="margin-top:6px">Faltam <b>${OB.fmt(OB.LOJA_FRETE_GRATIS - sub)}</b> para o frete sair de graça 🎉</div>` : ''}`;
+      if (document.getElementById('cr-pag-box')) renderPagamento(); // o total mudou: revalida o pagamento
     };
     const renderItens = () => {
       const el = document.getElementById('cr-itens');
@@ -631,6 +634,41 @@ const Consultor = {
         h.innerHTML += ' <span class="mut">(preencha o endereço manualmente)</span>';
       }
     };
+    /* bloco da forma de pagamento: PIX/cartão geram cobrança; comissão exige autorização */
+    const saldoCom = OB.saldoComissaoLoja(u.id);
+    renderPagamento = () => {
+      const forma = document.getElementById('cr-pag').value;
+      const box = document.getElementById('cr-pag-box');
+      const total = subtotal() + (frete ? frete.valor : 0);
+      if (forma === 'comissao') {
+        const suficiente = saldoCom >= total;
+        box.innerHTML = `<div class="pg-box ${suficiente ? '' : 'no'}">
+          <div class="row between alc" style="gap:10px;flex-wrap:wrap">
+            <span>Sua comissão disponível</span><b style="font-size:16px;color:${suficiente ? '#15803d' : '#dc2626'}">${OB.fmt(saldoCom)}</b>
+          </div>
+          <div class="row between alc" style="gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-mut)">
+            <span>Valor desta compra</span><span>${OB.fmt(total)}</span>
+          </div>
+          ${suficiente
+            ? `<div class="row between alc" style="gap:10px;flex-wrap:wrap;font-size:13px;padding-top:7px;margin-top:5px;border-top:1px solid var(--border)">
+                 <span>Saldo depois da compra</span><b>${OB.fmt(saldoCom - total)}</b></div>
+               <label class="pg-check"><input type="checkbox" id="cr-autoriza">
+                 <span>Autorizo descontar <b>${OB.fmt(total)}</b> da minha comissão disponível.</span></label>
+               <div class="hint">O desconto é aplicado na hora e o pedido já entra como pago. Você pode usar a comissão mesmo sem atingir o mínimo de ${OB.fmt(OB.saqueMinimo())} para saque.</div>`
+            : `<div class="pg-erro">${UI.icon('info',15)} <span>Saldo insuficiente: faltam <b>${OB.fmt(total - saldoCom)}</b>. Escolha PIX ou cartão, ou remova itens do carrinho.</span></div>`}
+        </div>`;
+        const chk = document.getElementById('cr-autoriza');
+        if (chk) chk.onchange = () => {};
+      } else {
+        box.innerHTML = `<div class="pg-box">
+          <div class="row alc" style="gap:9px"><span class="pg-ic">${UI.icon(forma === 'pix' ? 'money' : 'receipt',16)}</span>
+            <div><b style="font-size:14px">${forma === 'pix' ? 'Pagamento via PIX' : 'Pagamento no cartão'}</b>
+              <div class="mut" style="font-size:12.5px">Ao finalizar, geramos a cobrança de <b>${OB.fmt(total)}</b> e a OutBox confirma o pagamento no sistema.</div></div></div>
+        </div>`;
+      }
+    };
+    document.getElementById('cr-pag').onchange = renderPagamento;
+
     document.getElementById('cr-calc').onclick = buscarCEP;
     document.getElementById('cr-cep').oninput = () => {
       const el = document.getElementById('cr-cep');
@@ -660,21 +698,43 @@ const Consultor = {
       if (!num) return UI.toast('Informe o número', 'O número da entrega é obrigatório.', 'err');
       const end = [rua + ', ' + num, val('cr-comp'), val('cr-bairro'), val('cr-cidade')].filter(Boolean).join(' · ');
       const sub = subtotal();
+      const total = sub + frete.valor;
+      const forma = document.getElementById('cr-pag').value;
+      // pagamento com comissão: exige saldo e autorização explícita
+      let debito = 0;
+      if (forma === 'comissao') {
+        if (saldoCom < total) return UI.toast('Saldo insuficiente', `A sua comissão disponível é de ${OB.fmt(saldoCom)}. Faltam ${OB.fmt(total - saldoCom)}.`, 'err');
+        const chk = document.getElementById('cr-autoriza');
+        if (!chk || !chk.checked) return UI.toast('Autorize o desconto', 'Marque a caixa autorizando o desconto na sua comissão.', 'err');
+        debito = total;
+      }
+      const numero = OB.gerarNumeroPedido();
       const pedido = {
-        id: OB.uid(), numero: OB.gerarNumeroPedido(), consultorId: u.id,
+        id: OB.uid(), numero, consultorId: u.id,
         consultorNome: `${u.nome || ''} ${u.sobrenome || ''}`.trim(),
         itens: this._carrinho.map(i => ({ produtoId: i.produtoId, titulo: i.titulo, cor: i.cor, tam: i.tam, genero: i.genero, qtd: i.qtd, preco: i.preco })),
-        subtotal: sub, frete: frete.valor, total: sub + frete.valor,
+        subtotal: sub, frete: frete.valor, total,
         cep: document.getElementById('cr-cep').value, endereco: end,
-        formaPagamento: document.getElementById('cr-pag').value,
-        status: 'novo', obs: document.getElementById('cr-obs').value.trim(),
+        formaPagamento: forma,
+        // comissão já é abatida na hora; PIX/cartão geram cobrança para o admin conferir
+        status: forma === 'comissao' ? 'pago' : 'aguardando',
+        pagamentoStatus: forma === 'comissao' ? 'confirmado' : 'pendente',
+        cobrancaRef: forma === 'comissao' ? '' : 'COB-' + numero.replace('LJ-', ''),
+        comissaoDebitada: debito,
+        pagoEm: forma === 'comissao' ? new Date().toISOString() : null,
+        obs: document.getElementById('cr-obs').value.trim(),
         criadoEm: new Date().toISOString()
       };
       OB.saveLojaPedido(pedido);
       OB.lojaBaixarEstoque(pedido.itens);
       this._carrinho = [];
       UI.closeModal();
-      UI.toast('Pedido enviado! 🎉', `${pedido.numero} · a OutBox já foi avisada e vai separar o seu pedido.`, 'ok');
+      if (forma === 'comissao') {
+        App.refreshCommission(true);
+        UI.toast('Pedido confirmado! 🎉', `${numero} · ${OB.fmt(total)} descontados da sua comissão. Saldo restante: ${OB.fmt(saldoCom - total)}.`, 'ok');
+      } else {
+        UI.toast('Pedido registrado! 🎉', `${numero} · cobrança ${pedido.cobrancaRef} gerada. Assim que o pagamento for confirmado, separamos o seu pedido.`, 'ok');
+      }
       this.view_loja();
     };
   },
