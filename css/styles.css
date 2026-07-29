@@ -2266,12 +2266,30 @@ button.pc-preco:focus-visible { outline: 2px solid var(--brand); outline-offset:
 .vm-acts .btn { background: var(--blue); border-color: var(--blue); color: #fff; }
 .vm-acts .btn:hover { background: var(--blue-600); border-color: var(--blue-600); }
 
+/* botão fixo na barra do topo: fica sempre à vista, mesmo com o menu longo */
+.iconbtn.vm-top {
+  width: auto; padding: 0 14px; gap: 8px; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-color: color-mix(in srgb, var(--blue) 34%, transparent);
+  background: var(--blue-soft); color: var(--blue-ink); font-weight: 600; font-size: 13px;
+}
+.iconbtn.vm-top:hover { background: color-mix(in srgb, var(--blue) 20%, transparent); border-color: var(--blue); }
+.iconbtn.vm-top svg { color: var(--blue-ink); }
+.iconbtn.vm-top.on { width: 40px; padding: 0; background: var(--blue); border-color: var(--blue); color: #fff; }
+.iconbtn.vm-top.on svg { color: #fff; }
+
 /* botão no menu lateral */
 .nav-item.vm-btn { margin-top: 6px; color: var(--blue-ink); }
 .nav-item.vm-btn svg { color: var(--blue-ink); }
 .nav-item.vm-btn.on { background: var(--blue-soft); }
 
 .vm-lb-curta { display: none; }
+
+@media (max-width: 1180px) {
+  /* espaço curto no topo: fica só o ícone */
+  .vm-top-lb { display: none; }
+  .iconbtn.vm-top { width: 40px; padding: 0; }
+}
 
 @media (max-width: 860px) {
   .vm-bar { padding: 9px 14px; gap: 8px; }

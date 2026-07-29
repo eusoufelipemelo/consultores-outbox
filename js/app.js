@@ -722,6 +722,7 @@ const App = {
                   <span class="rank-badge__av" id="rankb-av"></span>
                   <span class="rank-badge__txt"><b id="rankb-pts">0 pts</b><small id="rankb-pos">#—</small></span>
                 </button>`}
+            ${OB.podeVerComoConsultor() ? `<button class="iconbtn vm-top${OB.modoVisao() ? ' on' : ''}" id="vm-top" title="${OB.modoVisao() ? 'Voltar para o painel de administrador' : 'Abrir a tela do consultor sem sair da sua conta'}" aria-label="${OB.modoVisao() ? 'Voltar ao painel admin' : 'Ver como consultor'}">${UI.icon(OB.modoVisao() ? 'admin' : 'eye', 18)}${OB.modoVisao() ? '' : '<span class="vm-top-lb">Ver como consultor</span>'}</button>` : ''}
             ${this.themeBtnHTML()}
           </header>
           <div id="main-view" class="view"></div>
@@ -738,8 +739,10 @@ const App = {
     document.querySelectorAll('#nav .nav-item').forEach(b => b.onclick = () => this.go(b.dataset.view));
     document.querySelectorAll('.side-legal [data-doc]').forEach(b => b.onclick = () => this.verDocumento(b.dataset.doc));
     document.getElementById('logout-btn').onclick = () => this.logout();
-    const vmBtn = document.getElementById('vm-btn');
-    if (vmBtn) vmBtn.onclick = () => (OB.modoVisao() ? this.sairVisao() : this.verComoConsultor('self'));
+    ['vm-btn', 'vm-top'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.onclick = () => (OB.modoVisao() ? this.sairVisao() : this.verComoConsultor('self'));
+    });
     document.getElementById('menu-btn').onclick = () => this.drawer(true);
     document.getElementById('scrim').onclick = () => this.drawer(false);
     // abas inferiores (celular)
