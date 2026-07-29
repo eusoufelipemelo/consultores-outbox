@@ -67,8 +67,10 @@ begin
        and (coalesce(qual, '') like '%consultor_id = auth.uid()%'
          or coalesce(with_check, '') like '%consultor_id = auth.uid()%')
   loop
-    u := replace(r.qual,       'consultor_id = auth.uid()', 'public.pode_agir_como(consultor_id)');
-    c := replace(r.with_check, 'consultor_id = auth.uid()', 'public.pode_agir_como(consultor_id)');
+    -- regex e nao replace simples: ha politicas com apelido de tabela (p.consultor_id = auth.uid()),
+    -- e a troca cega gerava "p.public.pode_agir_como(...)", que o Postgres rejeita.
+    u := regexp_replace(r.qual,       '([a-zA-Z_][a-zA-Z0-9_]*\.)?consultor_id = auth\.uid\(\)', 'public.pode_agir_como(\1consultor_id)', 'g');
+    c := regexp_replace(r.with_check, '([a-zA-Z_][a-zA-Z0-9_]*\.)?consultor_id = auth\.uid\(\)', 'public.pode_agir_como(\1consultor_id)', 'g');
     sql := format('create policy %I on %I.%I as %s for %s to %s',
                   r.policyname, r.schemaname, r.tablename,
                   case when r.permissive = 'PERMISSIVE' then 'permissive' else 'restrictive' end,
@@ -79,3 +81,6 @@ begin
     execute sql;
   end loop;
 end $$;
+
+-- 6) avisa a API do Supabase que o schema mudou (senao ela diz que nao acha a coluna)
+notify pgrst, 'reload schema';
