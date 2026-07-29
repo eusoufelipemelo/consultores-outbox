@@ -263,10 +263,54 @@ const Admin = {
   /* filtros da lista de consultores (persistem enquanto navega na view) */
   _consFiltro: { nome: '', online: 'todos', de: '', ate: '', cidade: '', uf: '', pais: '' },
 
+  /* ---------- minha conta de consultor (par de contas) ----------
+     Vincula a conta de admin à conta de consultor da mesma pessoa. Com o par
+     feito, o botão do menu troca de painel sem precisar sair e entrar de novo. */
+  vinculoHTML() {
+    const eu = OB.contaAuth();
+    if (!eu || eu.role !== 'admin') return '';   // quem entrou por uma conta de consultor não configura isto aqui
+    const par = OB.contaPar(eu);
+    const cons = this.consultores().filter(c => !c.contaVinculada || c.contaVinculada === eu.id);
+    return `
+      <div class="card vinc" style="margin-bottom:18px">
+        <div class="vinc-top">
+          <span class="vinc-ic">${UI.icon('users', 20)}</span>
+          <div class="grow">
+            <b>Minha conta de consultor</b>
+            <p>Ligue a sua conta de administrador (<b>${eu.email || ''}</b>) à sua conta de consultor. Depois disso o botão <b>Ir para o painel de consultor</b> troca de painel na hora, sem sair e entrar de novo.</p>
+          </div>
+        </div>
+        <div class="vinc-form">
+          <label class="sr-only" for="vinc-sel">Conta de consultor</label>
+          <select id="vinc-sel">
+            <option value="">Nenhuma (uso só o painel de admin)</option>
+            ${cons.map(c => `<option value="${c.id}" ${par && par.id === c.id ? 'selected' : ''}>${((c.nome || '') + ' ' + (c.sobrenome || '')).trim()} — ${c.email || ''}</option>`).join('')}
+          </select>
+          <button class="btn brand" id="vinc-save">${UI.icon('check', 16)} Salvar vínculo</button>
+        </div>
+        ${par ? `<div class="notice ok" style="margin-top:12px">${UI.icon('check', 16)}<div>Vinculada a <b>${par.email}</b>. As duas contas entram no sistema e alternam entre os painéis.</div></div>` : ''}
+        <div class="notice warn" style="margin-top:12px">${UI.icon('info', 16)}<div>
+          Ao vincular, a conta de consultor passa a ter acesso de administrador também. Só vincule uma conta que seja sua.
+        </div></div>
+      </div>`;
+  },
+  wireVinculo() {
+    const sel = document.getElementById('vinc-sel'); if (!sel) return;
+    document.getElementById('vinc-save').onclick = async (ev) => {
+      const btn = ev.currentTarget; btn.disabled = true;
+      const r = await OB.vincularContas(OB.contaAuth().id, sel.value || null);
+      btn.disabled = false;
+      if (!r.ok) return UI.toast('Não foi possível vincular', r.erro || '', 'err');
+      UI.toast(sel.value ? 'Contas vinculadas' : 'Vínculo removido', sel.value ? 'Use o botão do menu para trocar de painel.' : '', 'ok');
+      App.boot();
+      App.go('consultores');
+    };
+  },
+
   view_consultores() {
     const cons = this.consultores();
     const v = document.getElementById('main-view');
-    if (!cons.length) { v.innerHTML = Consultor.empty('users', 'Nenhum consultor', 'Os consultores aparecem aqui após criarem conta.'); return; }
+    if (!cons.length) { v.innerHTML = this.vinculoHTML() + Consultor.empty('users', 'Nenhum consultor', 'Os consultores aparecem aqui após criarem conta.'); this.wireVinculo(); return; }
     const f = this._consFiltro;
     const ufs = [...new Set(cons.map(c => (c.uf || '').toUpperCase()).filter(Boolean))].sort();
     const paises = [...new Set(cons.map(c => c.pais || 'Brasil'))].sort();
@@ -284,7 +328,7 @@ const Admin = {
     });
     const nOnline = cons.filter(c => OB.online(c)).length;
 
-    v.innerHTML = `
+    v.innerHTML = this.vinculoHTML() + `
       <div class="card cons-filtros" style="margin-bottom:16px">
         <div class="cons-filtros-grid">
           <div class="field"><label>Nome ou e-mail</label><input id="cf-nome" value="${f.nome}" placeholder="Buscar consultor..."/></div>
@@ -361,6 +405,7 @@ const Admin = {
     ['cf-online', 'cf-de', 'cf-ate', 'cf-uf', 'cf-pais'].forEach(id => document.getElementById(id).onchange = aplicar);
     document.getElementById('cf-limpar').onclick = () => { this._consFiltro = { nome: '', online: 'todos', de: '', ate: '', cidade: '', uf: '', pais: '' }; this.view_consultores(); };
     v.querySelectorAll('[data-view-cons]').forEach(b => b.onclick = () => this.detalheConsultor(b.dataset.viewCons));
+    this.wireVinculo();
 
     // fotos em 2º plano: a tela já abriu com iniciais; as fotos entram assim que chegam
     OB.carregarFotos().then(() => {

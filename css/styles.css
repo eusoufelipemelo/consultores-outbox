@@ -2244,28 +2244,8 @@ button.pc-preco:focus-visible { outline: 2px solid var(--brand); outline-offset:
 }
 
 /* ============================================================
-   MODO VISUALIZAÇÃO — o admin abrindo a tela do consultor
+   TROCA DE PAINEL (contas vinculadas) + vínculo de contas
    ============================================================ */
-.vm-bar {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 11px 18px; border-bottom: 1px solid color-mix(in srgb, var(--blue) 30%, transparent);
-  background: var(--blue-soft); color: var(--text);
-}
-.vm-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
-  background: var(--blue); color: #fff; }
-.vm-txt { flex: 1 1 240px; min-width: 0; line-height: 1.35; }
-.vm-txt b { display: block; font-size: 13px; color: var(--blue-ink); }
-.vm-txt span { font-size: 12px; color: var(--text-soft); }
-.vm-acts { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.vm-sel select {
-  height: 38px; max-width: 260px; padding: 0 32px 0 12px; border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--blue) 34%, transparent);
-  background: var(--surface); color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer;
-}
-.vm-sel select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
-.vm-acts .btn { background: var(--blue); border-color: var(--blue); color: #fff; }
-.vm-acts .btn:hover { background: var(--blue-600); border-color: var(--blue-600); }
-
 /* botão fixo na barra do topo: fica sempre à vista, mesmo com o menu longo */
 .iconbtn.vm-top {
   width: auto; padding: 0 14px; gap: 8px; white-space: nowrap;
@@ -2281,9 +2261,22 @@ button.pc-preco:focus-visible { outline: 2px solid var(--brand); outline-offset:
 /* botão no menu lateral */
 .nav-item.vm-btn { margin-top: 6px; color: var(--blue-ink); }
 .nav-item.vm-btn svg { color: var(--blue-ink); }
-.nav-item.vm-btn.on { background: var(--blue-soft); }
 
-.vm-lb-curta { display: none; }
+/* cartão de vínculo das contas (admin) */
+.card.vinc { border-color: color-mix(in srgb, var(--blue) 26%, var(--border)); }
+.vinc-top { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 14px; }
+.vinc-ic { flex: none; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+  background: var(--blue-soft); color: var(--blue-ink); }
+.vinc-top > .grow > b { display: block; font-size: 15px; }
+.notice.ok { background: rgba(22,163,74,.10); border-color: color-mix(in srgb, #16a34a 34%, transparent); }
+.notice.ok svg { color: #15803d; }
+[data-theme="dark"] .notice.ok svg { color: #4ade80; }
+.vinc-top p { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text-soft); }
+.vinc-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.vinc-form select { flex: 1 1 300px; min-width: 0; height: 42px; padding: 0 13px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-family: inherit; font-size: 13.5px; }
+.vinc-form select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.vinc-form .btn { flex: 0 0 auto; height: 42px; }
 
 @media (max-width: 1180px) {
   /* espaço curto no topo: fica só o ícone */
@@ -2292,13 +2285,5 @@ button.pc-preco:focus-visible { outline: 2px solid var(--brand); outline-offset:
 }
 
 @media (max-width: 860px) {
-  .vm-bar { padding: 9px 14px; gap: 8px; }
-  .vm-txt { flex: 1 1 auto; }
-  .vm-txt span { display: none; }
-  .vm-acts { width: 100%; gap: 8px; }
-  .vm-sel { flex: 1 1 auto; min-width: 0; }
-  .vm-sel select { width: 100%; max-width: none; height: 42px; }
-  .vm-acts .btn { flex: 0 0 auto; min-height: 42px; white-space: nowrap; }
-  .vm-lb-full { display: none; }
-  .vm-lb-curta { display: inline; }
+  .vinc-form select, .vinc-form .btn { flex: 1 1 100%; min-height: 44px; justify-content: center; }
 }

@@ -569,7 +569,7 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null }; },
   _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
@@ -681,68 +681,121 @@ const OB = {
     this.db.treinos = {};
     this.db.treinosAll.filter(r => r.consultorId === user.id).forEach(r => { this.db.treinos[r.treinoId] = { melhorNota: r.melhorNota, tentativas: r.tentativas, concluido: r.concluido }; });
     this.db.ranking = (rk && rk.data) ? rk.data : [];
+    // contas vinculadas: consulta à parte e tolerante, para o sistema seguir
+    // funcionando mesmo antes da migração que cria a coluna
+    await this._carregarVinculos();
+    this._restaurarPainel(profile);
     this.db.projetos = (prj && prj.data) ? prj.data.map(r => this._prIn(r)) : [];
     this.db.contratos = (ctr && ctr.data) ? ctr.data.map(r => this._ctIn(r)) : [];
     this.db.criativos = (cri && cri.data) ? cri.data.map(r => this._criIn(r)) : [];
     this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.sairModoVisao(); this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
+  clearCache() { this.painel = null; this.contaAuthId = null; this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
-  async _save(table, row) {
-    if (this.modoVisao()) return this._bloqueioVisao();
-    const { error } = await SB.from(table).upsert(row); if (error) this._err(error);
-  },
-  async _delete(table, id) {
-    if (this.modoVisao()) return this._bloqueioVisao();
-    const { error } = await SB.from(table).delete().eq('id', id); if (error) this._err(error);
-  },
+  async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
+  async _delete(table, id) { const { error } = await SB.from(table).delete().eq('id', id); if (error) this._err(error); },
 
   /* ============================================================
      SESSÃO / USUÁRIOS (a partir do cache)
      ============================================================ */
-  session() { return this._visao || this.db.profile; },
+  session() { return this.db.profile; },
 
   /* ============================================================
-     MODO VISUALIZAÇÃO
-     O admin abre a tela do consultor sem sair da conta nem logar de novo.
-     É só leitura: enquanto o modo está ligado nenhuma escrita chega ao banco.
+     CONTAS VINCULADAS
+     A conta de admin e a de consultor da mesma pessoa formam um par.
+     Quem entra por qualquer uma das duas alterna entre os painéis com
+     um clique, usando o sistema por inteiro, sem sair e entrar de novo.
+     Quem é admin e não tem par usa o painel de consultor na própria conta.
      ============================================================ */
-  verComo: null,   // 'self' ou o id do consultor que está sendo visualizado
-  _visao: null,    // perfil derivado (com role de consultor) que session() devolve
+  PAINEL_KEY: 'ob_painel',
+  contaAuthId: null,      // id de quem realmente fez login (não muda durante a sessão)
+  painel: null,           // painel em uso: 'admin' | 'consultor'
 
-  modoVisao() { return !!this._visao; },
-  /* papel verdadeiro de quem está logado — não muda no modo visualização */
-  roleReal() { return (this.db.profile && this.db.profile.role) || 'consultor'; },
-  ehAdminReal() { return this.roleReal() === 'admin'; },
-  /* quem já pode abrir a seção Consultores (e portanto já enxerga os números deles)
-     é quem pode entrar na tela de um consultor. Cargo restrito não espia o painel alheio. */
-  podeVerComoConsultor() { return this.ehAdminReal() && this.podeVer('consultores'); },
-
-  entrarModoVisao(id) {
-    const real = this.db.profile;
-    if (!real || real.role !== 'admin' || !this.podeVerComoConsultor()) return false;
-    let base = real, alvoId = 'self';
-    if (id && id !== 'self') {
-      const alvo = this.userById(id);
-      // id que não existe mais (consultor excluído): avisa em vez de cair no próprio acesso
-      if (!alvo || alvo.role !== 'consultor') return false;
-      base = alvo; alvoId = alvo.id;
+  contaAuth() { return (this.contaAuthId && this.userById(this.contaAuthId)) || this.db.profile; },
+  /* a outra conta do par, se houver */
+  contaPar(u) {
+    const p = u || this.contaAuth();
+    return (p && p.contaVinculada) ? this.userById(p.contaVinculada) : null;
+  },
+  /* qual perfil responde por cada painel */
+  perfilDoPainel(painel) {
+    const eu = this.contaAuth(); if (!eu) return null;
+    const par = this.contaPar(eu);
+    if (painel === 'admin') {
+      if (eu.role === 'admin') return eu;
+      return (par && par.role === 'admin') ? par : null;
     }
-    this._visao = Object.assign({}, base, { role: 'consultor' });
-    this.verComo = alvoId;
+    // painel do consultor: a conta de consultor vinculada; sem par, a própria conta
+    if (par && par.role === 'consultor') return par;
+    return eu;
+  },
+  painelAtual() { return this.painel || ((this.db.profile && this.db.profile.role === 'admin') ? 'admin' : 'consultor'); },
+  /* só alterna quem tem os dois lados disponíveis */
+  podeAlternarPainel() { return !!this.perfilDoPainel('admin') && !!this.perfilDoPainel('consultor'); },
+  outroPainel() { return this.painelAtual() === 'admin' ? 'consultor' : 'admin'; },
+  /* nome/e-mail da conta que responde por um painel (para mostrar na tela) */
+  contaDoPainel(painel) {
+    const p = this.perfilDoPainel(painel);
+    return p ? (((p.nome || '') + ' ' + (p.sobrenome || '')).trim() || p.email || '') : '';
+  },
+  emailDoPainel(painel) { const p = this.perfilDoPainel(painel); return p ? (p.email || '') : ''; },
+
+  /* lê os vínculos sem derrubar a carga caso a coluna ainda não exista no banco */
+  async _carregarVinculos() {
+    try {
+      const { data, error } = await SB.from('profiles').select('id,conta_vinculada');
+      if (error || !data) return;
+      const mapa = {};
+      data.forEach(r => { mapa[r.id] = r.conta_vinculada || null; });
+      (this.db.profiles || []).forEach(p => { if (mapa[p.id] !== undefined) p.contaVinculada = mapa[p.id]; });
+      if (this.db.profile && mapa[this.db.profile.id] !== undefined) this.db.profile.contaVinculada = mapa[this.db.profile.id];
+    } catch (e) { /* coluna ainda não criada: segue sem par de contas */ }
+  },
+
+  usarPainel(painel) {
+    const p = this.perfilDoPainel(painel);
+    if (!p) return false;
+    this.painel = painel;
+    this.db.profile = p;
+    try { sessionStorage.setItem(this.PAINEL_KEY, painel); } catch (e) {}
     return true;
   },
-  sairModoVisao() { this._visao = null; this.verComo = null; },
-  visaoNome() {
-    if (!this._visao) return '';
-    if (this.verComo === 'self') return 'Meu acesso';
-    return ((this._visao.nome || '') + ' ' + (this._visao.sobrenome || '')).trim() || this._visao.email || 'Consultor';
+  /* decide o painel na carga: respeita a última escolha da sessão */
+  _restaurarPainel(perfilAuth) {
+    this.contaAuthId = perfilAuth.id;
+    let escolhido = null;
+    try { escolhido = sessionStorage.getItem(this.PAINEL_KEY); } catch (e) {}
+    const padrao = perfilAuth.role === 'admin' ? 'admin' : 'consultor';
+    if (!escolhido || !this.usarPainel(escolhido)) this.usarPainel(padrao);
   },
-  _bloqueioVisao() {
-    if (window.UI) UI.toast('Modo visualização', 'Aqui é só para olhar. Volte ao painel admin para alterar dados.', 'info');
-    return null;
+
+  /* vincula (ou desvincula) a conta de consultor à conta de admin.
+     Grava nos dois lados; o banco só aceita se quem pede for admin de verdade. */
+  async vincularContas(adminId, consultorId) {
+    const adm = this.userById(adminId);
+    if (!adm || adm.role !== 'admin') return { ok: false, erro: 'Conta de administrador inválida.' };
+    const antigo = adm.contaVinculada && this.userById(adm.contaVinculada);
+    const alvo = consultorId ? this.userById(consultorId) : null;
+    if (consultorId && (!alvo || alvo.role !== 'consultor')) return { ok: false, erro: 'Conta de consultor inválida.' };
+    if (alvo && alvo.contaVinculada && alvo.contaVinculada !== adminId) {
+      return { ok: false, erro: 'Esta conta de consultor já está vinculada a outro administrador.' };
+    }
+    const grava = async (id, valor) => {
+      const { error } = await SB.from('profiles').update({ conta_vinculada: valor }).eq('id', id);
+      if (error) throw error;
+    };
+    try {
+      if (antigo && (!alvo || antigo.id !== alvo.id)) { await grava(antigo.id, null); antigo.contaVinculada = null; }
+      await grava(adminId, consultorId || null);
+      adm.contaVinculada = consultorId || null;
+      if (alvo) { await grava(alvo.id, adminId); alvo.contaVinculada = adminId; }
+      return { ok: true };
+    } catch (e) {
+      this._err(e);
+      return { ok: false, erro: (e && e.message) || 'Não foi possível salvar o vínculo.' };
+    }
   },
 
   /* precisa aceitar os termos? (consultor que ainda não aceitou a versão vigente) */
@@ -837,7 +890,6 @@ const OB = {
     });
   },
   async _salvarFotoEncolhida(id, foto) {
-    if (this.modoVisao()) return foto;               // modo visualização não grava nada
     if (!foto || foto.length <= 120000) return foto; // já é leve
     const thumb = await this._comprimirFoto(foto);
     if (thumb && thumb.length < foto.length * 0.9) {
