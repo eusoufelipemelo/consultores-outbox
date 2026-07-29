@@ -732,8 +732,17 @@ const OB = {
     return eu;
   },
   painelAtual() { return this.painel || ((this.db.profile && this.db.profile.role === 'admin') ? 'admin' : 'consultor'); },
-  /* só alterna quem tem os dois lados disponíveis */
-  podeAlternarPainel() { return !!this.perfilDoPainel('admin') && !!this.perfilDoPainel('consultor'); },
+  /* Quem vê o botão de trocar de painel:
+       - contas de administrador (as que você criar);
+       - contas de consultor VINCULADAS a uma conta de administrador (o seu par).
+     Consultor comum nunca vê: não existe lado admin para ele. */
+  podeAlternarPainel() {
+    const eu = this.contaAuth(); if (!eu) return false;
+    const par = this.contaPar(eu);
+    const temLadoAdmin = eu.role === 'admin' || !!(par && par.role === 'admin');
+    if (!temLadoAdmin) return false;
+    return !!this.perfilDoPainel('admin') && !!this.perfilDoPainel('consultor');
+  },
   outroPainel() { return this.painelAtual() === 'admin' ? 'consultor' : 'admin'; },
   /* nome/e-mail da conta que responde por um painel (para mostrar na tela) */
   contaDoPainel(painel) {
