@@ -692,6 +692,7 @@ const App = {
             <span class="wa-ico"><svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M16.003 5.333c-5.888 0-10.667 4.779-10.667 10.667 0 1.88.494 3.72 1.432 5.341L5.333 26.667l5.464-1.433a10.63 10.63 0 0 0 5.203 1.325h.004c5.884 0 10.663-4.779 10.666-10.665a10.6 10.6 0 0 0-3.124-7.545 10.6 10.6 0 0 0-7.543-3.021zm0 19.2h-.003a8.85 8.85 0 0 1-4.51-1.235l-.323-.192-3.351.879.894-3.266-.21-.335a8.83 8.83 0 0 1-1.354-4.716c.002-4.889 3.982-8.868 8.874-8.868a8.81 8.81 0 0 1 6.27 2.599 8.82 8.82 0 0 1 2.597 6.276c-.002 4.889-3.982 8.868-8.874 8.868zm4.867-6.641c-.267-.134-1.578-.779-1.823-.868-.245-.089-.423-.134-.601.134-.178.267-.69.868-.846 1.046-.156.178-.311.2-.578.067-.267-.134-1.126-.415-2.145-1.324-.793-.707-1.328-1.58-1.484-1.847-.156-.267-.017-.411.117-.545.12-.12.267-.311.401-.467.134-.156.178-.267.267-.445.089-.178.045-.334-.022-.467-.067-.134-.601-1.449-.824-1.983-.217-.521-.437-.45-.601-.458l-.512-.009a.98.98 0 0 0-.712.334c-.245.267-.935.913-.935 2.226 0 1.313.957 2.582 1.09 2.76.134.178 1.884 2.876 4.564 4.032.638.276 1.135.44 1.523.563.64.204 1.223.175 1.683.106.514-.077 1.578-.645 1.801-1.269.223-.623.223-1.157.156-1.269-.067-.111-.245-.178-.512-.311z"/></svg></span>
             <span class="wa-txt"><b>Grupo no WhatsApp</b><small>Comunidade de consultores OutBox</small></span>
           </a>` : ''}
+          ${OB.podeVerComoConsultor() ? `<button class="nav-item vm-btn${OB.modoVisao() ? ' on' : ''}" id="vm-btn" title="${OB.modoVisao() ? 'Voltar para o painel de administrador' : 'Abrir a tela do consultor sem sair da sua conta'}">${UI.icon(OB.modoVisao() ? 'admin' : 'eye')}<span>${OB.modoVisao() ? 'Voltar ao painel admin' : 'Ver como consultor'}</span></button>` : ''}
           <div id="side-user-box"></div>
           <button class="nav-item" id="logout-btn" style="margin-top:6px;color:#e0573f">${UI.icon('logout')}<span>Sair</span></button>
           <div class="side-legal">
@@ -702,6 +703,7 @@ const App = {
         </aside>
 
         <div class="main">
+          <div id="visao-host"></div>
           <div id="aviso-host"></div>
           <header class="topbar">
             <button class="iconbtn menu-btn" id="menu-btn">${UI.icon('menu',18)}</button>
@@ -736,6 +738,8 @@ const App = {
     document.querySelectorAll('#nav .nav-item').forEach(b => b.onclick = () => this.go(b.dataset.view));
     document.querySelectorAll('.side-legal [data-doc]').forEach(b => b.onclick = () => this.verDocumento(b.dataset.doc));
     document.getElementById('logout-btn').onclick = () => this.logout();
+    const vmBtn = document.getElementById('vm-btn');
+    if (vmBtn) vmBtn.onclick = () => (OB.modoVisao() ? this.sairVisao() : this.verComoConsultor('self'));
     document.getElementById('menu-btn').onclick = () => this.drawer(true);
     document.getElementById('scrim').onclick = () => this.drawer(false);
     // abas inferiores (celular)
@@ -753,13 +757,14 @@ const App = {
     const payAlert = document.getElementById('pay-alert');
     if (payAlert) payAlert.onclick = () => Admin.pagamentosPopup();
 
+    this.renderVisaoBar();
     this.renderAviso();
     this.subscribeAviso();
     this.refreshProjetosBadge();
     this.subscribeProjetos();
     this.subscribeCatalogo();
     // chat Manu: widget flutuante (consultor) + tempo real + som
-    if (!isAdmin) this.mountChatWidget();
+    if (!isAdmin && !OB.modoVisao()) this.mountChatWidget();
     this.subscribeChat();
     this.refreshChatBadges();
     if (!this._audioUnlock) { this._audioUnlock = true; const unlock = () => { this._ensureAudio(); document.removeEventListener('pointerdown', unlock, true); }; document.addEventListener('pointerdown', unlock, true); }
@@ -767,22 +772,73 @@ const App = {
     OB.pingPresenca();
     if (this._presTimer) clearInterval(this._presTimer);
     this._presTimer = setInterval(() => OB.pingPresenca(), 4 * 60 * 1000);
-    if (!isAdmin) {
+    if (this._fuTimer) { clearInterval(this._fuTimer); this._fuTimer = null; }
+    if (!isAdmin && !OB.modoVisao()) {
       Consultor.checkFollowups();
-      if (this._fuTimer) clearInterval(this._fuTimer);
       this._fuTimer = setInterval(() => Consultor.checkFollowups(), 60 * 1000);
     }
     // portão de perfil: consultor precisa completar e salvar o perfil antes de usar o sistema
-    this.perfilLock = OB.precisaCompletarPerfil();
+    // no modo visualização o admin nunca fica preso no portão de perfil do consultor
+    this.perfilLock = OB.modoVisao() ? false : OB.precisaCompletarPerfil();
     // consultor já com perfil completo (inclusive os antigos) ativa o bônus de boas-vindas
-    if (!this.perfilLock) OB.ativarBonusBV();
+    if (!this.perfilLock && !OB.modoVisao()) OB.ativarBonusBV();
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
     if (this.perfilLock) { this.go('perfil'); }
     else { this.go(goProfile ? 'perfil' : nav[0].id); }
     // propaganda/pop-up: aparece a CADA login (não em refresh) enquanto a campanha estiver no ar.
     // Se estiver preso no portão de perfil, mantém o flag e mostra ao liberar o perfil.
-    if (!isAdmin && this._loginFlow && !this.perfilLock) { this._loginFlow = false; this.showCampanha(); }
+    if (!isAdmin && !OB.modoVisao() && this._loginFlow && !this.perfilLock) { this._loginFlow = false; this.showCampanha(); }
+  },
+
+  /* ============================================================
+     MODO VISUALIZAÇÃO — o admin entra na tela do consultor e volta
+     sem sair da conta. Enquanto está ligado, nada é gravado no banco.
+     ============================================================ */
+  renderVisaoBar() {
+    const host = document.getElementById('visao-host'); if (!host) return;
+    if (!OB.modoVisao()) { host.innerHTML = ''; return; }
+    const cons = OB.users().filter(x => x.role === 'consultor')
+      .slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    const nomeDe = (c) => (((c.nome || '') + ' ' + (c.sobrenome || '')).trim() || c.email || 'Consultor');
+    host.innerHTML = `
+      <div class="vm-bar" role="status">
+        <span class="vm-ic">${UI.icon('eye', 16)}</span>
+        <div class="vm-txt">
+          <b>Modo visualização</b>
+          <span>Você está vendo o sistema como o consultor vê. Nada é salvo enquanto estiver aqui.</span>
+        </div>
+        <div class="vm-acts">
+          <label class="vm-sel">
+            <span class="sr-only">Escolha o consultor que quer visualizar</span>
+            <select id="vm-sel">
+              <option value="self" ${OB.verComo === 'self' ? 'selected' : ''}>Meu acesso (consultor novo)</option>
+              ${cons.map(c => `<option value="${c.id}" ${OB.verComo === c.id ? 'selected' : ''}>${nomeDe(c)}</option>`).join('')}
+            </select>
+          </label>
+          <button class="btn sm" id="vm-sair">${UI.icon('admin', 15)}<span class="vm-lb-full">Voltar ao painel admin</span><span class="vm-lb-curta">Voltar</span></button>
+        </div>
+      </div>`;
+    document.getElementById('vm-sel').onchange = (e) => this.verComoConsultor(e.target.value);
+    document.getElementById('vm-sair').onclick = () => this.sairVisao();
+  },
+
+  verComoConsultor(id) {
+    if (!OB.podeVerComoConsultor()) return UI.toast('Sem acesso', 'Seu cargo não pode abrir o painel de um consultor.', 'err');
+    if (!OB.entrarModoVisao(id || 'self')) return UI.toast('Não foi possível abrir', 'Consultor não encontrado.', 'err');
+    this._loginFlow = false;
+    this.boot();
+    UI.toast('Modo visualização', 'Vendo o sistema como ' + OB.visaoNome() + '.', 'info');
+  },
+
+  async sairVisao() {
+    OB.sairModoVisao();
+    // a visualização pode ter mexido no cache em memória: recarrega para o admin
+    // voltar com os dados exatamente como estão no banco
+    try { await OB.loadAll(); } catch (e) {}
+    this._loginFlow = false;
+    this.boot();
+    UI.toast('De volta ao painel admin', '', 'ok');
   },
 
   /* ---------- propaganda/pop-up de marketing (arte 4:5 agendada pelo admin) ---------- */

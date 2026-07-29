@@ -687,16 +687,63 @@ const OB = {
     this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
+  clearCache() { this.sairModoVisao(); this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
-  async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
-  async _delete(table, id) { const { error } = await SB.from(table).delete().eq('id', id); if (error) this._err(error); },
+  async _save(table, row) {
+    if (this.modoVisao()) return this._bloqueioVisao();
+    const { error } = await SB.from(table).upsert(row); if (error) this._err(error);
+  },
+  async _delete(table, id) {
+    if (this.modoVisao()) return this._bloqueioVisao();
+    const { error } = await SB.from(table).delete().eq('id', id); if (error) this._err(error);
+  },
 
   /* ============================================================
      SESSÃO / USUÁRIOS (a partir do cache)
      ============================================================ */
-  session() { return this.db.profile; },
+  session() { return this._visao || this.db.profile; },
+
+  /* ============================================================
+     MODO VISUALIZAÇÃO
+     O admin abre a tela do consultor sem sair da conta nem logar de novo.
+     É só leitura: enquanto o modo está ligado nenhuma escrita chega ao banco.
+     ============================================================ */
+  verComo: null,   // 'self' ou o id do consultor que está sendo visualizado
+  _visao: null,    // perfil derivado (com role de consultor) que session() devolve
+
+  modoVisao() { return !!this._visao; },
+  /* papel verdadeiro de quem está logado — não muda no modo visualização */
+  roleReal() { return (this.db.profile && this.db.profile.role) || 'consultor'; },
+  ehAdminReal() { return this.roleReal() === 'admin'; },
+  /* quem já pode abrir a seção Consultores (e portanto já enxerga os números deles)
+     é quem pode entrar na tela de um consultor. Cargo restrito não espia o painel alheio. */
+  podeVerComoConsultor() { return this.ehAdminReal() && this.podeVer('consultores'); },
+
+  entrarModoVisao(id) {
+    const real = this.db.profile;
+    if (!real || real.role !== 'admin' || !this.podeVerComoConsultor()) return false;
+    let base = real, alvoId = 'self';
+    if (id && id !== 'self') {
+      const alvo = this.userById(id);
+      // id que não existe mais (consultor excluído): avisa em vez de cair no próprio acesso
+      if (!alvo || alvo.role !== 'consultor') return false;
+      base = alvo; alvoId = alvo.id;
+    }
+    this._visao = Object.assign({}, base, { role: 'consultor' });
+    this.verComo = alvoId;
+    return true;
+  },
+  sairModoVisao() { this._visao = null; this.verComo = null; },
+  visaoNome() {
+    if (!this._visao) return '';
+    if (this.verComo === 'self') return 'Meu acesso';
+    return ((this._visao.nome || '') + ' ' + (this._visao.sobrenome || '')).trim() || this._visao.email || 'Consultor';
+  },
+  _bloqueioVisao() {
+    if (window.UI) UI.toast('Modo visualização', 'Aqui é só para olhar. Volte ao painel admin para alterar dados.', 'info');
+    return null;
+  },
 
   /* precisa aceitar os termos? (consultor que ainda não aceitou a versão vigente) */
   precisaAceitarTermos() {
@@ -790,6 +837,7 @@ const OB = {
     });
   },
   async _salvarFotoEncolhida(id, foto) {
+    if (this.modoVisao()) return foto;               // modo visualização não grava nada
     if (!foto || foto.length <= 120000) return foto; // já é leve
     const thumb = await this._comprimirFoto(foto);
     if (thumb && thumb.length < foto.length * 0.9) {
