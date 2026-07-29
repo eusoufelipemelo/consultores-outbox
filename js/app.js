@@ -617,6 +617,30 @@ const App = {
   themeBtnHTML() {
     return `<button class="iconbtn" id="theme-btn" title="Alternar tema">${UI.icon(this.theme === 'dark' ? 'sun' : 'moon', 18)}</button>`;
   },
+  /* ---------- barra de abas inferior (só no celular, estilo app) ----------
+     Monta a partir de mod().TABS + um botão "Mais" que abre o menu completo. */
+  tabBarHTML(nav) {
+    const tabs = (this.mod().TABS || []).map(id => nav.find(n => n.id === id)).filter(Boolean);
+    if (!tabs.length) return '';
+    const curto = { 'Visão Geral': 'Início', 'Painel Geral': 'Início', 'Meus Clientes': 'Clientes',
+      'Funil de Vendas': 'Funil', 'Vendas & Comissão': 'Comissão', 'Loja OutBox': 'Loja' };
+    return `<nav class="tabbar" id="tabbar" aria-label="Navegação principal">
+      ${tabs.map(t => `<button class="tab-item" data-tab="${t.id}" aria-label="${t.label}">
+        ${UI.icon(t.icon, 22)}<span>${curto[t.label] || t.label}</span>
+        ${t.id === 'funil' ? '<i class="tab-dot hidden" id="tab-fu"></i>' : ''}
+        ${t.id === 'financeiro' ? '<i class="tab-dot hidden" id="tab-fin"></i>' : ''}</button>`).join('')}
+      <button class="tab-item" data-tab-mais aria-label="Mais opções">${UI.icon('menu', 22)}<span>Mais</span></button>
+    </nav>`;
+  },
+  /* marca a aba ativa (e destaca "Mais" quando a tela atual não está nas abas) */
+  syncTabBar(viewId) {
+    const bar = document.getElementById('tabbar'); if (!bar) return;
+    const tabs = this.mod().TABS || [];
+    bar.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === viewId));
+    const mais = bar.querySelector('[data-tab-mais]');
+    if (mais) mais.classList.toggle('on', tabs.indexOf(viewId) < 0);
+  },
+
   bindThemeBtn(root) {
     const btn = (root || document).querySelector('#theme-btn');
     if (btn) btn.onclick = () => this.toggleTheme();
@@ -700,6 +724,7 @@ const App = {
           </header>
           <div id="main-view" class="view"></div>
         </div>
+        ${this.tabBarHTML(nav)}
       </div>`;
 
     // binds
@@ -713,6 +738,10 @@ const App = {
     document.getElementById('logout-btn').onclick = () => this.logout();
     document.getElementById('menu-btn').onclick = () => this.drawer(true);
     document.getElementById('scrim').onclick = () => this.drawer(false);
+    // abas inferiores (celular)
+    document.querySelectorAll('#tabbar [data-tab]').forEach(b => b.onclick = () => this.go(b.dataset.tab));
+    const maisBtn = document.querySelector('#tabbar [data-tab-mais]');
+    if (maisBtn) maisBtn.onclick = () => this.drawer(true);
     const pill = document.getElementById('com-pill');
     if (pill) pill.onclick = () => Consultor.comissaoPopup();
     const confPill = document.getElementById('conf-pill');
@@ -940,6 +969,7 @@ const App = {
     this.current = viewId;
     document.getElementById('main-view').classList.remove('view-wide'); // funil reativa abaixo
     document.querySelectorAll('#nav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+    this.syncTabBar(viewId);
     const t = this.mod().titles[viewId] || ['', ''];
     document.getElementById('page-title').textContent = t[0];
     document.getElementById('page-sub').textContent = t[1];

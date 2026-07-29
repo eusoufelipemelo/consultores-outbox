@@ -3,6 +3,8 @@
    ============================================================ */
 const Consultor = {
   HOME: 'overview',
+  /* atalhos da barra inferior no celular (o 5º item abre o menu completo) */
+  TABS: ['overview', 'funil', 'orcamentos', 'comissao'],
   NAV: [
     // Dashboard
     { id: 'overview',   label: 'Visão Geral',      icon: 'overview', home: true },

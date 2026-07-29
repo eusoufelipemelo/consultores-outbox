@@ -4,6 +4,8 @@
    ============================================================ */
 const Admin = {
   HOME: 'painel',
+  /* atalhos da barra inferior no celular (o 5º item abre o menu completo) */
+  TABS: ['painel', 'consultores', 'vendas', 'financeiro'],
   NAV: [
     // Dashboard
     { id: 'painel',     label: 'Painel Geral',     icon: 'overview', home: true },

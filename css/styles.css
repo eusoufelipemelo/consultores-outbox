@@ -542,6 +542,121 @@ td .strong { color: var(--text); font-weight: 600; }
 }
 
 /* ============================================================
+   MODO APLICATIVO (somente celular — o desktop não é afetado)
+   Tudo aqui vive dentro de @media (max-width: 860px).
+   ============================================================ */
+.tabbar { display: none; }           /* no desktop a barra de abas não existe */
+
+@media (max-width: 860px) {
+  /* --- toque com cara de app: sem realce azulado, sem seleção acidental --- */
+  body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  .topbar, .tabbar, .sidebar, .seg, .nav-item, .btn, .iconbtn, .chip, .tab-item {
+    -webkit-user-select: none; user-select: none; }
+
+  /* --- cabeçalho fixo, compacto, respeitando o notch --- */
+  .shell { min-height: 100dvh; }
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  }
+  .topbar h1 { font-size: 16px; letter-spacing: -.01em; }
+  .topbar .sub { display: none; }                 /* menos ruído na tela pequena */
+  .menu-btn { display: none !important; }         /* o menu passa a ser a aba "Mais" */
+
+  /* --- conteúdo rola sozinho, com inércia, sem passar por baixo das abas --- */
+  .main { min-height: 0; }
+  .view {
+    padding: 16px 16px calc(94px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+    animation: none;                              /* transição fica por conta da troca de aba */
+  }
+
+  /* --- barra de abas inferior --- */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(1.8) blur(18px); -webkit-backdrop-filter: saturate(1.8) blur(18px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 20px rgba(0,0,0,.06);
+  }
+  .tab-item {
+    position: relative; background: none; border: none; cursor: pointer; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 56px; padding: 8px 4px 6px; color: var(--text-mut);
+    transition: color .18s; -webkit-tap-highlight-color: transparent;
+  }
+  .tab-item span { font-size: 10.5px; font-weight: 700; letter-spacing: -.01em; }
+  .tab-item svg { transition: transform .18s; }
+  .tab-item:active svg { transform: scale(.88); }
+  .tab-item.on { color: var(--brand); }
+  .tab-item.on svg { transform: translateY(-1px); }
+  .tab-item.on::before {                          /* traço de aba ativa, como em app nativo */
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 26px; height: 3px; border-radius: 0 0 99px 99px; background: var(--brand);
+  }
+  .tab-dot { position: absolute; top: 7px; right: calc(50% - 18px); width: 8px; height: 8px;
+    border-radius: 50%; background: var(--brand); border: 2px solid var(--surface); }
+  .tab-dot.hidden { display: none; }
+
+  /* --- menu completo: drawer por cima das abas, com respiro do notch --- */
+  .sidebar { z-index: 70; padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .scrim { z-index: 65; }
+  .nav-item { min-height: 46px; }                 /* alvo de toque confortável */
+
+  /* --- modais viram folhas que sobem de baixo (bottom sheet) --- */
+  .modal-bg { padding: 0; place-items: end center; }
+  .modal {
+    max-width: 100%; max-height: 92dvh; border-radius: 22px 22px 0 0;
+    border-left: none; border-right: none; border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: sheetUp .28s cubic-bezier(.2,.9,.25,1);
+  }
+  .modal.lg { max-width: 100%; }
+  .modal::before {                                 /* alcinha de arrastar, sinal visual de folha */
+    content: ''; display: block; width: 38px; height: 4px; border-radius: 99px;
+    background: var(--border-strong); margin: 9px auto 0;
+  }
+  .modal-head { padding: 14px 18px 0; }
+  .modal-head h3 { font-size: 17px; }
+  .modal-body { padding: 16px 18px; }
+  .modal-foot { padding: 0 18px 18px; position: sticky; bottom: 0;
+    background: linear-gradient(to top, var(--surface) 72%, transparent);
+    padding-top: 12px; }
+  .modal-foot .btn { flex: 1; justify-content: center; min-height: 48px; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+  /* --- alvos de toque e leitura confortáveis (padrão iOS/Android) --- */
+  .btn { min-height: 46px; }
+  .iconbtn { min-width: 42px; min-height: 42px; }
+  .field input, .field select, .field textarea, .input {
+    font-size: 16px;                               /* evita o zoom automático do iOS ao focar */
+  }
+  .seg button { min-height: 40px; }
+
+  /* --- avisos e botões flutuantes acima da barra de abas --- */
+  #toasts { top: auto; bottom: calc(78px + env(safe-area-inset-bottom)); left: 12px; right: 12px; }
+  .toast { width: 100%; }
+  .lj-fab { bottom: calc(78px + env(safe-area-inset-bottom)); right: 16px; }
+  .chat-fab, .chat-widget { bottom: calc(78px + env(safe-area-inset-bottom)) !important; }
+
+  /* --- tabelas largas rolam sozinhas em vez de estourar a tela --- */
+  .card > table, .tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+}
+
+/* na tela cheia do app instalado, o cabeçalho encosta na status bar */
+@media (display-mode: standalone) {
+  .topbar { padding-top: calc(14px + env(safe-area-inset-top)); }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .modal { animation: none; }
+  .tab-item svg, .tab-item:active svg { transition: none; transform: none; }
+}
+
+/* ============================================================
    TREINAMENTOS / QUIZ (OutBox Academy)
    ============================================================ */
 /* hero */
