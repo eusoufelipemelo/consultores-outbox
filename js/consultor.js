@@ -9,6 +9,7 @@ const Consultor = {
     // Dashboard
     { id: 'overview',   label: 'Visão Geral',      icon: 'overview', home: true },
     // Operação — na ordem do fluxo: cadastrar cliente -> reunião -> proposta -> venda -> contrato -> execução -> prêmios
+    { id: 'produtos',   label: 'Produtos',         icon: 'quote',    sec: 'Operação' },
     { id: 'clientes',   label: 'Meus Clientes',    icon: 'clients',  sec: 'Operação' },
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban',   sec: 'Operação' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote',    sec: 'Operação' },
@@ -32,6 +33,7 @@ const Consultor = {
   titles: {
     overview:   ['Visão Geral', 'Acompanhe suas metas em tempo real'],
     funil:      ['Funil de Vendas', 'Arraste seus contatos entre as etapas'],
+    produtos:   ['Produtos', 'Tudo o que você pode ofertar e o valor de cada serviço por porte de empresa'],
     clientes:   ['Meus Clientes', 'Cadastre e gerencie seus clientes'],
     orcamentos: ['Orçamentos', 'Crie propostas e acompanhe os aceites'],
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
@@ -2312,6 +2314,207 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
       UI.closeModal(); UI.toast('Resgate enviado', 'O administrador foi notificado', 'ok');
       this.render('premiacoes');
     };
+  },
+
+  /* ====================== PRODUTOS (catálogo de serviços) ====================== */
+  /* porte escolhido pelo consultor: destaca a coluna de preço em todos os cards */
+  _pcPorte: 'pequena',
+  _pcTipo: 'todos',
+  _pcBusca: '',
+
+  view_produtos() {
+    const v = document.getElementById('main-view');
+    const porte = this._pcPorte;
+    const lista = OB.catalogo();
+    const pontuais = lista.filter(p => p.tipo !== 'recorrente').length;
+    const recorrentes = lista.length - pontuais;
+    const entrada = Math.min.apply(null, lista.map(p => p.precos[porte] || 0).filter(n => n > 0));
+
+    v.innerHTML = `
+      <section class="pc-hero">
+        <div class="pc-hero-txt">
+          <span class="pc-kicker">${UI.icon('quote', 14)} Tabela oficial · valores sem desconto</span>
+          <h2>Tudo o que você pode vender</h2>
+          <p>Escolha o porte da empresa do seu cliente e a tabela inteira se ajusta. Estes são os valores de tabela: o desconto comercial você aplica na hora de montar o orçamento.</p>
+        </div>
+        <div class="pc-hero-num">
+          <div><b>${lista.length}</b><span>serviços</span></div>
+          <div><b>${pontuais}</b><span>pontuais</span></div>
+          <div><b>${recorrentes}</b><span>recorrentes</span></div>
+          <div><b>${isFinite(entrada) ? OB.brl(entrada).replace(/,\d\d$/, '') : '—'}</b><span>a partir de</span></div>
+        </div>
+      </section>
+
+      <div class="pc-portes" role="tablist" aria-label="Porte da empresa do cliente">
+        ${OB.PORTES.map(pt => `
+          <button type="button" class="pc-porte-btn${pt.id === porte ? ' on' : ''}" data-porte="${pt.id}" role="tab" aria-selected="${pt.id === porte}">
+            <b>${pt.nome}</b><small>${pt.faixa}</small>
+          </button>`).join('')}
+      </div>
+
+      <div class="pc-bar">
+        <div class="pc-filtros" role="tablist" aria-label="Tipo de serviço">
+          ${[['todos', 'Todos'], ['pontual', 'Pontuais'], ['recorrente', 'Recorrentes']].map(([id, lb]) =>
+            `<button type="button" class="pc-fil${this._pcTipo === id ? ' on' : ''}" data-tipo="${id}" role="tab" aria-selected="${this._pcTipo === id}">${lb}</button>`).join('')}
+        </div>
+        <div class="pc-busca">
+          <label class="sr-only" for="pc-q">Buscar serviço</label>
+          ${UI.icon('search', 16)}
+          <input id="pc-q" type="search" placeholder="Buscar serviço..." value="${this._pcBusca.replace(/"/g, '&quot;')}"/>
+        </div>
+        <button class="btn ghost sm" id="pc-tabela">${UI.icon('docs', 15)} Tabela completa</button>
+      </div>
+
+      <div class="pc-grid" id="pc-grid"></div>
+
+      <div class="notice" style="margin-top:20px">${UI.icon('info', 16)}<div>
+        Os valores acima são de tabela. No orçamento você pode conceder os descontos liberados para a faixa da proposta e o sistema calcula sozinho o parcelamento e a sua comissão.
+      </div></div>`;
+
+    this._pcPintar();
+    v.querySelectorAll('[data-porte]').forEach(b => b.onclick = () => { this._pcPorte = b.dataset.porte; this.view_produtos(); });
+    v.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { this._pcTipo = b.dataset.tipo; this.view_produtos(); });
+    const q = document.getElementById('pc-q');
+    q.oninput = () => { this._pcBusca = q.value; this._pcPintar(); };
+    document.getElementById('pc-tabela').onclick = () => this.pcTabelaCompleta();
+  },
+
+  /* redesenha só a grade (busca não recarrega a tela toda, o foco fica no campo) */
+  _pcPintar() {
+    const g = document.getElementById('pc-grid'); if (!g) return;
+    const porte = this._pcPorte;
+    const semAcento = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const termo = semAcento(this._pcBusca).trim();
+    const lista = OB.catalogo().filter(p => {
+      if (this._pcTipo === 'pontual' && p.tipo === 'recorrente') return false;
+      if (this._pcTipo === 'recorrente' && p.tipo !== 'recorrente') return false;
+      if (!termo) return true;
+      return semAcento((p.nome || '') + ' ' + (p.resumo || '') + ' ' + (p.incluso || '')).indexOf(termo) >= 0;
+    });
+    if (!lista.length) {
+      g.innerHTML = `<div class="empty" style="grid-column:1/-1">${UI.icon('search', 26)}<b>Nenhum serviço encontrado</b><p>Tente outro termo ou volte para "Todos".</p></div>`;
+      return;
+    }
+    g.innerHTML = lista.map(p => this.pcCard(p, porte)).join('');
+    g.querySelectorAll('[data-det]').forEach(b => b.onclick = () => this.pcDetalhe(b.dataset.det));
+    g.querySelectorAll('[data-pcporte]').forEach(b => b.onclick = () => { this._pcPorte = b.dataset.pcporte; this.view_produtos(); });
+    g.querySelectorAll('[data-orc]').forEach(b => b.onclick = () => App.go('orcamentos'));
+  },
+
+  pcCard(p, porte) {
+    const valor = p.precos[porte] || 0;
+    const rec = p.tipo === 'recorrente';
+    const periodo = OB.produtoPeriodo(p);
+    const comissao = Math.round(valor * 0.08);
+    return `
+      <article class="pc-card${p.destaque ? ' destaque' : ''}">
+        <header class="pc-card-head">
+          <span class="pc-ico">${UI.icon(p.icone || 'briefcase', 20)}</span>
+          <div class="grow">
+            <h3>${p.nome}</h3>
+            <span class="pc-tag ${rec ? 'rec' : 'pon'}">${rec ? 'Recorrente' : 'Pontual'}</span>
+          </div>
+        </header>
+        <p class="pc-resumo">${p.resumo || (p.incluso || '').slice(0, 120)}</p>
+
+        <div class="pc-destaque">
+          <span class="pc-destaque-lb">${(OB.PORTES.find(x => x.id === porte) || {}).nome || ''}</span>
+          <b class="pc-destaque-val">${OB.brl(valor)}</b>
+          <span class="pc-destaque-per">${periodo}</span>
+        </div>
+
+        <div class="pc-precos" role="group" aria-label="Valores por porte">
+          ${OB.PORTES.map(pt => `
+            <button type="button" class="pc-preco${pt.id === porte ? ' on' : ''}" data-pcporte="${pt.id}" title="Ver este porte na tabela inteira">
+              <span>${pt.nome.replace(' empresa', '')}</span><b>${OB.brl(p.precos[pt.id] || 0)}</b>
+            </button>`).join('')}
+        </div>
+
+        <ul class="pc-meta">
+          <li>${UI.icon('clock', 14)} ${p.entrega || 'prazo combinado no briefing'}</li>
+          <li>${UI.icon('percent', 14)} Comissão a partir de ${OB.brl(comissao)}</li>
+        </ul>
+
+        <div class="pc-pgto">${(p.pagamentos || []).map(f => `<span class="pc-chip">${OB.pagamentoNome(f)}</span>`).join('')}</div>
+
+        <footer class="pc-acts">
+          <button class="btn ghost sm" data-det="${p.id}">${UI.icon('eye', 15)} Detalhes</button>
+          <button class="btn brand sm" data-orc="${p.id}">${UI.icon('quote', 15)} Montar orçamento</button>
+        </footer>
+      </article>`;
+  },
+
+  pcDetalhe(id) {
+    const p = OB.produtoById(id); if (!p) return;
+    const porte = this._pcPorte;
+    const valor = p.precos[porte] || 0;
+    const nMax = p.parcelasMax || 12;
+    const cartao = OB.calcPagamento(valor, 'cartao', { parcelas: nMax });
+    const pix = OB.calcPagamento(valor, 'pix', { pixDesconto: true });
+    UI.modal({
+      title: p.nome,
+      sub: (p.tipo === 'recorrente' ? 'Serviço recorrente · ' : 'Serviço pontual · ') + OB.produtoPeriodo(p),
+      size: 'lg',
+      body: `
+        <p class="pd-lead">${p.resumo || ''}</p>
+
+        <div class="pd-bloco">
+          <h4>${UI.icon('check', 15)} O que está incluso</h4>
+          <p>${p.incluso || 'Escopo detalhado no briefing do projeto.'}</p>
+        </div>
+
+        <div class="pd-bloco">
+          <h4>${UI.icon('money', 15)} Valores de tabela</h4>
+          <div class="pd-tab">
+            ${OB.PORTES.map(pt => `
+              <div class="pd-tab-l${pt.id === porte ? ' on' : ''}">
+                <div><b>${pt.nome}</b><small>${pt.faixa}</small></div>
+                <span>${OB.brl(p.precos[pt.id] || 0)}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="pd-bloco">
+          <h4>${UI.icon('receipt', 15)} Como o cliente pode pagar</h4>
+          <div class="pd-sim">
+            <div class="pd-sim-c"><span>PIX à vista</span><b>${OB.brl(pix.valorCliente)}</b><small>já com os 5% de desconto que você pode conceder</small></div>
+            <div class="pd-sim-c"><span>Cartão em ${nMax}x</span><b>${OB.brl(cartao.valorParcela)}</b><small>total de ${OB.brl(cartao.valorCliente)} com os juros da operadora</small></div>
+          </div>
+          <ul class="pd-forms">
+            ${(p.pagamentos || []).map(f => { const fo = OB.PAGAMENTOS.find(x => x.id === f) || {}; return `<li><b>${fo.nome || f}</b><span>${fo.desc || ''}</span></li>`; }).join('')}
+          </ul>
+        </div>
+
+        <div class="pd-bloco">
+          <h4>${UI.icon('clock', 15)} Prazo de entrega</h4>
+          <p>${p.entrega || 'Definido no briefing, conforme o escopo aprovado.'}</p>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Fechar</button><button class="btn brand" id="pd-orc">${UI.icon('quote', 16)} Montar orçamento</button>`
+    });
+    document.getElementById('pd-orc').onclick = () => { UI.closeModal(); App.go('orcamentos'); };
+  },
+
+  pcTabelaCompleta() {
+    const lista = OB.catalogo();
+    UI.modal({
+      title: 'Tabela completa de serviços',
+      sub: 'Valores de tabela por porte da empresa, sem desconto comercial',
+      size: 'lg',
+      body: `
+        <div class="table-wrap">
+          <table class="pc-full">
+            <thead><tr><th>Serviço</th>${OB.PORTES.map(pt => `<th>${pt.nome.replace(' empresa', '')}</th>`).join('')}<th>Cobrança</th></tr></thead>
+            <tbody>
+              ${lista.map(p => `<tr>
+                <td><b>${p.nome}</b></td>
+                ${OB.PORTES.map(pt => `<td>${OB.brl(p.precos[pt.id] || 0)}</td>`).join('')}
+                <td><span class="pc-tag ${p.tipo === 'recorrente' ? 'rec' : 'pon'}">${OB.produtoPeriodo(p)}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Fechar</button>`
+    });
   },
 
   /* ====================== DOCUMENTOS ====================== */

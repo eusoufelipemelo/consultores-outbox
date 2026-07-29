@@ -16,24 +16,144 @@ const OB = {
     { id: 'industria', nome: 'Indústria',       faixa: 'Faturamento acima de R$300 mi/ano ou setor industrial' }
   ],
 
-  /* ---------- catálogo de produtos + tabela de preços fixos por porte (R$) ---------- */
+  /* ---------- formas de pagamento aceitas (usadas na seção Produtos) ---------- */
+  PAGAMENTOS: [
+    { id: 'pix',           nome: 'PIX à vista',        desc: 'Pagamento imediato, com desconto de até 5% concedido pelo consultor.' },
+    { id: 'cartao',        nome: 'Cartão de crédito',  desc: 'Em até 12x, com os juros da operadora repassados ao cliente.' },
+    { id: 'boleto',        nome: 'Boleto bancário',    desc: 'À vista ou em parcelas combinadas com a OutBox.' },
+    { id: 'transferencia', nome: 'Transferência',      desc: 'TED ou depósito à vista na conta da OutBox.' }
+  ],
+  pagamentoNome(id) { const f = this.PAGAMENTOS.find(x => x.id === id); return f ? f.nome : id; },
+
+  /* natureza do serviço: cobrado uma vez ou renovado periodicamente */
+  PRODUTO_TIPOS: [
+    { id: 'pontual',    nome: 'Pontual',    desc: 'Cobrado uma única vez na contratação' },
+    { id: 'recorrente', nome: 'Recorrente', desc: 'Renovado periodicamente enquanto o cliente usar' }
+  ],
+  RECORRENCIAS: { unica: 'Pagamento único', mensal: 'por mês', anual: 'por ano' },
+
+  /* ---------- catálogo de produtos + tabela de preços fixos por porte (R$) ----------
+     Este array é a semente do catálogo. Em loadAll() ele é sincronizado com a tabela
+     catalogo_produtos do Supabase, onde o admin cadastra e edita os serviços. */
   PRODUTOS: [
-    { id: 'identidade',   nome: 'Identidade Visual',   precos: { pequena: 2500,  media: 4200,  grande: 6400,  industria: 9000 },
+    { id: 'identidade',   nome: 'Identidade Visual',   icone: 'creative',  tipo: 'pontual', recorrencia: 'unica', ordem: 10,
+      precos: { pequena: 2500,  media: 4200,  grande: 6400,  industria: 9000 },
+      resumo: 'A marca completa: logotipo, cores, tipografia e arquivos para usar em tudo.',
+      entrega: '10 a 20 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Criação de logotipo profissional com variações, paleta de cores, tipografia da marca, manual básico de aplicação e entrega dos arquivos em alta resolução para uso digital e impresso.' },
-    { id: 'lp',           nome: 'Landing Page',        precos: { pequena: 1900,  media: 2900,  grande: 4200,  industria: 5500 },
+    { id: 'lp',           nome: 'Landing Page',        icone: 'target',    tipo: 'pontual', recorrencia: 'unica', ordem: 20,
+      precos: { pequena: 1900,  media: 2900,  grande: 4200,  industria: 5500 },
+      resumo: 'Página única de conversão para campanhas, lançamentos e captação de contatos.',
+      entrega: '7 a 12 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Página única focada em conversão: texto persuasivo, chamada para ação, botão de WhatsApp, formulário de contato, otimização para celular e publicação no ar.' },
-    { id: 'onepage',      nome: 'Site OnePage',        precos: { pequena: 2900,  media: 4500,  grande: 6200,  industria: 8000 },
+    { id: 'onepage',      nome: 'Site OnePage',        icone: 'rocket',    tipo: 'pontual', recorrencia: 'unica', ordem: 30,
+      precos: { pequena: 2900,  media: 4500,  grande: 6200,  industria: 8000 },
+      resumo: 'Site inteiro em uma página só: rápido de aprovar e rápido de colocar no ar.',
+      entrega: '10 a 15 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Site completo em página única: apresentação da empresa, serviços, diferenciais, depoimentos, mapa de localização, botão de WhatsApp, otimização para celular e para o Google.' },
-    { id: 'institucional',nome: 'Site Institucional',  precos: { pequena: 5500,  media: 8900,  grande: 12500, industria: 16500 },
+    { id: 'institucional',nome: 'Site Institucional',  icone: 'briefcase', tipo: 'pontual', recorrencia: 'unica', ordem: 40,
+      precos: { pequena: 5500,  media: 8900,  grande: 12500, industria: 16500 },
+      resumo: 'Site com várias páginas para empresas que precisam de presença completa.',
+      entrega: '15 a 25 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Site com múltiplas páginas (início, sobre, serviços, contato), formulário de contato, botão de WhatsApp, otimização para celular e SEO básico para ser encontrado no Google.' },
-    { id: 'ecommerce',    nome: 'E-commerce',          precos: { pequena: 9500,  media: 16900, grande: 24500, industria: 33000 },
+    { id: 'apresentacao', nome: 'Apresentação de Negócios Interativa', icone: 'gallery', tipo: 'pontual', recorrencia: 'unica', ordem: 45,
+      precos: { pequena: 5500,  media: 8900,  grande: 12500, industria: 16500 },
+      resumo: 'A empresa apresentada em uma experiência navegável, para reunião e para enviar por WhatsApp.',
+      entrega: '15 a 25 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
+      incluso: 'Apresentação de negócios navegável no celular e no computador: roteiro comercial, design de todas as telas, animações, gráficos com os números da empresa, portfólio, depoimentos, botão de WhatsApp e link próprio para apresentar em reunião ou enviar ao cliente. Funciona como um site de apresentação, sem depender de PowerPoint ou PDF.' },
+    { id: 'ecommerce',    nome: 'E-commerce',          icone: 'cart',      tipo: 'pontual', recorrencia: 'unica', ordem: 50,
+      precos: { pequena: 9500,  media: 16900, grande: 24500, industria: 33000 },
+      resumo: 'Loja virtual completa, do cadastro do produto ao pagamento e ao frete.',
+      entrega: '25 a 40 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Loja virtual completa: cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gerenciar pedidos.' },
-    { id: 'sistemas',     nome: 'Sistemas Sob Medida', precos: { pequena: 19000, media: 45000, grande: 82000, industria: 130000 },
+    { id: 'sistemas',     nome: 'Sistemas Sob Medida', icone: 'admin',     tipo: 'pontual', recorrencia: 'unica', ordem: 60,
+      precos: { pequena: 19000, media: 45000, grande: 82000, industria: 130000 },
+      resumo: 'Software feito para o processo do cliente, quando nenhuma ferramenta pronta resolve.',
+      entrega: 'conforme cronograma aprovado', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Sistema desenvolvido para o seu processo: levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação.' },
-    { id: 'hospedagem',   nome: 'Hospedagem de Site',  anual: true,
+    { id: 'hospedagem',   nome: 'Hospedagem de Site',  icone: 'shield',    tipo: 'recorrente', recorrencia: 'anual', ordem: 70, anual: true,
       precos: { pequena: 1200, media: 1200, grande: 1200, industria: 1200 }, // R$ 1.200 (preço único p/ todos os portes)
+      resumo: 'O site no ar o ano inteiro: servidor, domínio, e-mail, segurança e suporte.',
+      entrega: 'ativação em até 3 dias úteis', pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
       incluso: 'Hospedagem anual do site em servidor de alta disponibilidade: domínio conectado, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico. Renovação anual.' }
   ],
+  /* produto do catálogo pelo id */
+  produtoById(id) { return this.PRODUTOS.find(p => p.id === id) || null; },
+  produtoNome(id) { const p = this.produtoById(id); return p ? p.nome : id; },
+  /* catálogo visível ao consultor (só os ativos), já na ordem de exibição */
+  catalogo() {
+    return this.PRODUTOS.filter(p => p.ativo !== false)
+      .slice().sort((a, b) => (a.ordem || 999) - (b.ordem || 999) || a.nome.localeCompare(b.nome));
+  },
+  /* como o preço é cobrado: uma vez, por mês ou por ano */
+  produtoPeriodo(p) { return this.RECORRENCIAS[(p && p.recorrencia) || 'unica'] || 'Pagamento único'; },
+
+  /* ---------- catálogo no banco (tabela catalogo_produtos) ----------
+     A semente acima continua valendo como fallback; o que estiver no banco
+     manda, e produtos novos cadastrados pelo admin entram no fim da lista. */
+  PRODUTOS_SEMENTE: null, // preenchido na inicialização (cópia da semente acima)
+  _cpIn(r) {
+    let pg = []; try { pg = typeof r.pagamentos === 'string' ? JSON.parse(r.pagamentos) : (r.pagamentos || []); } catch (e) { pg = []; }
+    return { id: r.id, nome: r.nome || '', icone: r.icone || 'briefcase',
+      tipo: r.tipo || 'pontual', recorrencia: r.recorrencia || 'unica',
+      resumo: r.resumo || '', incluso: r.incluso || '', entrega: r.entrega || '',
+      precos: { pequena: Number(r.preco_pequena) || 0, media: Number(r.preco_media) || 0,
+                grande: Number(r.preco_grande) || 0, industria: Number(r.preco_industria) || 0 },
+      pagamentos: Array.isArray(pg) && pg.length ? pg : ['pix', 'cartao', 'boleto'],
+      parcelasMax: r.parcelas_max != null ? Number(r.parcelas_max) : 12,
+      contratoObjeto: r.contrato_objeto || '', contratoPrazo: r.contrato_prazo || '', contratoRevisoes: r.contrato_revisoes || '',
+      destaque: !!r.destaque, ativo: r.ativo !== false, ordem: r.ordem != null ? Number(r.ordem) : 900,
+      anual: r.recorrencia === 'anual', criadoEm: r.criado_em };
+  },
+  _cpOut(p) { return { id: p.id, nome: p.nome, icone: p.icone || 'briefcase',
+    tipo: p.tipo || 'pontual', recorrencia: p.recorrencia || 'unica',
+    resumo: p.resumo || null, incluso: p.incluso || null, entrega: p.entrega || null,
+    preco_pequena: (p.precos && p.precos.pequena) || 0, preco_media: (p.precos && p.precos.media) || 0,
+    preco_grande: (p.precos && p.precos.grande) || 0, preco_industria: (p.precos && p.precos.industria) || 0,
+    pagamentos: p.pagamentos || ['pix', 'cartao', 'boleto'], parcelas_max: p.parcelasMax != null ? p.parcelasMax : 12,
+    contrato_objeto: p.contratoObjeto || null, contrato_prazo: p.contratoPrazo || null, contrato_revisoes: p.contratoRevisoes || null,
+    destaque: !!p.destaque, ativo: p.ativo !== false, ordem: p.ordem != null ? p.ordem : 900,
+    atualizado_em: new Date().toISOString() }; },
+
+  /* reconstrói OB.PRODUTOS no lugar (o array é referenciado em todo o sistema):
+     semente + o que veio do banco por cima, e os produtos novos no fim. */
+  _syncCatalogo(rows) {
+    if (!this.PRODUTOS_SEMENTE) this.PRODUTOS_SEMENTE = this.PRODUTOS.map(p => JSON.parse(JSON.stringify(p)));
+    const lista = this.PRODUTOS_SEMENTE.map(p => JSON.parse(JSON.stringify(p)));
+    (rows || []).forEach(r => {
+      const p = this._cpIn(r);
+      const i = lista.findIndex(x => x.id === p.id);
+      if (i >= 0) lista[i] = Object.assign({}, lista[i], p); else lista.push(p);
+    });
+    lista.sort((a, b) => (a.ordem || 900) - (b.ordem || 900) || a.nome.localeCompare(b.nome));
+    this.PRODUTOS.length = 0;
+    lista.forEach(p => this.PRODUTOS.push(p));
+  },
+  /* slug estável a partir do nome (id de produto novo) */
+  slugProduto(nome) {
+    const base = (nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'produto';
+    let id = base, n = 2;
+    while (this.PRODUTOS.find(p => p.id === id)) { id = base + '-' + n; n++; }
+    return id;
+  },
+  saveCatalogoProduto(p) {
+    const i = this.PRODUTOS.findIndex(x => x.id === p.id);
+    if (i >= 0) this.PRODUTOS[i] = p; else this.PRODUTOS.push(p);
+    this.PRODUTOS.sort((a, b) => (a.ordem || 900) - (b.ordem || 900) || a.nome.localeCompare(b.nome));
+    this._save('catalogo_produtos', this._cpOut(p));
+    return p;
+  },
+  /* produtos da semente não são apagados, apenas desativados (o histórico de vendas
+     e contratos continua apontando para eles). */
+  removeCatalogoProduto(id) {
+    const daSemente = (this.PRODUTOS_SEMENTE || []).some(p => p.id === id);
+    if (daSemente) { const p = this.produtoById(id); if (p) { p.ativo = false; this.saveCatalogoProduto(p); } return false; }
+    const i = this.PRODUTOS.findIndex(p => p.id === id);
+    if (i >= 0) this.PRODUTOS.splice(i, 1);
+    this._delete('catalogo_produtos', id);
+    return true;
+  },
   /* preço de tabela conforme produto + porte do cliente */
   precoTabela(produtoId, porteId) {
     const p = this.PRODUTOS.find(x => x.id === produtoId);
@@ -221,7 +341,7 @@ const OB = {
   /* App de briefing publicado (dentro do próprio sistema). Cada serviço tem seu formulário (?p=...);
      quando enviado por um projeto, o link leva pid+token e o preenchimento volta sozinho para a tabela projetos. */
   BRIEFING_BASE: 'https://consultores.outboxgroup.com.br/briefing/',
-  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
+  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', apresentacao: 'site', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
   briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
   briefingLink(produtoId, pid, token) {
     // formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin
@@ -506,7 +626,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em,equipe_cargo,equipe_nivel';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp, lcat, lprd, lped] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp, lcat, lprd, lped, cat] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -526,8 +646,11 @@ const OB = {
       SB.from('equipe').select('*').order('nivel'),
       SB.from('loja_categorias').select('*').order('ordem'),
       SB.from('loja_produtos').select('*').order('ordem'),
-      SB.from('loja_pedidos').select('*').order('criado_em', { ascending: false })
+      SB.from('loja_pedidos').select('*').order('criado_em', { ascending: false }),
+      SB.from('catalogo_produtos').select('*').order('ordem')
     ]);
+    // catálogo de serviços: a semente do código é sobreposta pelo que o admin cadastrou
+    this._syncCatalogo((cat && cat.data) ? cat.data : []);
     let profile = prof.data ? this._pIn(prof.data) : null;
     // fallback: se o trigger ainda não criou o perfil, cria agora
     if (!profile) {
@@ -818,9 +941,24 @@ const OB = {
     institucional:{ objeto: 'desenvolvimento de site institucional com múltiplas páginas (início, sobre, serviços e contato), formulário de contato, botão de WhatsApp, otimização para dispositivos móveis e SEO básico', prazo: '20 a 35 dias úteis', revisoes: '3 (três) rodadas de revisão' },
     ecommerce:    { objeto: 'desenvolvimento de loja virtual (e-commerce) com cadastro de produtos, carrinho de compras, integração com meios de pagamento, cálculo de frete, área do cliente e treinamento para gestão de pedidos', prazo: '30 a 45 dias úteis', revisoes: '3 (três) rodadas de revisão' },
     sistemas:     { objeto: 'desenvolvimento de sistema sob medida, contemplando levantamento de requisitos, telas personalizadas, controle de acesso por usuário, relatórios gerenciais e suporte na implantação', prazo: 'conforme cronograma aprovado no levantamento de requisitos', revisoes: 'as previstas no escopo aprovado' },
+    apresentacao: { objeto: 'desenvolvimento de apresentação de negócios interativa, navegável em computador e dispositivos móveis, contemplando roteiro comercial, design das telas, animações, gráficos institucionais, portfólio, depoimentos, botão de WhatsApp e publicação em link exclusivo para uso em reuniões e envio a clientes', prazo: '15 a 25 dias úteis', revisoes: '2 (duas) rodadas de revisão do layout aprovado' },
     hospedagem:   { objeto: 'prestação de serviço de hospedagem anual do site em servidor de alta disponibilidade, contemplando conexão do domínio, certificado de segurança (SSL/HTTPS), e-mail profissional, backups periódicos e suporte técnico durante a vigência', prazo: 'vigência de 12 (doze) meses, com ativação em até 3 (três) dias úteis a contar da confirmação do pagamento', revisoes: 'não se aplica (serviço de hospedagem)' }
   },
-  contratoModelo(produtoId) { return this.CONTRATO_MODELOS[produtoId] || this.CONTRATO_MODELOS.institucional; },
+  contratoModelo(produtoId) {
+    // produto cadastrado pelo admin pode trazer sua própria cláusula de objeto
+    const p = this.produtoById(produtoId);
+    if (p && p.contratoObjeto) {
+      return { objeto: p.contratoObjeto, prazo: p.contratoPrazo || p.entrega || 'conforme cronograma aprovado',
+               revisoes: p.contratoRevisoes || '2 (duas) rodadas de revisão do escopo aprovado' };
+    }
+    if (this.CONTRATO_MODELOS[produtoId]) return this.CONTRATO_MODELOS[produtoId];
+    // produto novo sem cláusula própria: monta a partir do que está no catálogo
+    if (p) {
+      return { objeto: 'prestação do serviço de ' + p.nome.toLowerCase() + (p.incluso ? ', compreendendo ' + p.incluso.replace(/\.$/, '') : ''),
+               prazo: p.entrega || 'conforme cronograma aprovado', revisoes: '2 (duas) rodadas de revisão do escopo aprovado' };
+    }
+    return this.CONTRATO_MODELOS.institucional;
+  },
   _ctIn(r) { let dados = {}; try { dados = r.dados ? (typeof r.dados === 'string' ? JSON.parse(r.dados) : r.dados) : {}; } catch (e) { dados = {}; }
     return { id: r.id, numero: r.numero || '', saleId: r.sale_id, consultorId: r.consultor_id, clientId: r.client_id, dados, status: r.status || 'pendente', acceptToken: r.accept_token || '', aceiteNome: r.aceite_nome || '', aceiteDoc: r.aceite_doc || '', aceiteIp: r.aceite_ip || '', aceitoEm: r.aceito_em || null, criadoEm: r.criado_em }; },
   _ctOut(c) { return { id: c.id, numero: c.numero || null, sale_id: c.saleId || null, consultor_id: c.consultorId, client_id: c.clientId || null, dados: c.dados || {}, status: c.status || 'pendente', accept_token: c.acceptToken || null, aceite_nome: c.aceiteNome || null, aceite_doc: c.aceiteDoc || null, aceite_ip: c.aceiteIp || null, aceito_em: c.aceitoEm || null, criado_em: c.criadoEm }; },
@@ -1272,22 +1410,22 @@ const OB = {
       desc: 'Acesso total ao sistema, inclusive gestão da equipe.', secoes: '*' },
     { id: 'gerente', nome: 'Gerente', nivel: 2, cor: '#2563EB',
       desc: 'Acompanha toda a operação e a rede de consultores.',
-      secoes: ['painel','consultores','vendas','financeiro','bonus','contratos','projetos','briefings','timeline','atendimento','criativos','campanha','avisos','treinamentos','mapa','ranking'] },
+      secoes: ['painel','consultores','vendas','financeiro','bonus','contratos','projetos','briefings','timeline','atendimento','produtos','criativos','campanha','avisos','treinamentos','mapa','ranking'] },
     { id: 'supervisor', nome: 'Supervisor', nivel: 3, cor: '#7c3aed',
       desc: 'Cuida da rede de consultores e do acompanhamento das entregas.',
-      secoes: ['painel','consultores','vendas','projetos','briefings','timeline','atendimento','avisos','treinamentos','mapa','ranking'] },
+      secoes: ['painel','consultores','vendas','projetos','briefings','timeline','atendimento','produtos','avisos','treinamentos','mapa','ranking'] },
     { id: 'financeiro', nome: 'Financeiro', nivel: 3, cor: '#15803d',
       desc: 'Comissões, pagamentos, contratos e autorização de bônus.',
-      secoes: ['painel','financeiro','vendas','bonus','contratos','consultores'] },
+      secoes: ['painel','financeiro','vendas','bonus','contratos','consultores','produtos'] },
     { id: 'producao', nome: 'Produção', nivel: 4, cor: '#d97706',
       desc: 'Executa os projetos: briefings, linha do tempo e entregas.',
-      secoes: ['painel','projetos','briefings','timeline','criativos'] },
+      secoes: ['painel','projetos','briefings','timeline','criativos','produtos'] },
     { id: 'marketing', nome: 'Marketing', nivel: 4, cor: '#db2777',
       desc: 'Criativos, campanhas, avisos e conteúdo de treinamento.',
-      secoes: ['painel','criativos','campanha','avisos','treinamentos','ranking'] },
+      secoes: ['painel','criativos','campanha','avisos','treinamentos','ranking','produtos'] },
     { id: 'suporte', nome: 'Suporte', nivel: 5, cor: '#0891b2',
       desc: 'Atende os consultores no chat e acompanha o básico da operação.',
-      secoes: ['painel','atendimento','consultores','avisos'] }
+      secoes: ['painel','atendimento','consultores','avisos','produtos'] }
   ],
   cargoById(id) { return this.CARGOS.find(c => c.id === id) || null; },
   cargoNome(id) { const c = this.cargoById(id); return c ? c.nome : (id || 'Sem cargo'); },

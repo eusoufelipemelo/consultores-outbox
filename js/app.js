@@ -757,6 +757,7 @@ const App = {
     this.subscribeAviso();
     this.refreshProjetosBadge();
     this.subscribeProjetos();
+    this.subscribeCatalogo();
     // chat Manu: widget flutuante (consultor) + tempo real + som
     if (!isAdmin) this.mountChatWidget();
     this.subscribeChat();
@@ -867,6 +868,34 @@ const App = {
   },
   unsubscribeAviso() {
     if (this._avisoChannel) { try { SB.removeChannel(this._avisoChannel); } catch (e) {} this._avisoChannel = null; }
+  },
+
+  /* Realtime do catálogo: produto cadastrado pelo admin aparece na hora para o consultor */
+  _catChannel: null,
+  subscribeCatalogo() {
+    if (typeof SB === 'undefined' || !SB.channel) return;
+    if (this._catChannel) { try { SB.removeChannel(this._catChannel); } catch (e) {} this._catChannel = null; }
+    this._catChannel = SB.channel('catalogo-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'catalogo_produtos' }, (payload) => {
+        const row = payload.new && payload.new.id ? payload.new : payload.old;
+        if (!row) return;
+        if (payload.eventType === 'DELETE') {
+          const i = OB.PRODUTOS.findIndex(p => p.id === row.id);
+          if (i >= 0) OB.PRODUTOS.splice(i, 1);
+        } else {
+          const p = OB._cpIn(payload.new);
+          const i = OB.PRODUTOS.findIndex(x => x.id === p.id);
+          const semente = (OB.PRODUTOS_SEMENTE || []).find(x => x.id === p.id);
+          const final = semente ? Object.assign({}, semente, p) : p;
+          if (i >= 0) OB.PRODUTOS[i] = final; else OB.PRODUTOS.push(final);
+          OB.PRODUTOS.sort((a, b) => (a.ordem || 900) - (b.ordem || 900) || a.nome.localeCompare(b.nome));
+        }
+        if (this.current === 'produtos') this.mod().render('produtos');
+      })
+      .subscribe();
+  },
+  unsubscribeCatalogo() {
+    if (this._catChannel) { try { SB.removeChannel(this._catChannel); } catch (e) {} this._catChannel = null; }
   },
 
   /* ---------- badge de projetos (briefings/entregas que pedem atenção) ---------- */
@@ -1331,6 +1360,7 @@ const App = {
       try {
         this.unsubscribeAviso();
         this.unsubscribeProjetos();
+        this.unsubscribeCatalogo();
         this.unsubscribeChat();
         { const w = document.getElementById('chat-widget'); if (w) w.remove(); }
         if (this._presTimer) { clearInterval(this._presTimer); this._presTimer = null; }

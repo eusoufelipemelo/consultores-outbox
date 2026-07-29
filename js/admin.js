@@ -20,6 +20,7 @@ const Admin = {
     { id: 'timeline',   label: 'Linha do Tempo',   icon: 'trend',    sec: 'Operação' },
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat',     sec: 'Operação' },
     // Gestão & conteúdo
+    { id: 'produtos',   label: 'Produtos',         icon: 'quote',    sec: 'Gestão & Conteúdo' },
     { id: 'criativos',  label: 'Criativos',        icon: 'creative', sec: 'Gestão & Conteúdo' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone',sec: 'Gestão & Conteúdo' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell',     sec: 'Gestão & Conteúdo' },
@@ -37,6 +38,7 @@ const Admin = {
     ranking:     ['Ranking de Consultores', 'Os 10 primeiros em pontos (vendas + treinamentos)'],
     mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
+    produtos:    ['Produtos', 'Catálogo de serviços: cadastre, precifique e publique para os consultores'],
     projetos:    ['Briefings & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
@@ -1187,6 +1189,263 @@ const Admin = {
       const slug = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       OB.saveLojaCategoria({ id: e.id, nome, slug: slug || ('cat-' + Date.now()), ordem: parseInt(document.getElementById('ct-ordem').value, 10) || 0, ativo: document.getElementById('ct-ativo').value === '1' });
       UI.closeModal(); UI.toast(c ? 'Categoria atualizada' : 'Categoria criada', '', 'ok'); this.view_loja();
+    };
+  },
+
+  /* ====================== PRODUTOS (catálogo de serviços) ====================== */
+  _cpFiltro: { q: '', tipo: '' },
+
+  view_produtos() {
+    const v = document.getElementById('main-view');
+    const f = this._cpFiltro;
+    const todos = OB.PRODUTOS;
+    const ativos = todos.filter(p => p.ativo !== false).length;
+
+    v.innerHTML = `
+      <div class="row between alc wrap" style="gap:12px;margin-bottom:16px">
+        <div class="pc-kpis">
+          <div class="pc-kpi"><b>${todos.length}</b><span>serviços no catálogo</span></div>
+          <div class="pc-kpi"><b>${ativos}</b><span>visíveis ao consultor</span></div>
+          <div class="pc-kpi"><b>${todos.filter(p => p.tipo === 'recorrente').length}</b><span>recorrentes</span></div>
+        </div>
+        <button class="btn brand" id="cp-novo">${UI.icon('plus', 16)} Novo produto</button>
+      </div>
+
+      <div class="pc-bar">
+        <div class="pc-filtros" role="tablist" aria-label="Filtrar catálogo">
+          ${[['', 'Todos'], ['pontual', 'Pontuais'], ['recorrente', 'Recorrentes'], ['inativo', 'Desativados']].map(([id, lb]) =>
+            `<button type="button" class="pc-fil${f.tipo === id ? ' on' : ''}" data-tipo="${id}" role="tab" aria-selected="${f.tipo === id}">${lb}</button>`).join('')}
+        </div>
+        <div class="pc-busca">
+          <label class="sr-only" for="cp-q">Buscar produto</label>
+          ${UI.icon('search', 16)}
+          <input id="cp-q" type="search" placeholder="Buscar produto..." value="${(f.q || '').replace(/"/g, '&quot;')}"/>
+        </div>
+      </div>
+
+      <div class="notice" style="margin:0 0 16px">${UI.icon('info', 16)}<div>
+        O que você salvar aqui aparece na hora na seção <b>Produtos</b> dos consultores e fica disponível para orçamento, contrato e briefing.
+      </div></div>
+
+      <div class="pc-grid admin" id="cp-grid"></div>`;
+
+    this._cpPintar();
+    document.getElementById('cp-novo').onclick = () => this.cpModal(null);
+    v.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { this._cpFiltro.tipo = b.dataset.tipo; this.view_produtos(); });
+    const q = document.getElementById('cp-q');
+    q.oninput = () => { this._cpFiltro.q = q.value; this._cpPintar(); };
+  },
+
+  /* repinta só a grade: a busca não recarrega a tela e o foco fica no campo */
+  _cpPintar() {
+    const g = document.getElementById('cp-grid'); if (!g) return;
+    const f = this._cpFiltro;
+    const semAcento = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const termo = semAcento(f.q).trim();
+    const lista = OB.PRODUTOS.slice()
+      .sort((a, b) => (a.ordem || 900) - (b.ordem || 900) || a.nome.localeCompare(b.nome))
+      .filter(p => {
+        if (f.tipo === 'pontual' && p.tipo === 'recorrente') return false;
+        if (f.tipo === 'recorrente' && p.tipo !== 'recorrente') return false;
+        if (f.tipo === 'inativo' && p.ativo !== false) return false;
+        if (termo && semAcento(p.nome + ' ' + (p.resumo || '')).indexOf(termo) < 0) return false;
+        return true;
+      });
+    if (!lista.length) {
+      g.innerHTML = `<div style="grid-column:1/-1">${Consultor.empty('search', 'Nenhum produto encontrado', 'Ajuste a busca ou cadastre um novo servico.')}</div>`;
+      return;
+    }
+    g.innerHTML = lista.map(p => this.cpCard(p)).join('');
+    g.querySelectorAll('[data-cp-edit]').forEach(b => b.onclick = () => this.cpModal(OB.produtoById(b.dataset.cpEdit)));
+    g.querySelectorAll('[data-cp-tog]').forEach(b => b.onclick = () => {
+      const p = OB.produtoById(b.dataset.cpTog); if (!p) return;
+      p.ativo = p.ativo === false;
+      OB.saveCatalogoProduto(p);
+      UI.toast(p.ativo ? 'Produto ativado' : 'Produto desativado', p.ativo ? 'Ja aparece para os consultores' : 'Saiu da lista dos consultores', 'ok');
+      this.view_produtos();
+    });
+    g.querySelectorAll('[data-cp-del]').forEach(b => b.onclick = () => this.cpExcluir(b.dataset.cpDel));
+  },
+
+  cpCard(p) {
+    const rec = p.tipo === 'recorrente';
+    const daSemente = (OB.PRODUTOS_SEMENTE || []).some(x => x.id === p.id);
+    return `
+      <article class="pc-card${p.ativo === false ? ' off' : ''}">
+        <header class="pc-card-head">
+          <span class="pc-ico">${UI.icon(p.icone || 'briefcase', 20)}</span>
+          <div class="grow">
+            <h3>${p.nome}</h3>
+            <span class="pc-tag ${rec ? 'rec' : 'pon'}">${rec ? 'Recorrente' : 'Pontual'}</span>
+            ${p.ativo === false ? '<span class="pc-tag off">Desativado</span>' : ''}
+          </div>
+        </header>
+        <p class="pc-resumo">${p.resumo || (p.incluso || '').slice(0, 120)}</p>
+        <div class="pc-precos">
+          ${OB.PORTES.map(pt => `<div class="pc-preco"><span>${pt.nome.replace(' empresa', '')}</span><b>${OB.brl(p.precos[pt.id] || 0)}</b></div>`).join('')}
+        </div>
+        <ul class="pc-meta">
+          <li>${UI.icon('clock', 14)} ${p.entrega || 'prazo a combinar'}</li>
+          <li>${UI.icon('receipt', 14)} ${(p.pagamentos || []).map(x => OB.pagamentoNome(x)).join(', ') || 'sem forma definida'}</li>
+        </ul>
+        <footer class="pc-acts">
+          <button class="btn ghost sm" data-cp-edit="${p.id}">${UI.icon('edit', 15)} Editar</button>
+          <button class="btn ghost sm" data-cp-tog="${p.id}">${UI.icon(p.ativo === false ? 'eye' : 'eyeoff', 15)} ${p.ativo === false ? 'Ativar' : 'Ocultar'}</button>
+          ${daSemente ? '' : `<button class="btn ghost sm danger" data-cp-del="${p.id}" aria-label="Excluir ${p.nome}">${UI.icon('trash', 15)}</button>`}
+        </footer>
+      </article>`;
+  },
+
+  cpExcluir(id) {
+    const p = OB.produtoById(id); if (!p) return;
+    UI.modal({
+      title: 'Excluir ' + p.nome,
+      sub: 'Esta ação não pode ser desfeita',
+      body: `<div class="notice warn">${UI.icon('info', 16)}<div>O produto sai do catálogo dos consultores. Vendas e contratos já lançados com ele continuam no histórico. Se preferir apenas tirá-lo da vitrine, use <b>Ocultar</b>.</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn danger" id="cp-del-go">${UI.icon('trash', 16)} Excluir</button>`
+    });
+    document.getElementById('cp-del-go').onclick = () => {
+      OB.removeCatalogoProduto(id);
+      UI.closeModal(); UI.toast('Produto excluído', '', 'ok'); this.view_produtos();
+    };
+  },
+
+  /* ícones disponíveis para representar o serviço no card */
+  CP_ICONES: ['briefcase', 'rocket', 'target', 'gallery', 'creative', 'cart', 'admin', 'shield', 'academy', 'megaphone', 'quote', 'trend'],
+
+  cpModal(p) {
+    const novo = !p;
+    const e = p || { id: '', nome: '', icone: 'briefcase', tipo: 'pontual', recorrencia: 'unica', resumo: '', incluso: '',
+      entrega: '', precos: { pequena: 0, media: 0, grande: 0, industria: 0 },
+      pagamentos: ['pix', 'cartao', 'boleto'], parcelasMax: 12,
+      contratoObjeto: '', contratoPrazo: '', contratoRevisoes: '', destaque: false, ativo: true, ordem: 900 };
+    const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+    UI.modal({
+      title: novo ? 'Novo produto' : 'Editar ' + e.nome,
+      sub: 'Ao salvar, o serviço aparece imediatamente na seção Produtos dos consultores',
+      size: 'lg',
+      body: `
+        <div class="cp-form">
+          <div class="nav-label" style="padding-left:0">Identificação</div>
+          <div class="grid-2">
+            <div class="field"><label>Nome do produto <span class="req">*</span></label><input id="cp-nome" value="${esc(e.nome)}" placeholder="Ex.: Apresentação de Negócios Interativa"/><div class="err">Obrigatório</div></div>
+            <div class="field"><label>Ordem na lista</label><input id="cp-ordem" type="number" value="${e.ordem != null ? e.ordem : 900}"/><div class="hint">Menor número aparece primeiro.</div></div>
+          </div>
+          <div class="field"><label>Resumo (uma linha que o consultor lê no card)</label><input id="cp-resumo" value="${esc(e.resumo)}" placeholder="Em poucas palavras, o que o cliente ganha com este serviço"/></div>
+          <div class="field"><label>Ícone do card</label>
+            <div class="cp-icones" id="cp-icones">
+              ${this.CP_ICONES.map(ic => `<button type="button" class="cp-ico${ic === (e.icone || 'briefcase') ? ' on' : ''}" data-ic="${ic}" aria-label="Ícone ${ic}">${UI.icon(ic, 18)}</button>`).join('')}
+            </div>
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Como é cobrado</div>
+          <div class="grid-2">
+            <div class="field"><label>Natureza</label>
+              <select id="cp-tipo">${OB.PRODUTO_TIPOS.map(t => `<option value="${t.id}" ${e.tipo === t.id ? 'selected' : ''}>${t.nome} — ${t.desc}</option>`).join('')}</select></div>
+            <div class="field"><label>Periodicidade</label>
+              <select id="cp-rec">
+                <option value="unica" ${e.recorrencia === 'unica' ? 'selected' : ''}>Pagamento único</option>
+                <option value="mensal" ${e.recorrencia === 'mensal' ? 'selected' : ''}>Por mês</option>
+                <option value="anual" ${e.recorrencia === 'anual' ? 'selected' : ''}>Por ano</option>
+              </select></div>
+          </div>
+
+          <div class="nav-label" style="padding-left:0">Tabela de valores por porte</div>
+          <div class="cp-precos">
+            ${OB.PORTES.map(pt => `
+              <div class="field"><label>${pt.nome}</label>
+                <input id="cp-p-${pt.id}" type="number" min="0" step="50" value="${(e.precos && e.precos[pt.id]) || 0}"/>
+                <div class="hint">${pt.faixa}</div></div>`).join('')}
+          </div>
+          <label class="cp-check"><input type="checkbox" id="cp-mesmo"> <span>Cobrar o mesmo valor em todos os portes</span></label>
+
+          <div class="nav-label" style="padding-left:0">Formas de pagamento aceitas</div>
+          <div class="cp-pgtos" id="cp-pgtos">
+            ${OB.PAGAMENTOS.map(fo => `
+              <label class="cp-pgto${(e.pagamentos || []).indexOf(fo.id) >= 0 ? ' on' : ''}" data-pg="${fo.id}">
+                <input type="checkbox" value="${fo.id}" ${(e.pagamentos || []).indexOf(fo.id) >= 0 ? 'checked' : ''}>
+                <span><b>${fo.nome}</b><small>${fo.desc}</small></span>
+              </label>`).join('')}
+          </div>
+          <div class="field" style="max-width:260px"><label>Máximo de parcelas no cartão</label>
+            <select id="cp-parc">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${(e.parcelasMax || 12) === n ? 'selected' : ''}>${n}x</option>`).join('')}</select></div>
+
+          <div class="nav-label" style="padding-left:0">Escopo e prazo</div>
+          <div class="field"><label>O que está incluso <span class="req">*</span></label>
+            <textarea id="cp-incluso" rows="4" placeholder="Descreva tudo o que o cliente recebe. Este texto vai para o card, para a proposta e para o contrato.">${esc(e.incluso)}</textarea><div class="err">Obrigatório</div></div>
+          <div class="field"><label>Prazo de entrega</label><input id="cp-entrega" value="${esc(e.entrega)}" placeholder="Ex.: 15 a 25 dias úteis"/></div>
+
+          <div class="nav-label" style="padding-left:0">Contrato (opcional)</div>
+          <div class="hint" style="margin:-6px 0 10px">Se deixar em branco, o sistema monta a cláusula a partir do escopo acima.</div>
+          <div class="field"><label>Cláusula do objeto</label><textarea id="cp-cobj" rows="3" placeholder="prestação do serviço de ..., compreendendo ...">${esc(e.contratoObjeto)}</textarea></div>
+          <div class="grid-2">
+            <div class="field"><label>Prazo no contrato</label><input id="cp-cprazo" value="${esc(e.contratoPrazo)}" placeholder="15 a 25 dias úteis"/></div>
+            <div class="field"><label>Revisões previstas</label><input id="cp-crev" value="${esc(e.contratoRevisoes)}" placeholder="2 (duas) rodadas de revisão"/></div>
+          </div>
+
+          <div class="cp-flags">
+            <label class="cp-check"><input type="checkbox" id="cp-destaque" ${e.destaque ? 'checked' : ''}> <span>Destacar no catálogo do consultor</span></label>
+            <label class="cp-check"><input type="checkbox" id="cp-ativo" ${e.ativo !== false ? 'checked' : ''}> <span>Visível para os consultores</span></label>
+          </div>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="cp-save">${UI.icon('check', 16)} ${novo ? 'Cadastrar produto' : 'Salvar alterações'}</button>`
+    });
+
+    // ícone
+    let icone = e.icone || 'briefcase';
+    document.querySelectorAll('#cp-icones .cp-ico').forEach(b => b.onclick = () => {
+      icone = b.dataset.ic;
+      document.querySelectorAll('#cp-icones .cp-ico').forEach(x => x.classList.toggle('on', x === b));
+    });
+    // formas de pagamento (visual do card acompanha o checkbox)
+    document.querySelectorAll('#cp-pgtos .cp-pgto').forEach(l => {
+      const cb = l.querySelector('input');
+      cb.onchange = () => l.classList.toggle('on', cb.checked);
+    });
+    // atalho: replicar o valor da pequena empresa nos demais portes
+    document.getElementById('cp-mesmo').onchange = (ev) => {
+      if (!ev.target.checked) return;
+      const base = document.getElementById('cp-p-pequena').value;
+      OB.PORTES.forEach(pt => { document.getElementById('cp-p-' + pt.id).value = base; });
+    };
+    // periodicidade acompanha a natureza escolhida
+    const selTipo = document.getElementById('cp-tipo'), selRec = document.getElementById('cp-rec');
+    selTipo.onchange = () => {
+      if (selTipo.value === 'pontual') selRec.value = 'unica';
+      else if (selRec.value === 'unica') selRec.value = 'anual';
+    };
+
+    document.getElementById('cp-save').onclick = () => {
+      const nome = document.getElementById('cp-nome').value.trim();
+      const incluso = document.getElementById('cp-incluso').value.trim();
+      document.querySelectorAll('.cp-form .has-error').forEach(x => x.classList.remove('has-error'));
+      if (!nome) { document.getElementById('cp-nome').closest('.field').classList.add('has-error'); return UI.toast('Informe o nome do produto', '', 'err'); }
+      if (!incluso) { document.getElementById('cp-incluso').closest('.field').classList.add('has-error'); return UI.toast('Descreva o que está incluso', '', 'err'); }
+      const pagamentos = Array.from(document.querySelectorAll('#cp-pgtos input:checked')).map(i => i.value);
+      if (!pagamentos.length) return UI.toast('Escolha ao menos uma forma de pagamento', '', 'err');
+      const precos = {};
+      OB.PORTES.forEach(pt => { precos[pt.id] = Math.max(0, parseFloat(document.getElementById('cp-p-' + pt.id).value) || 0); });
+      if (!Object.keys(precos).some(k => precos[k] > 0)) return UI.toast('Informe pelo menos um valor', '', 'err');
+
+      const rec = selRec.value;
+      const prod = Object.assign({}, e, {
+        id: novo ? OB.slugProduto(nome) : e.id,
+        nome, icone, resumo: document.getElementById('cp-resumo').value.trim(),
+        tipo: selTipo.value, recorrencia: rec, anual: rec === 'anual',
+        precos, pagamentos, parcelasMax: parseInt(document.getElementById('cp-parc').value, 10) || 12,
+        incluso, entrega: document.getElementById('cp-entrega').value.trim(),
+        contratoObjeto: document.getElementById('cp-cobj').value.trim(),
+        contratoPrazo: document.getElementById('cp-cprazo').value.trim(),
+        contratoRevisoes: document.getElementById('cp-crev').value.trim(),
+        destaque: document.getElementById('cp-destaque').checked,
+        ativo: document.getElementById('cp-ativo').checked,
+        ordem: parseInt(document.getElementById('cp-ordem').value, 10) || 900
+      });
+      OB.saveCatalogoProduto(prod);
+      UI.closeModal();
+      UI.toast(novo ? 'Produto cadastrado' : 'Produto atualizado', 'Já está disponível para os consultores', 'ok');
+      this.view_produtos();
     };
   },
 
