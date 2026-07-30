@@ -570,7 +570,13 @@ const OB = {
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
   _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null, _full: Object.prototype.hasOwnProperty.call(r, 'foto') }; },
-  _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
+  _pOut(u) {
+    const o = this._pOutBase(u);
+    // linha reduzida (sem a coluna foto): omite o campo para o upsert não apagar a foto no banco
+    if (u.foto === undefined || u._full === false) delete o.foto;
+    return o;
+  },
+  _pOutBase(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
@@ -664,7 +670,11 @@ const OB = {
     this.db.lojaProdutos = (lprd && lprd.data) ? lprd.data.map(r => this._lpIn(r)) : [];
     this.db.lojaPedidos = (lped && lped.data) ? lped.data.map(r => this._loIn(r)) : [];
     this.db.profiles = (profs.data || []).map(r => this._pIn(r));
-    if (!this.db.profiles.find(p => p.id === profile.id)) this.db.profiles.push(profile);
+    // A lista geral vem sem a coluna foto (base64 pesado), mas a linha do próprio usuário
+    // veio completa na 1ª consulta. Ela TEM de substituir a reduzida: é este objeto que
+    // vira o perfil ativo, e sem a foto o formulário de perfil se recusa a salvar.
+    const iEu = this.db.profiles.findIndex(p => p.id === profile.id);
+    if (iEu >= 0) this.db.profiles[iEu] = profile; else this.db.profiles.push(profile);
     this.db.clients = (cli.data || []).map(r => this._cIn(r));
     this.db.sales = (sal.data || []).map(r => this._sIn(r));
     this.db.requests = (req.data || []).map(r => this._rIn(r)).sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
