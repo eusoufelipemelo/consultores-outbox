@@ -569,7 +569,7 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null, _full: Object.prototype.hasOwnProperty.call(r, 'foto') }; },
   _pOut(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
@@ -760,6 +760,17 @@ const OB = {
       data.forEach(r => { mapa[r.id] = r.conta_vinculada || null; });
       (this.db.profiles || []).forEach(p => { if (mapa[p.id] !== undefined) p.contaVinculada = mapa[p.id]; });
       if (this.db.profile && mapa[this.db.profile.id] !== undefined) this.db.profile.contaVinculada = mapa[this.db.profile.id];
+      // a conta do par passa a ser o perfil ativo quando você troca de painel, então
+      // precisa vir completa (com a foto), senão o sistema a julga incompleta e tranca.
+      const parId = this.db.profile && this.db.profile.contaVinculada;
+      if (parId) {
+        const r2 = await SB.from('profiles').select('*').eq('id', parId).maybeSingle();
+        if (r2 && r2.data) {
+          const cheio = this._pIn(r2.data);
+          const i = (this.db.profiles || []).findIndex(p => p.id === cheio.id);
+          if (i >= 0) this.db.profiles[i] = cheio; else this.db.profiles.push(cheio);
+        }
+      }
     } catch (e) { /* coluna ainda não criada: segue sem par de contas */ }
   },
 
@@ -859,6 +870,12 @@ const OB = {
   precisaCompletarPerfil() {
     const u = this.db.profile;
     if (!u || u.role === 'admin') return false;
+    // a lista geral de perfis não traz a foto (base64 pesado). Julgar por ela trancaria
+    // a tela de um cadastro que na verdade está completo, então só decide com a linha cheia.
+    if (!u._full) return false;
+    // conta que faz par com uma de admin não passa pelo portão de onboarding: o portão
+    // existe para consultor novo, e aqui ele prenderia o dono do sistema fora do painel.
+    if (this.podeAlternarPainel()) return false;
     return !this._perfilCompleto(u);
   },
 
