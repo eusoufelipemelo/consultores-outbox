@@ -515,36 +515,116 @@ const OB = {
   /* ---------- portfólio: cases entregues, por serviço (prova social) ---------- */
   PORTFOLIO_CATS: [
     { id: 'sites', nome: 'Sites e Landing Pages', filtravel: true, itens: [
-      { nome: 'Dra. Angélica Chiararia', link: 'https://angelica-chiararia.vercel.app/', img: 'assets/portfolio/angelica-chiarariavercelapp.jpg', nicho: 'Saúde' },
-      { nome: 'Bellucci Planejados', link: 'https://bellucciplanejados.com.br/', img: 'assets/portfolio/bellucciplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Cardiopediatra Brasília', link: 'https://www.cardiopediatrabrasilia.com.br/', img: 'assets/portfolio/cardiopediatrabrasiliacombr.jpg', nicho: 'Saúde' },
-      { nome: 'Casa 46', link: 'https://www.casa46.com.br/', img: 'assets/portfolio/casa46combr.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'Clínica Áurea Plenus', link: 'https://www.clinicaaureaplenus.com.br/', img: 'assets/portfolio/clinicaaureaplenuscombr.jpg', nicho: 'Saúde' },
-      { nome: 'DentSite', link: 'https://dentsite.com.br/', img: 'assets/portfolio/dentsitecombr.jpg', nicho: 'Saúde' },
-      { nome: 'Doutor das Vendas', link: 'https://www.jonaspastore.com.br/doutor-das-vendas', img: 'assets/portfolio/jonaspastorecombr-doutor-das-vendas.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'Escola de Planejados', link: 'https://www.escoladeplanejados.com.br/', img: 'assets/portfolio/escoladeplanejadoscombr.jpg', nicho: 'Educação' },
-      { nome: 'Espaço Bello', link: 'https://www.espacobello.com.br/', img: 'assets/portfolio/espacobellocombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'In.casa Projetos', link: 'https://www.incasaprojetos.pt/', img: 'assets/portfolio/incasaprojetospt.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Je Aromas', link: 'https://www.jearomas.com.br/', img: 'assets/portfolio/jearomascombr.jpg', nicho: 'Cosméticos & Aromas' },
-      { nome: 'Jônas Pastore', link: 'https://www.jonaspastore.com.br/', img: 'assets/portfolio/jonaspastorecombr.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'Josué Alves', link: 'https://www.josuealves.com/', img: 'assets/portfolio/josuealvescom.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'Magare Planejados', link: 'https://www.magare.com.br/', img: 'assets/portfolio/magarecombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Mayra Maximiano', link: 'https://mayramaximiano.com.br/', img: 'assets/portfolio/mayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'MOBID Marcenaria', link: 'https://www.mobidmarcenaria.com.br/', img: 'assets/portfolio/mobidmarcenariacombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Modini Planejados', link: 'https://www.modiniplanejados.com.br/', img: 'assets/portfolio/modiniplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Móveis Planejados Itajaí', link: 'https://www.moveisplanejadositajai.com.br/', img: 'assets/portfolio/moveisplanejadositajaicombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Paz Pediatria', link: 'https://www.pazpediatria.com.br/', img: 'assets/portfolio/pazpediatriacombr.jpg', nicho: 'Saúde' },
-      { nome: 'PneumoMed', link: 'https://www.pneumomed.com.br/', img: 'assets/portfolio/pneumomedcombr.jpg', nicho: 'Saúde' },
-      { nome: 'Solid Planejados', link: 'https://www.solidplanejados.com.br/', img: 'assets/portfolio/solidplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Stopa Design', link: 'https://www.stopadesing.com.br/', img: 'assets/portfolio/stopadesingcombr.jpg', nicho: 'Móveis Planejados' },
-      { nome: 'Vida em ORDEM Business', link: 'https://www.veobus.mayramaximiano.com.br/', img: 'assets/portfolio/veobusmayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
-      { nome: 'Werte Engenharia', link: 'https://www.werte.eng.br/', img: 'assets/portfolio/werteengbr.jpg', nicho: 'Engenharia & Construção' }
+      { id: 'angelica-chiarariavercelapp', nome: 'Dra. Angélica Chiararia', link: 'https://angelica-chiararia.vercel.app/', img: 'assets/portfolio/angelica-chiarariavercelapp.jpg', nicho: 'Saúde' },
+      { id: 'bellucciplanejadoscombr', nome: 'Bellucci Planejados', link: 'https://bellucciplanejados.com.br/', img: 'assets/portfolio/bellucciplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'cardiopediatrabrasiliacombr', nome: 'Cardiopediatra Brasília', link: 'https://www.cardiopediatrabrasilia.com.br/', img: 'assets/portfolio/cardiopediatrabrasiliacombr.jpg', nicho: 'Saúde' },
+      { id: 'casa46combr', nome: 'Casa 46', link: 'https://www.casa46.com.br/', img: 'assets/portfolio/casa46combr.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'clinicaaureaplenuscombr', nome: 'Clínica Áurea Plenus', link: 'https://www.clinicaaureaplenus.com.br/', img: 'assets/portfolio/clinicaaureaplenuscombr.jpg', nicho: 'Saúde' },
+      { id: 'dentsitecombr', nome: 'DentSite', link: 'https://dentsite.com.br/', img: 'assets/portfolio/dentsitecombr.jpg', nicho: 'Saúde' },
+      { id: 'jonaspastorecombr-doutor-das-vendas', nome: 'Doutor das Vendas', link: 'https://www.jonaspastore.com.br/doutor-das-vendas', img: 'assets/portfolio/jonaspastorecombr-doutor-das-vendas.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'escoladeplanejadoscombr', nome: 'Escola de Planejados', link: 'https://www.escoladeplanejados.com.br/', img: 'assets/portfolio/escoladeplanejadoscombr.jpg', nicho: 'Educação' },
+      { id: 'espacobellocombr', nome: 'Espaço Bello', link: 'https://www.espacobello.com.br/', img: 'assets/portfolio/espacobellocombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'incasaprojetospt', nome: 'In.casa Projetos', link: 'https://www.incasaprojetos.pt/', img: 'assets/portfolio/incasaprojetospt.jpg', nicho: 'Móveis Planejados' },
+      { id: 'jearomascombr', nome: 'Je Aromas', link: 'https://www.jearomas.com.br/', img: 'assets/portfolio/jearomascombr.jpg', nicho: 'Cosméticos & Aromas' },
+      { id: 'jonaspastorecombr', nome: 'Jônas Pastore', link: 'https://www.jonaspastore.com.br/', img: 'assets/portfolio/jonaspastorecombr.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'josuealvescom', nome: 'Josué Alves', link: 'https://www.josuealves.com/', img: 'assets/portfolio/josuealvescom.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'magarecombr', nome: 'Magare Planejados', link: 'https://www.magare.com.br/', img: 'assets/portfolio/magarecombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'mayramaximianocombr', nome: 'Mayra Maximiano', link: 'https://mayramaximiano.com.br/', img: 'assets/portfolio/mayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'mobidmarcenariacombr', nome: 'MOBID Marcenaria', link: 'https://www.mobidmarcenaria.com.br/', img: 'assets/portfolio/mobidmarcenariacombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'modiniplanejadoscombr', nome: 'Modini Planejados', link: 'https://www.modiniplanejados.com.br/', img: 'assets/portfolio/modiniplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'moveisplanejadositajaicombr', nome: 'Móveis Planejados Itajaí', link: 'https://www.moveisplanejadositajai.com.br/', img: 'assets/portfolio/moveisplanejadositajaicombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'pazpediatriacombr', nome: 'Paz Pediatria', link: 'https://www.pazpediatria.com.br/', img: 'assets/portfolio/pazpediatriacombr.jpg', nicho: 'Saúde' },
+      { id: 'pneumomedcombr', nome: 'PneumoMed', link: 'https://www.pneumomed.com.br/', img: 'assets/portfolio/pneumomedcombr.jpg', nicho: 'Saúde' },
+      { id: 'solidplanejadoscombr', nome: 'Solid Planejados', link: 'https://www.solidplanejados.com.br/', img: 'assets/portfolio/solidplanejadoscombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'stopadesingcombr', nome: 'Stopa Design', link: 'https://www.stopadesing.com.br/', img: 'assets/portfolio/stopadesingcombr.jpg', nicho: 'Móveis Planejados' },
+      { id: 'veobusmayramaximianocombr', nome: 'Vida em ORDEM Business', link: 'https://www.veobus.mayramaximiano.com.br/', img: 'assets/portfolio/veobusmayramaximianocombr.jpg', nicho: 'Mentoria & Negócios' },
+      { id: 'werteengbr', nome: 'Werte Engenharia', link: 'https://www.werte.eng.br/', img: 'assets/portfolio/werteengbr.jpg', nicho: 'Engenharia & Construção' }
     ] },
     { id: 'ecommerce',  nome: 'E-commerce',           filtravel: false, itens: [] },
     { id: 'identidade', nome: 'Identidades Visuais',  filtravel: false, itens: [] },
     { id: 'brandbook',  nome: 'Brandbook',            filtravel: false, itens: [] },
     { id: 'sistemas',   nome: 'Sistemas Sob Medida',  filtravel: false, itens: [] }
   ],
+
+  /* ---------- portfólio no banco (tabela portfolio_itens) ----------
+     A lista acima é a SEMENTE. O que o admin cadastrar ou editar no painel
+     entra por cima dela, e sair do ar é desativar (nunca some do histórico). */
+  PORTFOLIO_CATS_IDS() { return this.PORTFOLIO_CATS.map(c => c.id); },
+  portfolioCatNome(id) { const c = this.PORTFOLIO_CATS.find(x => x.id === id); return c ? c.nome : id; },
+
+  _ptIn(r) {
+    return { id: r.id, categoria: r.categoria || 'sites', nome: r.nome || '', link: r.link || '',
+      img: r.img || '', nicho: r.nicho || '', ativo: r.ativo !== false,
+      ordem: r.ordem != null ? Number(r.ordem) : 0, criadoEm: r.criado_em || null };
+  },
+  _ptOut(p) { return { id: p.id, categoria: p.categoria || 'sites', nome: p.nome, link: p.link || null,
+    img: p.img || null, nicho: p.nicho || null, ativo: p.ativo !== false,
+    ordem: p.ordem != null ? p.ordem : 0, atualizado_em: new Date().toISOString() }; },
+
+  /* item da semente (usado para saber o que pode ser excluído de verdade) */
+  _portfolioSemente(id) {
+    for (const cat of this.PORTFOLIO_CATS) {
+      const it = (cat.itens || []).find(x => x.id === id);
+      if (it) return Object.assign({}, it, { categoria: cat.id });
+    }
+    return null;
+  },
+  ehPortfolioSemente(id) { return !!this._portfolioSemente(id); },
+
+  /* todos os itens: semente + o que veio do banco por cima + os novos do admin */
+  portfolioItens() {
+    const doBanco = {};
+    (this.db.portfolio || []).forEach(x => { doBanco[x.id] = x; });
+    const out = [];
+    this.PORTFOLIO_CATS.forEach(cat => {
+      (cat.itens || []).forEach(it => {
+        const base = Object.assign({ ativo: true, ordem: 0, categoria: cat.id }, it);
+        out.push(doBanco[it.id] ? Object.assign(base, doBanco[it.id]) : base);
+        delete doBanco[it.id];
+      });
+    });
+    Object.keys(doBanco).forEach(k => out.push(doBanco[k]));
+    return out;
+  },
+  /* agrupado por categoria, como as telas esperam. opts.todos inclui os desativados (admin) */
+  portfolioCats(opts) {
+    const todos = this.portfolioItens();
+    const incluirOff = !!(opts && opts.todos);
+    return this.PORTFOLIO_CATS.map(cat => Object.assign({}, cat, {
+      itens: todos
+        .filter(i => i.categoria === cat.id && (incluirOff || i.ativo !== false))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome).localeCompare(String(b.nome), 'pt', { sensitivity: 'base' }))
+    }));
+  },
+  portfolioItemById(id) { return this.portfolioItens().find(i => i.id === id) || null; },
+
+  savePortfolioItem(item) {
+    const arr = this.db.portfolio || (this.db.portfolio = []);
+    const i = arr.findIndex(x => x.id === item.id);
+    if (i >= 0) arr[i] = item; else arr.push(item);
+    this._save('portfolio_itens', this._ptOut(item));
+    return item;
+  },
+  /* item da semente não é apagado, só desativado (o arquivo da imagem continua no projeto).
+     Item cadastrado pelo admin some de vez. Devolve true se foi exclusão de verdade. */
+  removePortfolioItem(id) {
+    if (this.ehPortfolioSemente(id)) {
+      const atual = this.portfolioItemById(id) || {};
+      this.savePortfolioItem(Object.assign({}, atual, { id, ativo: false }));
+      return false;
+    }
+    this.db.portfolio = (this.db.portfolio || []).filter(x => x.id !== id);
+    this._delete('portfolio_itens', id);
+    return true;
+  },
+  /* id novo a partir do nome, sem colidir com o que já existe */
+  slugPortfolio(nome) {
+    const base = (nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'case';
+    let id = base, n = 2;
+    while (this.portfolioItemById(id)) { id = base + '-' + n; n++; }
+    return id;
+  },
 
   /* etapas da timeline de entrega (ordem = progresso do projeto) */
   ETAPAS_PROJETO: [
@@ -558,7 +638,7 @@ const OB = {
   etapaIndex(status) { const i = this.ETAPAS_PROJETO.findIndex(e => e.id === status); return i < 0 ? 0 : i; },
 
   /* ---------- cache em memória ---------- */
-  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] },
+  db: { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [], portfolio: [] },
 
   /* ---------- theme (único uso de localStorage) ---------- */
   _get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -632,7 +712,7 @@ const OB = {
     // lista de perfis SEM a coluna foto (base64 pesado): o admin baixava MBs de fotos a cada load.
     // A foto do próprio usuário vem na 1ª query (perfil individual); as demais mostram iniciais.
     const COLS_PERFIL = 'id,role,email,nome,sobrenome,nascimento,doc,celular,instagram,cep,logradouro,numero,complemento,bairro,cidade,uf,pais,two_fa,provider,moeda,termos_versao,termos_aceito_em,banco,agencia,conta,conta_tipo,pix,criado_em,last_seen_em,bonus_bv_valor,bonus_bv_status,bonus_bv_inicio,bonus_bv_expira,whats_grupo_em,equipe_cargo,equipe_nivel';
-    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp, lcat, lprd, lped, cat] = await Promise.all([
+    const [prof, profs, cli, sal, req, lds, avi, tp, rk, prj, cmp, rgl, cht, ctr, cri, parq, eqp, lcat, lprd, lped, cat, prt] = await Promise.all([
       SB.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       SB.from('profiles').select(COLS_PERFIL),
       SB.from('clients').select('*'),
@@ -653,8 +733,10 @@ const OB = {
       SB.from('loja_categorias').select('*').order('ordem'),
       SB.from('loja_produtos').select('*').order('ordem'),
       SB.from('loja_pedidos').select('*').order('criado_em', { ascending: false }),
-      SB.from('catalogo_produtos').select('*').order('ordem')
+      SB.from('catalogo_produtos').select('*').order('ordem'),
+      SB.from('portfolio_itens').select('*').order('ordem')
     ]);
+    this.db.portfolio = (prt && prt.data) ? prt.data.map(r => this._ptIn(r)) : [];
     // catálogo de serviços: a semente do código é sobreposta pelo que o admin cadastrou
     this._syncCatalogo((cat && cat.data) ? cat.data : []);
     let profile = prof.data ? this._pIn(prof.data) : null;
@@ -701,7 +783,7 @@ const OB = {
     this.db.projetoArquivos = (parq && parq.data) ? parq.data.map(r => this._paIn(r)) : [];
   },
 
-  clearCache() { this.painel = null; this.contaAuthId = null; this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [] }; },
+  clearCache() { this.painel = null; this.contaAuthId = null; this.db = { profile: null, profiles: [], clients: [], sales: [], requests: [], leads: [], aviso: null, campanha: null, treinos: {}, treinosAll: [], ranking: [], rankingGeral: [], projetos: [], chat: [], contratos: [], criativos: [], projetoArquivos: [], equipe: [], lojaCategorias: [], lojaProdutos: [], lojaPedidos: [], portfolio: [] }; },
 
   _err(e) { console.error('[OB] erro Supabase:', e); if (window.UI) UI.toast('Erro ao salvar', (e && e.message) || 'Tente novamente', 'err'); },
   async _save(table, row) { const { error } = await SB.from(table).upsert(row); if (error) this._err(error); },
@@ -1546,22 +1628,22 @@ const OB = {
       desc: 'Acesso total ao sistema, inclusive gestão da equipe.', secoes: '*' },
     { id: 'gerente', nome: 'Gerente', nivel: 2, cor: '#2563EB',
       desc: 'Acompanha toda a operação e a rede de consultores.',
-      secoes: ['painel','consultores','vendas','financeiro','bonus','contratos','projetos','briefings','timeline','atendimento','produtos','criativos','campanha','avisos','treinamentos','mapa','ranking'] },
+      secoes: ['painel','consultores','vendas','financeiro','bonus','contratos','projetos','briefings','timeline','atendimento','produtos','portfolio','criativos','campanha','avisos','treinamentos','mapa','ranking'] },
     { id: 'supervisor', nome: 'Supervisor', nivel: 3, cor: '#7c3aed',
       desc: 'Cuida da rede de consultores e do acompanhamento das entregas.',
-      secoes: ['painel','consultores','vendas','projetos','briefings','timeline','atendimento','produtos','avisos','treinamentos','mapa','ranking'] },
+      secoes: ['painel','consultores','vendas','projetos','briefings','timeline','atendimento','produtos','portfolio','avisos','treinamentos','mapa','ranking'] },
     { id: 'financeiro', nome: 'Financeiro', nivel: 3, cor: '#15803d',
       desc: 'Comissões, pagamentos, contratos e autorização de bônus.',
-      secoes: ['painel','financeiro','vendas','bonus','contratos','consultores','produtos'] },
+      secoes: ['painel','financeiro','vendas','bonus','contratos','consultores','produtos','portfolio'] },
     { id: 'producao', nome: 'Produção', nivel: 4, cor: '#d97706',
       desc: 'Executa os projetos: briefings, linha do tempo e entregas.',
-      secoes: ['painel','projetos','briefings','timeline','criativos','produtos'] },
+      secoes: ['painel','projetos','briefings','timeline','criativos','produtos','portfolio'] },
     { id: 'marketing', nome: 'Marketing', nivel: 4, cor: '#db2777',
       desc: 'Criativos, campanhas, avisos e conteúdo de treinamento.',
-      secoes: ['painel','criativos','campanha','avisos','treinamentos','ranking','produtos'] },
+      secoes: ['painel','criativos','campanha','avisos','treinamentos','ranking','produtos','portfolio'] },
     { id: 'suporte', nome: 'Suporte', nivel: 5, cor: '#0891b2',
       desc: 'Atende os consultores no chat e acompanha o básico da operação.',
-      secoes: ['painel','atendimento','consultores','avisos','produtos'] }
+      secoes: ['painel','atendimento','consultores','avisos','produtos','portfolio'] }
   ],
   cargoById(id) { return this.CARGOS.find(c => c.id === id) || null; },
   cargoNome(id) { const c = this.cargoById(id); return c ? c.nome : (id || 'Sem cargo'); },

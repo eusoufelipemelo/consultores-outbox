@@ -2287,3 +2287,19 @@ button.pc-preco:focus-visible { outline: 2px solid var(--brand); outline-offset:
 @media (max-width: 860px) {
   .vinc-form select, .vinc-form .btn { flex: 1 1 100%; min-height: 44px; justify-content: center; }
 }
+
+/* ===== Portfólio no admin (inserir, tirar do ar, excluir) ===== */
+.port-cell.pt-off { opacity: .55; }
+.port-cell.pt-off .port-thumb { filter: grayscale(1); }
+.pt-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.port-actions.pt-actions { flex-wrap: wrap; gap: 6px; }
+.port-actions.pt-actions .btn { flex: 1 1 auto; justify-content: center; }
+.port-actions.pt-actions .btn.danger { flex: 0 0 auto; }
+.pt-img-wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pt-img { flex: none; width: 200px; aspect-ratio: 1200 / 630; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface-3); display: grid; place-items: center; color: var(--text-mut); }
+.pt-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 860px) {
+  .pt-img { width: 100%; }
+  .port-actions.pt-actions .btn { min-height: 40px; }
+}

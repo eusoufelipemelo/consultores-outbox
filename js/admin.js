@@ -21,6 +21,7 @@ const Admin = {
     { id: 'atendimento',label: 'Atendimento',      icon: 'chat',     sec: 'Operação' },
     // Gestão & conteúdo
     { id: 'produtos',   label: 'Produtos',         icon: 'quote',    sec: 'Gestão & Conteúdo' },
+    { id: 'portfolio',  label: 'Portfólio',        icon: 'gallery',  sec: 'Gestão & Conteúdo' },
     { id: 'criativos',  label: 'Criativos',        icon: 'creative', sec: 'Gestão & Conteúdo' },
     { id: 'campanha',   label: 'Propaganda',       icon: 'megaphone',sec: 'Gestão & Conteúdo' },
     { id: 'avisos',     label: 'Avisos',           icon: 'bell',     sec: 'Gestão & Conteúdo' },
@@ -39,6 +40,7 @@ const Admin = {
     mapa:        ['Mapa da Rede', 'Consultores por estado do Brasil — clique para ver as cidades'],
     vendas:      ['Vendas', 'Todas as vendas lançadas no sistema'],
     produtos:    ['Produtos', 'Catálogo de serviços: cadastre, precifique e publique para os consultores'],
+    portfolio:   ['Portfólio de entregas', 'Cases que os consultores usam como prova social. O que você mudar aqui aparece na hora para eles'],
     projetos:    ['Briefings & Entregas', 'Leia os briefings e conduza a produção até a entrega'],
     treinamentos:['Treinamentos da equipe', 'Progresso e certificados de cada consultor'],
     avisos:      ['Avisos aos consultores', 'Barra de comunicado no topo — novidades e atualizações'],
@@ -1491,6 +1493,226 @@ const Admin = {
       UI.closeModal();
       UI.toast(novo ? 'Produto cadastrado' : 'Produto atualizado', 'Já está disponível para os consultores', 'ok');
       this.view_produtos();
+    };
+  },
+
+  /* ====================== PORTFÓLIO DE ENTREGAS ====================== */
+  _ptFiltro: { q: '', cat: '', status: '' },
+
+  view_portfolio() {
+    const v = document.getElementById('main-view');
+    const f = this._ptFiltro;
+    const todos = OB.portfolioItens();
+    const ativos = todos.filter(i => i.ativo !== false).length;
+
+    v.innerHTML = `
+      <div class="row between alc wrap" style="gap:12px;margin-bottom:16px">
+        <div class="pc-kpis">
+          <div class="pc-kpi"><b>${todos.length}</b><span>cases cadastrados</span></div>
+          <div class="pc-kpi"><b>${ativos}</b><span>no ar para o consultor</span></div>
+          <div class="pc-kpi"><b>${todos.length - ativos}</b><span>fora do ar</span></div>
+        </div>
+        <button class="btn brand" id="pt-novo">${UI.icon('plus', 16)} Novo case</button>
+      </div>
+
+      <div class="pc-bar">
+        <div class="pc-filtros" role="tablist" aria-label="Filtrar por situação">
+          ${[['', 'Todos'], ['on', 'No ar'], ['off', 'Fora do ar']].map(([id, lb]) =>
+            `<button type="button" class="pc-fil${f.status === id ? ' on' : ''}" data-st="${id}" role="tab" aria-selected="${f.status === id}">${lb}</button>`).join('')}
+        </div>
+        <div class="pc-busca">
+          <label class="sr-only" for="pt-q">Buscar case</label>
+          ${UI.icon('search', 16)}
+          <input id="pt-q" type="search" placeholder="Buscar por nome, link ou nicho..." value="${(f.q || '').replace(/"/g, '&quot;')}"/>
+        </div>
+        <select id="pt-cat" style="height:42px;border-radius:999px;padding:0 14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:13.5px">
+          <option value="">Todas as categorias</option>
+          ${OB.PORTFOLIO_CATS.map(c => `<option value="${c.id}" ${f.cat === c.id ? 'selected' : ''}>${c.nome}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="notice" style="margin:0 0 16px">${UI.icon('info', 16)}<div>
+        O que você salvar aqui aparece <b>na hora</b> no Portfólio dos consultores, sem precisar recarregar.
+        Um case que saiu do ar você pode <b>tirar do ar</b> (some para o consultor e você reativa quando quiser) ou <b>excluir</b>.
+      </div></div>
+
+      <div id="pt-lista"></div>`;
+
+    this._ptPintar();
+    document.getElementById('pt-novo').onclick = () => this.ptModal(null);
+    v.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { this._ptFiltro.status = b.dataset.st; this.view_portfolio(); });
+    document.getElementById('pt-cat').onchange = (e) => { this._ptFiltro.cat = e.target.value; this.view_portfolio(); };
+    const q = document.getElementById('pt-q');
+    q.oninput = () => { this._ptFiltro.q = q.value; this._ptPintar(); };
+  },
+
+  _ptPintar() {
+    const host = document.getElementById('pt-lista'); if (!host) return;
+    const f = this._ptFiltro;
+    const semAcento = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const termo = semAcento(f.q).trim();
+    const cats = OB.portfolioCats({ todos: true })
+      .filter(c => !f.cat || c.id === f.cat)
+      .map(c => Object.assign({}, c, {
+        itens: c.itens.filter(i => {
+          if (f.status === 'on' && i.ativo === false) return false;
+          if (f.status === 'off' && i.ativo !== false) return false;
+          if (termo && semAcento(i.nome + ' ' + (i.link || '') + ' ' + (i.nicho || '')).indexOf(termo) < 0) return false;
+          return true;
+        })
+      }));
+
+    const total = cats.reduce((n, c) => n + c.itens.length, 0);
+    if (!total) {
+      host.innerHTML = Consultor.empty('search', 'Nenhum case encontrado', 'Ajuste os filtros ou cadastre um novo case.');
+      return;
+    }
+    host.innerHTML = cats.filter(c => c.itens.length).map(c => `
+      <div class="card" style="margin-bottom:18px">
+        <div class="row alc" style="gap:8px;margin-bottom:14px">${UI.icon('gallery', 16)}<b>${c.nome}</b>
+          <span class="mut" style="font-weight:600">· ${c.itens.length} case${c.itens.length > 1 ? 's' : ''}</span></div>
+        <div class="port-grid">${c.itens.map(i => this.ptCard(i)).join('')}</div>
+      </div>`).join('');
+
+    host.querySelectorAll('[data-pt-edit]').forEach(b => b.onclick = () => this.ptModal(OB.portfolioItemById(b.dataset.ptEdit)));
+    host.querySelectorAll('[data-pt-tog]').forEach(b => b.onclick = () => {
+      const it = OB.portfolioItemById(b.dataset.ptTog); if (!it) return;
+      const novo = Object.assign({}, it, { ativo: it.ativo === false });
+      OB.savePortfolioItem(novo);
+      UI.toast(novo.ativo ? 'Case no ar' : 'Case fora do ar', novo.ativo ? 'Já aparece para os consultores' : 'Saiu do Portfólio dos consultores', 'ok');
+      this.view_portfolio();
+    });
+    host.querySelectorAll('[data-pt-del]').forEach(b => b.onclick = () => this.ptExcluir(b.dataset.ptDel));
+  },
+
+  ptCard(i) {
+    const off = i.ativo === false;
+    return `<div class="port-cell${off ? ' pt-off' : ''}">
+      <span class="port-thumb">${i.img ? `<img src="${i.img}" alt="Prévia de ${i.nome}" loading="lazy"/>` : ''}</span>
+      <div class="port-body">
+        <b>${i.nome}</b>
+        <div class="pt-tags">${i.nicho ? `<span class="port-tag">${i.nicho}</span>` : ''}${off ? '<span class="pc-tag off">Fora do ar</span>' : ''}</div>
+      </div>
+      <div class="port-actions pt-actions">
+        <button type="button" class="btn ghost sm" data-pt-edit="${i.id}">${UI.icon('edit', 15)}<span>Editar</span></button>
+        <button type="button" class="btn ghost sm" data-pt-tog="${i.id}" title="${off ? 'Voltar a mostrar para os consultores' : 'Tirar do Portfólio dos consultores'}">${UI.icon(off ? 'eye' : 'eyeoff', 15)}<span>${off ? 'Ativar' : 'Tirar'}</span></button>
+        <button type="button" class="btn ghost sm danger" data-pt-del="${i.id}" aria-label="Excluir ${i.nome}">${UI.icon('trash', 15)}</button>
+      </div>
+    </div>`;
+  },
+
+  ptExcluir(id) {
+    const it = OB.portfolioItemById(id); if (!it) return;
+    const semente = OB.ehPortfolioSemente(id);
+    UI.modal({
+      title: 'Excluir ' + it.nome,
+      sub: semente ? 'Este case veio na lista original do sistema' : 'Esta ação não pode ser desfeita',
+      body: semente
+        ? `<div class="notice warn">${UI.icon('info', 16)}<div>Este case faz parte da lista original, com a imagem guardada dentro do projeto. Ele será apenas <b>tirado do ar</b>: some do Portfólio dos consultores e você pode reativar quando quiser.</div></div>`
+        : `<div class="notice warn">${UI.icon('info', 16)}<div>O case sai do Portfólio dos consultores para sempre. Se quiser só escondê-lo por um tempo, use <b>Tirar</b>.</div></div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn danger" id="pt-del-go">${UI.icon('trash', 16)} ${semente ? 'Tirar do ar' : 'Excluir'}</button>`
+    });
+    document.getElementById('pt-del-go').onclick = () => {
+      const excluiu = OB.removePortfolioItem(id);
+      UI.closeModal();
+      UI.toast(excluiu ? 'Case excluído' : 'Case tirado do ar', '', 'ok');
+      this.view_portfolio();
+    };
+  },
+
+  ptModal(item) {
+    const novo = !item;
+    const e = item || { id: '', categoria: 'sites', nome: '', link: '', img: '', nicho: '', ativo: true, ordem: 0 };
+    const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    // nichos já usados viram sugestão (evita digitar diferente e quebrar o filtro do consultor)
+    const nichos = [...new Set(OB.portfolioItens().map(i => i.nicho).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+
+    UI.modal({
+      title: novo ? 'Novo case do portfólio' : 'Editar ' + e.nome,
+      sub: 'Ao salvar, o consultor vê a mudança na hora',
+      size: 'lg',
+      body: `
+        <div class="cp-form">
+          <div class="field"><label>Imagem de prévia <span class="req">*</span></label>
+            <div class="pt-img-wrap">
+              <div class="pt-img" id="pt-prev">${e.img ? `<img src="${e.img}" alt=""/>` : UI.icon('gallery', 26)}</div>
+              <div class="grow">
+                <label class="btn ghost sm" style="cursor:pointer">${UI.icon('gallery', 15)} Enviar imagem<input type="file" id="pt-file" accept="image/*" hidden></label>
+                <div class="hint" style="margin-top:6px">Print do site. É recortada para 1200x630 automaticamente.</div>
+              </div>
+            </div>
+            <div class="err">Envie a imagem de prévia</div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field"><label>Nome do case <span class="req">*</span></label><input id="pt-nome" value="${esc(e.nome)}" placeholder="Ex.: Bellucci Planejados"/><div class="err">Obrigatório</div></div>
+            <div class="field"><label>Categoria</label>
+              <select id="pt-categoria">${OB.PORTFOLIO_CATS.map(c => `<option value="${c.id}" ${e.categoria === c.id ? 'selected' : ''}>${c.nome}</option>`).join('')}</select></div>
+          </div>
+
+          <div class="field"><label>Link do projeto <span class="req">*</span></label>
+            <input id="pt-link" value="${esc(e.link)}" placeholder="https://www.exemplo.com.br/"/>
+            <div class="err">Informe um endereço começando com http</div>
+            <div class="hint" id="pt-link-hint"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field"><label>Nicho</label><input id="pt-nicho" list="pt-nichos" value="${esc(e.nicho)}" placeholder="Ex.: Móveis Planejados"/>
+              <datalist id="pt-nichos">${nichos.map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
+              <div class="hint">Vira o filtro que o consultor usa. Reaproveite os nichos que já existem.</div></div>
+            <div class="field"><label>Ordem</label><input id="pt-ordem" type="number" value="${e.ordem || 0}"/><div class="hint">Menor número aparece primeiro. Iguais ficam em ordem alfabética.</div></div>
+          </div>
+
+          <label class="cp-check"><input type="checkbox" id="pt-ativo" ${e.ativo !== false ? 'checked' : ''}> <span>No ar (visível para os consultores)</span></label>
+        </div>`,
+      footer: `<button class="btn ghost" data-close>Cancelar</button><button class="btn brand" id="pt-save">${UI.icon('check', 16)} ${novo ? 'Cadastrar case' : 'Salvar alterações'}</button>`
+    });
+
+    // imagem: recorta para 1200x630 (mesma proporção dos cards) e comprime
+    let img = e.img || '';
+    document.getElementById('pt-file').onchange = (ev) => {
+      const f = ev.target.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type)) return UI.toast('Arquivo inválido', 'Envie uma imagem (JPG ou PNG).', 'err');
+      const rd = new FileReader();
+      rd.onload = () => {
+        const im = new Image();
+        im.onload = () => {
+          const W = 1200, H = 630;
+          const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+          const ctx = cv.getContext('2d');
+          const escala = Math.max(W / im.width, H / im.height);      // cover, sem distorcer
+          const lw = im.width * escala, lh = im.height * escala;
+          ctx.drawImage(im, (W - lw) / 2, (H - lh) / 2, lw, lh);
+          let q = 0.82, out = cv.toDataURL('image/jpeg', q);
+          while (out.length > 320000 && q > 0.4) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
+          img = out;
+          document.getElementById('pt-prev').innerHTML = `<img src="${out}" alt=""/>`;
+        };
+        im.onerror = () => UI.toast('Não foi possível ler a imagem', '', 'err');
+        im.src = rd.result;
+      };
+      rd.readAsDataURL(f);
+    };
+
+    document.getElementById('pt-save').onclick = () => {
+      document.querySelectorAll('.cp-form .has-error').forEach(x => x.classList.remove('has-error'));
+      const nome = document.getElementById('pt-nome').value.trim();
+      const link = document.getElementById('pt-link').value.trim();
+      if (!img) { document.getElementById('pt-file').closest('.field').classList.add('has-error'); return UI.toast('Falta a imagem', 'Envie o print do projeto.', 'err'); }
+      if (!nome) { document.getElementById('pt-nome').closest('.field').classList.add('has-error'); return UI.toast('Informe o nome do case', '', 'err'); }
+      if (!/^https?:\/\/.+/i.test(link)) { document.getElementById('pt-link').closest('.field').classList.add('has-error'); return UI.toast('Link inválido', 'Comece com http:// ou https://', 'err'); }
+
+      OB.savePortfolioItem({
+        id: novo ? OB.slugPortfolio(nome) : e.id,
+        categoria: document.getElementById('pt-categoria').value,
+        nome, link, img,
+        nicho: document.getElementById('pt-nicho').value.trim(),
+        ativo: document.getElementById('pt-ativo').checked,
+        ordem: parseInt(document.getElementById('pt-ordem').value, 10) || 0
+      });
+      UI.closeModal();
+      UI.toast(novo ? 'Case cadastrado' : 'Case atualizado', 'Já está no Portfólio dos consultores', 'ok');
+      this.view_portfolio();
     };
   },
 

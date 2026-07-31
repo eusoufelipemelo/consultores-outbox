@@ -764,6 +764,7 @@ const App = {
     this.refreshProjetosBadge();
     this.subscribeProjetos();
     this.subscribeCatalogo();
+    this.subscribePortfolio();
     // chat Manu: widget flutuante (consultor) + tempo real + som
     if (!isAdmin) this.mountChatWidget();
     this.subscribeChat();
@@ -918,6 +919,31 @@ const App = {
   },
   unsubscribeCatalogo() {
     if (this._catChannel) { try { SB.removeChannel(this._catChannel); } catch (e) {} this._catChannel = null; }
+  },
+
+  /* Realtime do portfólio: o que o admin muda aparece na hora para o consultor */
+  _ptChannel: null,
+  subscribePortfolio() {
+    if (typeof SB === 'undefined' || !SB.channel) return;
+    if (this._ptChannel) { try { SB.removeChannel(this._ptChannel); } catch (e) {} this._ptChannel = null; }
+    this._ptChannel = SB.channel('portfolio-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_itens' }, (payload) => {
+        const row = payload.new && payload.new.id ? payload.new : payload.old;
+        if (!row) return;
+        const arr = OB.db.portfolio || (OB.db.portfolio = []);
+        if (payload.eventType === 'DELETE') {
+          OB.db.portfolio = arr.filter(x => x.id !== row.id);
+        } else {
+          const it = OB._ptIn(payload.new);
+          const i = arr.findIndex(x => x.id === it.id);
+          if (i >= 0) arr[i] = it; else arr.push(it);
+        }
+        if (this.current === 'portfolio') this.mod().render('portfolio');
+      })
+      .subscribe();
+  },
+  unsubscribePortfolio() {
+    if (this._ptChannel) { try { SB.removeChannel(this._ptChannel); } catch (e) {} this._ptChannel = null; }
   },
 
   /* ---------- badge de projetos (briefings/entregas que pedem atenção) ---------- */
@@ -1383,6 +1409,7 @@ const App = {
         this.unsubscribeAviso();
         this.unsubscribeProjetos();
         this.unsubscribeCatalogo();
+        this.unsubscribePortfolio();
         this.unsubscribeChat();
         { const w = document.getElementById('chat-widget'); if (w) w.remove(); }
         if (this._presTimer) { clearInterval(this._presTimer); this._presTimer = null; }

@@ -3730,7 +3730,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   /* Portfólio de entregas: cases por serviço (prova social). Sites/LP com OG + filtro por nicho; demais serviços "Em breve". */
   view_portfolio() {
     const v = document.getElementById('main-view');
-    v.innerHTML = (OB.PORTFOLIO_CATS || []).map(cat => this.portfolioCatHTML(cat)).join('');
+    v.innerHTML = OB.portfolioCats().map(cat => this.portfolioCatHTML(cat)).join('');
     v.querySelectorAll('[data-copylink]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copylink).then(() => UI.toast('Link copiado', '', 'ok')));
     // filtro por nicho
     v.querySelectorAll('.port-filtros').forEach(bar => {
