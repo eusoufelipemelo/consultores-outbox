@@ -923,17 +923,23 @@ const Consultor = {
     if (s && s.statusProposta === 'aprovada' && !OB.contratoDaVenda(s.id)) { try { this.gerarContrato(s); } catch (e) {} }
   },
 
-  /* editar apenas desconto + forma de pagamento (o valor de tabela é fixo) */
+  /* editar desconto + forma de pagamento.
+     Quem tem permissão de preço manual também ajusta o valor do serviço aqui. */
   editarVenda(s) {
     if (!s) return;
     const moeda = s.moeda || 'BRL';
-    const valorBase = s.valorBruto || s.valor; // valor de tabela travado
+    const podeManual = OB.podePrecoManual();
+    const valorBase = s.valorBruto || s.valor; // valor original da venda
     const fmtJuros = j => (Number(j) || 0).toFixed(2).replace('.', ',') + '%';
     UI.modal({
       title: 'Editar venda',
-      sub: 'O valor dos serviços é fixo pela tabela. Ajuste desconto e pagamento.',
+      sub: podeManual ? 'Ajuste o valor, o desconto e a forma de pagamento.' : 'O valor dos serviços é fixo pela tabela. Ajuste desconto e pagamento.',
       body: `
-        <div class="notice" style="margin-bottom:14px"><div class="row between alc grow"><span>Valor de tabela ${UI.icon('lock',13)}</span><b style="font-size:16px">${OB.money(valorBase, moeda)}</b></div></div>
+        ${podeManual
+          ? `<div class="field"><label>Valor dos serviços</label>
+              <input id="ed-base" class="input" type="number" value="${valorBase}" min="0" step="0.01" inputmode="decimal">
+              <div class="hint">Você pode digitar um valor fora da tabela. O desconto e o pagamento são recalculados sobre este número.</div></div>`
+          : `<div class="notice" style="margin-bottom:14px"><div class="row between alc grow"><span>Valor de tabela ${UI.icon('lock',13)}</span><b style="font-size:16px">${OB.money(valorBase, moeda)}</b></div></div>`}
         <div class="field"><label>Desconto comercial</label>
           <select id="ed-desc"></select>
           <div class="hint" id="ed-desc-hint"></div></div>
@@ -958,10 +964,19 @@ const Consultor = {
     const payBox = document.getElementById('ed-paybox');
     const pfEdit = ((s.produtos || [s.produto]).length === 1) ? OB.produtoPrecoFixo(s.produto) : null;
     const edBoletoOpt = edPgto.querySelector('option[value="boleto"]');
-    const perms = OB.descontosPermitidos(valorBase);
+    const edBase = document.getElementById('ed-base');
+    const baseAtual = () => edBase ? Math.max(0, Number(edBase.value) || 0) : valorBase;
     const descAtual = (s.descontoTipo === 'percent' ? s.descontoValor : 0) || 0;
-    edDesc.innerHTML = perms.map(p => `<option value="${p}" ${p === descAtual ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('');
-    document.getElementById('ed-desc-hint').innerHTML = `Desconto de até <b>${perms[perms.length - 1]}%</b> para este valor de orçamento.`;
+    // as faixas de desconto dependem do valor, então são refeitas quando ele muda
+    const fillDescEd = () => {
+      const perms = OB.descontosPermitidos(baseAtual());
+      const cur = parseInt(edDesc.value, 10);
+      const manter = Number.isNaN(cur) ? descAtual : cur;
+      edDesc.innerHTML = perms.map(p => `<option value="${p}" ${p === manter ? 'selected' : ''}>${p ? p + '%' : 'Sem desconto'}</option>`).join('');
+      if (!perms.includes(manter)) edDesc.value = '0';
+      document.getElementById('ed-desc-hint').innerHTML = `Desconto de até <b>${perms[perms.length - 1]}%</b> para este valor de orçamento.`;
+    };
+    fillDescEd();
     const recalcular = () => {
       // plano de preço fixo (hospedagem anual): sem desconto, sem 5% extra, sem boleto
       if (pfEdit) {
@@ -985,15 +1000,16 @@ const Consultor = {
         payBox._calc = calc; payBox._desc = 0;
         return;
       }
+      const base = baseAtual();
       const desc = parseInt(edDesc.value, 10) || 0;
-      const negociado = Math.round(valorBase * (1 - desc / 100));
+      const negociado = Math.round(base * (1 - desc / 100));
       const forma = edPgto.value;
       edParcWrap.hidden = forma !== 'cartao';
       edPixWrap.style.display = forma === 'pix' ? '' : 'none';
       if (forma !== 'pix') edPixDesc.checked = false;
       const calc = OB.calcPagamento(negociado, forma, { pixDesconto: edPixDesc.checked, parcelas: parseInt(edParcelas.value, 10) || 1 });
-      let linhas = `<div class="row"><span>Valor de tabela</span><b>${OB.money(valorBase, moeda)}</b></div>`;
-      if (desc) linhas += `<div class="row"><span>Desconto comercial (${desc}%)</span><span class="neg">- ${OB.money(valorBase - negociado, moeda)}</span></div>`;
+      let linhas = `<div class="row"><span>${edBase && base !== valorBase ? 'Valor definido manualmente' : 'Valor de tabela'}</span><b>${OB.money(base, moeda)}</b></div>`;
+      if (desc) linhas += `<div class="row"><span>Desconto comercial (${desc}%)</span><span class="neg">- ${OB.money(base - negociado, moeda)}</span></div>`;
       if (forma === 'pix' && calc.pixDesconto) linhas += `<div class="row"><span>Desconto PIX à vista (5%)</span><span class="neg">- ${OB.money(negociado - calc.valorServico, moeda)}</span></div>`;
       if (forma === 'cartao') {
         linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - negociado, moeda)}</span></div>`;
@@ -1007,14 +1023,18 @@ const Consultor = {
       payBox._calc = calc; payBox._desc = desc;
     };
     edDesc.onchange = recalcular;
+    if (edBase) edBase.oninput = () => { fillDescEd(); recalcular(); };
     edPgto.onchange = () => { document.getElementById('ed-pgto-hint').textContent = (OB.FORMAS_PAGAMENTO.find(f => f.id === edPgto.value) || {}).detalhe || ''; recalcular(); };
     edParcelas.onchange = recalcular;
     edPixDesc.onchange = recalcular;
     recalcular();
     document.getElementById('ed-save').onclick = () => {
       const calc = payBox._calc; const desc = payBox._desc || 0;
+      const baseSalva = baseAtual();
+      if (edBase && !baseSalva) return UI.toast('Informe o valor', 'O valor dos serviços ficou zerado', 'err');
       Object.assign(s, {
-        valorBruto: pfEdit ? calc.valorServico : valorBase, descontoTipo: desc ? 'percent' : null, descontoValor: desc,
+        valorBruto: pfEdit ? calc.valorServico : baseSalva, descontoTipo: desc ? 'percent' : null, descontoValor: desc,
+        precoModo: (edBase && baseSalva !== valorBase) ? 'manual' : (s.precoModo || 'tabela'),
         valor: calc.valorServico, valorCliente: calc.valorCliente,
         formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
         linkPagamento: (document.getElementById('ed-link').value || '').trim()
@@ -1091,6 +1111,12 @@ const Consultor = {
         <div class="field"><label>Porte da empresa</label>
           <select id="s-porte">${OB.PORTES.map(pt => `<option value="${pt.id}">${pt.nome}</option>`).join('')}</select>
           <div class="hint">Define o preço de tabela. Inicia com o porte do cliente.</div></div>
+        ${OB.podePrecoManual() ? `
+        <div class="field" id="s-manual-wrap">
+          <label class="pix-check" style="margin:0"><input type="checkbox" id="s-manual"/> <span>Definir o valor <b>manualmente</b>, fora da tabela</span></label>
+          <div id="s-manual-box" hidden style="margin-top:10px"></div>
+          <div class="hint" id="s-manual-hint" hidden>Você digita o valor de cada serviço. O desconto comercial fica desligado, porque o número digitado já é o valor negociado. PIX e juros do cartão continuam valendo por cima.</div>
+        </div>` : ''}
         <div id="s-treino-aviso"></div>
         <div class="field"><label>Moeda</label>
           <select id="s-moeda">${this.moedaOptions(OB.moedaAtual())}</select></div>
@@ -1131,6 +1157,12 @@ const Consultor = {
     const sParcWrap = document.getElementById('s-parc-wrap');
     const sParcelas = document.getElementById('s-parcelas');
     const payBox = document.getElementById('s-paybox');
+    // valor manual (só aparece para quem tem permissão)
+    const sManual = document.getElementById('s-manual');
+    const manualBox = document.getElementById('s-manual-box');
+    const manualHint = document.getElementById('s-manual-hint');
+    const manuais = {};                       // { produtoId: valor digitado }
+    const manualOn = () => !!(sManual && sManual.checked);
     // serviços selecionados (múltipla escolha)
     const bonusSel = () => [...document.querySelectorAll('#s-bonus input:checked')].map(i => i.value);
     // serviços PAGOS = marcados em Serviços e que NÃO estão no bônus (bônus nunca é cobrado)
@@ -1142,6 +1174,30 @@ const Consultor = {
     };
     sincPorteComCliente();
     const fmtJuros = j => (Number(j) || 0).toFixed(2).replace('.', ',') + '%';
+    /* monta um campo de valor para cada serviço marcado.
+       Só é redesenhado quando muda a seleção ou o interruptor, para não
+       roubar o foco de quem está digitando. */
+    const montarManual = () => {
+      if (!manualBox) return;
+      const ligado = manualOn();
+      manualBox.hidden = !ligado;
+      if (manualHint) manualHint.hidden = !ligado;
+      if (!ligado) return;
+      const sel = prodsSel();
+      if (!sel.length) { manualBox.innerHTML = `<div class="pay-empty">Marque os serviços para digitar os valores.</div>`; return; }
+      manualBox.innerHTML = sel.map(id => {
+        const nome = (OB.PRODUTOS.find(x => x.id === id) || {}).nome || id;
+        const v = manuais[id] != null ? manuais[id] : (OB.precoTabela(id, sPorte.value) || 0);
+        return `<div class="row between alc" style="gap:10px;margin-bottom:8px">
+          <span style="font-size:13px;flex:1;min-width:0">${nome}</span>
+          <input class="input" type="number" data-manual="${id}" value="${v}" min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="max-width:160px;text-align:right">
+        </div>`;
+      }).join('');
+      manualBox.querySelectorAll('[data-manual]').forEach(inp => {
+        manuais[inp.dataset.manual] = Math.max(0, Number(inp.value) || 0);
+        inp.oninput = () => { manuais[inp.dataset.manual] = Math.max(0, Number(inp.value) || 0); recalcular(); };
+      });
+    };
     // preenche as opções de desconto conforme a faixa do valor de tabela
     const fillDescontos = (valorBase) => {
       const perms = OB.descontosPermitidos(valorBase);
@@ -1159,6 +1215,34 @@ const Consultor = {
       const descField = sDesc.closest('.field');
       const porteField = sPorte.closest('.field');
       const boletoOpt = sPgto.querySelector('option[value="boleto"]');
+      // valor manual: manda em tudo, inclusive nos planos de preço fixo
+      if (manualOn()) {
+        if (porteField) porteField.hidden = true;
+        if (descField) descField.hidden = true;
+        if (boletoOpt) boletoOpt.disabled = false;
+        const valorBase = sel.reduce((t, id) => t + (Number(manuais[id]) || 0), 0);
+        const forma = sPgto.value;
+        sParcWrap.hidden = forma !== 'cartao';
+        sPixWrap.style.display = forma === 'pix' ? '' : 'none';
+        if (forma !== 'pix') sPixDesc.checked = false;
+        const calc = OB.calcPagamento(valorBase, forma, { pixDesconto: sPixDesc.checked, parcelas: parseInt(sParcelas.value, 10) || 1 });
+        if (!valorBase) { payBox.innerHTML = `<div class="pay-empty">Digite o valor dos serviços para calcular.</div>`; }
+        else {
+          let linhas = `<div class="row"><span>Valor definido manualmente${sel.length > 1 ? ` · ${sel.length} serviços` : ''}</span><b>${OB.money(valorBase, m)}</b></div>`;
+          if (forma === 'pix' && calc.pixDesconto) linhas += `<div class="row"><span>Desconto PIX à vista (5%)</span><span class="neg">- ${OB.money(valorBase - calc.valorServico, m)}</span></div>`;
+          if (forma === 'cartao') {
+            linhas += `<div class="row"><span>Juros do cartão · ${calc.parcelas}x (${fmtJuros(calc.jurosPct)})</span><span class="pos">+ ${OB.money(calc.valorCliente - valorBase, m)}</span></div>`;
+            linhas += `<div class="row total"><span>Total no cartão</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+            linhas += `<div class="row parc"><span>${calc.parcelas}x de</span><b>${OB.money(calc.valorParcela, m)}</b></div>`;
+          } else {
+            linhas += `<div class="row total"><span>À vista no PIX</span><b>${OB.money(calc.valorCliente, m)}</b></div>`;
+          }
+          linhas += `<div class="pay-note">Valor fora da tabela. Sua comissão é calculada sobre ${OB.money(calc.valorServico, m)} (valor do serviço, sem juros).</div>`;
+          payBox.innerHTML = linhas;
+        }
+        payBox._valorBase = valorBase; payBox._negociado = valorBase; payBox._calc = calc;
+        return;
+      }
       // plano de preço fixo (hospedagem anual): sem porte, sem desconto comercial, sem 5% extra, sem boleto
       const pf = sel.length === 1 ? OB.produtoPrecoFixo(sel[0]) : null;
       if (pf) {
@@ -1225,9 +1309,10 @@ const Consultor = {
     };
     // hospedagem (plano anual) é vendida sozinha — exclusividade mútua com os demais serviços
     // todos os serviços são múltipla escolha e somam (inclusive hospedagem)
-    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { recalcular(); updateTreinoAviso(); });
+    document.querySelectorAll('#s-prods input').forEach(cb => cb.onchange = () => { montarManual(); recalcular(); updateTreinoAviso(); });
     // marcar/desmarcar bônus recalcula o total (serviço em bônus tem valor ZERADO)
-    document.querySelectorAll('#s-bonus input').forEach(cb => cb.onchange = () => { recalcular(); });
+    document.querySelectorAll('#s-bonus input').forEach(cb => cb.onchange = () => { montarManual(); recalcular(); });
+    if (sManual) sManual.onchange = () => { montarManual(); recalcular(); };
     sCli.onchange = () => { sincPorteComCliente(); recalcular(); };
     sPorte.onchange = recalcular;
     sDesc.onchange = recalcular;
@@ -1236,6 +1321,7 @@ const Consultor = {
     sPixDesc.onchange = recalcular;
     sMoeda.onchange = recalcular;
     updateTreinoAviso();
+    montarManual();
     recalcular();
     document.getElementById('s-save').onclick = () => {
       const moeda = sMoeda.value;
@@ -1243,16 +1329,17 @@ const Consultor = {
       const bonus = bonusSel();    // bônus NUNCA entra no valor (cortesia)
       if (!produtos.length) { const f = document.getElementById('s-prods').closest('.field'); if (f) f.classList.add('has-error'); return UI.toast('Selecione os serviços', 'Marque ao menos um serviço pago (o bônus não é cobrado)', 'err'); }
       const valorBase = payBox._valorBase || 0;
-      if (!valorBase) return UI.toast('Selecione os serviços', 'O valor de tabela ficou zerado', 'err');
-      const pfSave = produtos.length === 1 ? OB.produtoPrecoFixo(produtos[0]) : null;
-      const desc = pfSave ? 0 : (parseInt(sDesc.value, 10) || 0);
+      const manual = manualOn();
+      if (!valorBase) return UI.toast(manual ? 'Informe o valor' : 'Selecione os serviços', manual ? 'O valor digitado ficou zerado' : 'O valor de tabela ficou zerado', 'err');
+      const pfSave = (!manual && produtos.length === 1) ? OB.produtoPrecoFixo(produtos[0]) : null;
+      const desc = (manual || pfSave) ? 0 : (parseInt(sDesc.value, 10) || 0);
       const calc = payBox._calc;
       OB.addSale({
         id: OB.uid(), consultorId: u.id, clientId: sCli.value,
         produto: produtos[0], produtos,
         valor: calc.valorServico, valorBruto: valorBase, valorCliente: calc.valorCliente, moeda,
         descontoTipo: desc ? 'percent' : null, descontoValor: desc,
-        precoModo: 'tabela',
+        precoModo: manual ? 'manual' : 'tabela',
         formaPagamento: calc.forma, parcelas: calc.parcelas, pixDesconto: calc.pixDesconto,
         linkPagamento: (document.getElementById('s-link').value || '').trim(),
         bonus, bonusStatus: bonus.length ? 'pendente' : null, bonusObs: (document.getElementById('s-bonus-obs').value || '').trim(),

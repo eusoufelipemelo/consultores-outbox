@@ -835,6 +835,16 @@ const OB = {
     if (!temLadoAdmin) return false;
     return !!this.perfilDoPainel('admin') && !!this.perfilDoPainel('consultor');
   },
+  /* Quem pode digitar o valor do serviço na mão, fora da tabela:
+       - contas de administrador;
+       - a conta de consultor VINCULADA a um administrador (o par do Felipe).
+     Consultor comum continua preso à tabela de preços. */
+  podePrecoManual() {
+    const eu = this.contaAuth(); if (!eu) return false;
+    if (eu.role === 'admin') return true;
+    const par = this.contaPar(eu);
+    return !!(par && par.role === 'admin');
+  },
   outroPainel() { return this.painelAtual() === 'admin' ? 'consultor' : 'admin'; },
   /* nome/e-mail da conta que responde por um painel (para mostrar na tela) */
   contaDoPainel(painel) {
