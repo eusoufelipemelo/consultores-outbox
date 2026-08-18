@@ -1572,8 +1572,26 @@ const Consultor = {
     dados.numero = OB.gerarNumeroContrato();
     c = { id: OB.uid(), numero: dados.numero, saleId: s.id, consultorId: this.u().id, clientId: s.clientId, dados, status: 'pendente', acceptToken: OB.uid().replace(/-/g, ''), aceiteNome: '', aceiteDoc: '', aceiteIp: '', aceitoEm: null, criadoEm: new Date().toISOString() };
     OB.addContrato(c);
+    // confere que a linha entrou mesmo no banco: sem isso o contrato fica só no
+    // navegador e o link entregue ao cliente abre como "Contrato não encontrado"
+    OB.salvarContratoConfirmado(c).then(r => {
+      if (!r.ok) UI.toast('Contrato não foi salvo', 'Abra a Biblioteca de Contratos e tente de novo antes de enviar ao cliente. (' + r.erro + ')', 'err');
+    });
     return c;
   },
+
+  /* Antes de entregar qualquer link de aceite, confirma que o contrato existe no
+     BANCO, e não apenas no cache do navegador. Se faltar, grava na hora. */
+  async garantirContratoEnviavel(c) {
+    if (!c || !c.id) return { ok: false, erro: 'contrato inválido' };
+    if (!c.acceptToken) c.acceptToken = OB.uid().replace(/-/g, '');
+    const existe = await OB.contratoNoBanco(c.id);
+    if (existe === true) return { ok: true };
+    const r = await OB.salvarContratoConfirmado(c);
+    return r.ok ? { ok: true, reparado: true } : r;
+  },
+
+  linkAceite(c) { return `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}`; },
   /* HTML do contrato (branded, logo + marca d'água em todas as páginas, aceite virtual) */
   buildContratoHTML(c) {
     let d = c.dados || {};
@@ -1791,17 +1809,32 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     UI.toast('Contrato gerado', 'Abra o arquivo para enviar ou imprimir em PDF', 'ok');
   },
-  copiarLinkAceiteContrato(c) {
-    if (!c || !c.acceptToken) return;
-    const url = `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}`;
+  async copiarLinkAceiteContrato(c) {
+    if (!c) return;
+    const g = await this.garantirContratoEnviavel(c);
+    if (!g.ok) return UI.toast('Não foi possível gerar o link', 'O contrato não está salvo no servidor. (' + g.erro + ')', 'err');
+    const url = this.linkAceite(c);
     const msg = `Olá! Segue o contrato dos serviços com a OutBox para leitura e aceite:\n${url}`;
     if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => UI.toast('Link copiado', 'Cole no WhatsApp/e-mail do cliente', 'ok')).catch(() => {});
     else UI.toast('Link do contrato', url, 'ok');
     return msg;
   },
-  enviarContratoModal(c) {
+  async enviarContratoModal(c) {
     if (!c) return;
-    const url = `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}`;
+    UI.toast('Conferindo o contrato', 'Validando no servidor antes de gerar o link', 'info');
+    const g = await this.garantirContratoEnviavel(c);
+    if (!g.ok) {
+      return UI.modal({
+        title: 'Não foi possível liberar o link',
+        sub: `Contrato nº ${c.numero || ''}`,
+        body: `<div class="notice" style="margin-bottom:0"><div class="grow" style="font-size:13.5px">
+          Este contrato ainda não está salvo no servidor, então o link abriria como <b>Contrato não encontrado</b> para o cliente.
+          <br><br>Tente de novo em instantes. Se continuar, avise o suporte com esta mensagem: <b>${g.erro}</b>.</div></div>`,
+        footer: `<button class="btn ghost" data-close>Fechar</button>`
+      });
+    }
+    if (g.reparado) UI.toast('Contrato regravado', 'Ele não estava no servidor e foi salvo agora', 'ok');
+    const url = this.linkAceite(c);
     const cli = (c.dados && c.dados.cliente) || {};
     const zap = (cli.telefone || '').replace(/\D/g, '');
     const msg = encodeURIComponent(`Olá! Segue o contrato dos serviços com a OutBox para leitura e aceite: ${url}`);

@@ -1195,6 +1195,28 @@ const OB = {
   contratoDaVenda(saleId) { return (this.db.contratos || []).find(c => c.saleId === saleId) || null; },
   contratoById(id) { return (this.db.contratos || []).find(c => c.id === id) || null; },
   addContrato(c) { this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
+  /* Grava o contrato ESPERANDO a resposta do banco e conferindo que a linha existe.
+     O addContrato dispara e esquece, e foi assim que um contrato ficou só no cache
+     do navegador: o consultor via o contrato e mandava um link que o cliente abria
+     como "Contrato não encontrado". Aqui a gravação é confirmada antes de seguir. */
+  async salvarContratoConfirmado(c) {
+    if (!c || !c.id) return { ok: false, erro: 'contrato inválido' };
+    const i = this.db.contratos.findIndex(x => x.id === c.id);
+    if (i >= 0) this.db.contratos[i] = c; else this.db.contratos.unshift(c);
+    try {
+      const { error } = await SB.from('contratos').upsert(this._ctOut(c));
+      if (error) return { ok: false, erro: error.message || 'falha ao gravar' };
+      const { data, error: e2 } = await SB.from('contratos').select('id').eq('id', c.id).maybeSingle();
+      if (e2) return { ok: false, erro: e2.message || 'falha ao conferir' };
+      if (!data) return { ok: false, erro: 'o contrato não apareceu no banco' };
+      return { ok: true };
+    } catch (e) { return { ok: false, erro: (e && e.message) || 'falha de rede' }; }
+  },
+  /* confere no banco, e não no cache, se o contrato realmente existe */
+  async contratoNoBanco(id) {
+    try { const { data, error } = await SB.from('contratos').select('id').eq('id', id).maybeSingle();
+      if (error) return null; return !!data; } catch (e) { return null; }
+  },
   updateContrato(c) { const i = this.db.contratos.findIndex(x => x.id === c.id); if (i >= 0) this.db.contratos[i] = c; else this.db.contratos.unshift(c); this._save('contratos', this._ctOut(c)); return c; },
   removeContrato(id) { this.db.contratos = (this.db.contratos || []).filter(c => c.id !== id); this._delete('contratos', id); },
   /* remove o contrato vinculado a uma venda (ao excluir a venda) */
