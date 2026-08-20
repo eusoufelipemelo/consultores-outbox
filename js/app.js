@@ -468,6 +468,7 @@ const App = {
       if (multi) sel = sel.indexOf(val) >= 0 ? sel.filter(x => x !== val) : sel.concat([val]);
       else sel = sel.indexOf(val) >= 0 ? [] : [val];
       answers[id] = sel.join(' · ');
+      salvarRascunho();
       host.querySelectorAll(`[data-chipgroup="${id}"] .bfx-chip2`).forEach(x => x.classList.toggle('on', sel.indexOf(x.dataset.val) >= 0));
       const box = document.getElementById('sel-' + id);
       if (box) box.textContent = sel.length ? sel.join(' · ') : 'Nenhuma opção selecionada';
@@ -485,6 +486,12 @@ const App = {
       if (bruto) { const r = JSON.parse(bruto);
         if (r && r.respostas) { Object.keys(r.respostas).forEach(k => { answers[k] = r.respostas[k]; }); retomando = r.etapa || 0; } }
     } catch (e) {}
+    /* fechar a aba, girar o telefone ou trocar de aplicativo no celular
+       também precisa gravar: é quando mais se perde preenchimento */
+    const gravarAoSair = () => { try { saveInputs(); } catch (e) {} salvarRascunho(); };
+    window.addEventListener('beforeunload', gravarAoSair);
+    window.addEventListener('pagehide', gravarAoSair);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gravarAoSair(); });
     let step = 0;
     const renderCover = () => {
       host.innerHTML = style + `
@@ -541,7 +548,16 @@ const App = {
           </div></div>
         </div>`;
       wireChips();
-      const prev = document.getElementById('bfx-prev'); if (prev) prev.onclick = () => { saveInputs(); step--; renderStep(); };
+      // cada tecla digitada já entra no rascunho, com uma folga para não gravar a cada letra
+      let aguardando = null;
+      host.querySelectorAll('[data-b]').forEach(el => {
+        el.addEventListener('input', () => {
+          answers[el.getAttribute('data-b')] = el.value;
+          clearTimeout(aguardando);
+          aguardando = setTimeout(salvarRascunho, 400);
+        });
+      });
+      const prev = document.getElementById('bfx-prev'); if (prev) prev.onclick = () => { saveInputs(); salvarRascunho(); step--; renderStep(); };
       document.getElementById('bfx-next').onclick = async () => {
         let ok = true;
         sec.campos.forEach(c => {
@@ -555,9 +571,11 @@ const App = {
           }
           const el = host.querySelector('[data-b="' + c.id + '"]'); if (el && !el.value.trim()) { ok = false; el.classList.add('inv'); } else if (el) el.classList.remove('inv');
         });
-        if (!ok) { const e = document.getElementById('bfx-err'); e.textContent = 'Preencha os campos obrigatórios (*).'; e.hidden = false; return; }
+        // grava o que já foi digitado ANTES de julgar a etapa: se a validação
+        // barrasse primeiro, tudo que o cliente escreveu nesta tela se perdia
         saveInputs();
         salvarRascunho();
+        if (!ok) { const e = document.getElementById('bfx-err'); e.textContent = 'Preencha os campos obrigatórios (*).'; e.hidden = false; return; }
         if (step < total) { step++; renderStep(); salvarRascunho(); document.querySelector('.bfx-main').scrollTop = 0; }
         else await submit();
       };
