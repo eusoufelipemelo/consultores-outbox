@@ -341,7 +341,7 @@ const OB = {
   /* App de briefing publicado (dentro do próprio sistema). Cada serviço tem seu formulário (?p=...);
      quando enviado por um projeto, o link leva pid+token e o preenchimento volta sozinho para a tabela projetos. */
   BRIEFING_BASE: 'https://consultores.outboxgroup.com.br/briefing/',
-  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', apresentacao: 'site', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
+  BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', apresentacao: 'apresentacao', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
   briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
   briefingLink(produtoId, pid, token) {
     // formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin
@@ -352,6 +352,9 @@ const OB = {
      `chips` = múltipla escolha, `radio` = escolha única, além de text/textarea. */
   BRIEF_PERSONA: ['Acadêmica','Acessível','Agressiva','Analítica','Antiga','Arrojada','Artística','Atrevida','Atual','Aventureira','Básica','Calma','Casual','Científica','Complexa','Confiável','Convencional','Criativa','Curiosa','Deslumbrante','Determinada','Diferente','Disciplinada','Divertida','Emocional','Energética','Enigmática','Esperta','Estável','Exclusiva','Extrovertida','Formal','Futurista','Idealista','Industrial','Inocente','Intuitiva','Irreverente','Líder','Livre','Madura','Mente aberta','Moderna','Modesta','Multifacetada','Nostálgica','Ousada','Persistente','Profissional','Promissora','Racional','Radical','Rebelde','Refinada','Relaxada','Reservada','Respeitadora','Rigorosa','Romântica','Rústica','Sábia','Sensível','Séria','Simples','Sóbria','Sonhadora','Sutil','Técnica','Tradicional','Tranquila'],
   BRIEF_VISUAL: ['Séria','Extrovertida','Conservadora','Alegre','Aconchegante','Delicada','Moderna','Orgânica','Sofisticada','Elegante','Vibrante','Tradicional','Retrô','Digital','Pesada','Leve','Rústica','Discreta','Extravagante','Nobre','Popular','Romântica','Formal','Ousada','Humana','Rebelde','Irreverente'],
+  BRIEF_APN_USO: ['Reunião presencial com o cliente','Reunião online','Enviada por WhatsApp','Enviada por e-mail','Apresentação em palco/evento','Feira ou stand','Treinamento de equipe','Captação de investidor'],
+  BRIEF_APN_SECOES: ['Quem somos','O problema do cliente','A solução','Como funciona (passo a passo)','Portfólio / cases','Depoimentos','Números e resultados','Diferenciais','Comparativo com concorrentes','Linha do tempo da empresa','Equipe','Processo de trabalho','Prazos','Garantias','Tabela de preços','Condições de pagamento','Perguntas frequentes','Próximos passos'],
+  BRIEF_APN_QTD: ['Até 8 slides','De 9 a 15 slides','De 16 a 25 slides','Mais de 25 slides','Deixo a OutBox definir'],
   BRIEF_ESTILO_SITE: ['Sério','Conservador','Elegante','Ecológico','Hightech','Moderno','Amigável','Divertido','Clean','Colorido','Escuro','Simples','Tradicional','Vintage','Instagramável','Minimalista','Sofisticado','Jovem'],
   BRIEF_GENERO: ['Feminino','Masculino','Feminino predominante','Masculino predominante','Ambos os gêneros'],
   BRIEF_CLASSE: ['A','B','C','D/E','Todas as classes'],
@@ -407,6 +410,20 @@ const OB = {
     { id: 'textos', label: 'Você já tem os textos (copy) prontos ou precisa da nossa redação?', tipo: 'text', req: true },
     { id: 'copy_link', label: 'Se já tem a copy pronta, cole aqui o link do arquivo', tipo: 'text' }
   ],
+  BRIEF_BLOCO_APN: [
+    { id: 'apn_nome', label: 'Qual o título da apresentação?', tipo: 'text', req: true },
+    { id: 'apn_objetivo', label: 'Qual o objetivo desta apresentação? O que ela precisa provocar em quem assiste?', tipo: 'textarea', req: true },
+    { id: 'apn_uso', label: 'Onde ela será usada? Marque quantos quiser', tipo: 'chips', ops: 'BRIEF_APN_USO', req: true },
+    { id: 'apn_quem', label: 'Quem vai apresentar? (você, um vendedor, a equipe toda)', tipo: 'text', req: true },
+    { id: 'apn_tempo', label: 'Quanto tempo dura a apresentação, em média?', tipo: 'text' },
+    { id: 'apn_momento', label: 'Em que momento da negociação ela entra? (primeiro contato, depois do orçamento, no fechamento)', tipo: 'textarea', req: true },
+    { id: 'apn_objecoes', label: 'Quais objeções o cliente costuma levantar? A apresentação precisa derrubar quais delas?', tipo: 'textarea', req: true },
+    { id: 'apn_estilo', label: 'Quais atributos devem descrever a apresentação? Marque quantos quiser', tipo: 'chips', ops: 'BRIEF_ESTILO_SITE', req: true },
+    { id: 'apn_cores', label: 'Tem preferência de cores? A marca já tem identidade visual?', tipo: 'textarea', req: true },
+    { id: 'apn_padrao', label: 'Existe um padrão a seguir? (manual de marca, tipografia, apresentação anterior)', tipo: 'textarea' },
+    { id: 'apn_refs', label: 'Cite apresentações ou materiais que você admira, com links se possível', tipo: 'textarea', req: true },
+    { id: 'apn_evitar', label: 'O que você definitivamente NÃO quer ver na apresentação?', tipo: 'textarea', req: true }
+  ],
   BRIEF_BLOCO_MARCA: [
     { id: 'nome_marca', label: 'Nome da marca que será desenvolvida (ou sugestões, se ainda não tem)', tipo: 'text', req: true },
     { id: 'significado', label: 'Por que a empresa tem esse nome? O que ele significa para você?', tipo: 'textarea', req: true },
@@ -422,6 +439,7 @@ const OB = {
   ],
 
   BRIEFING_EXTRA: {
+    apresentacao: 'BRIEF_BLOCO_APN',
     onepage: 'BRIEF_BLOCO_SITE',
     site: 'BRIEF_BLOCO_SITE',
     'site-blog': 'BRIEF_BLOCO_SITE',
@@ -435,6 +453,25 @@ const OB = {
   },
   /* perguntas exclusivas de cada serviço, somadas ao bloco acima */
   BRIEFING_ESPECIFICO: {
+    apresentacao: [
+      { id: 'apn_qtd', label: 'Quantos slides a apresentação deve ter?', tipo: 'chips', ops: 'BRIEF_APN_QTD', req: true },
+      { id: 'apn_secoes', label: 'Quais seções não podem faltar? Marque quantas quiser', tipo: 'chips', ops: 'BRIEF_APN_SECOES', req: true },
+      { id: 'apn_capa', label: 'O que precisa aparecer na CAPA? (título, logo, frase de efeito, foto, nome do cliente)', tipo: 'textarea', req: true },
+      { id: 'apn_roteiro', label: 'Descreva o conteúdo de cada slide, na ordem que imagina. Pode escrever livremente, um por linha', tipo: 'textarea', req: true },
+      { id: 'apn_textos', label: 'Você já tem os textos prontos ou precisa da nossa redação?', tipo: 'text', req: true },
+      { id: 'apn_copy_link', label: 'Se já tem os textos, cole aqui o link do arquivo', tipo: 'text' },
+      { id: 'apn_imagens', label: 'Quantas imagens por slide, em média? Descreva o tipo de imagem que imagina (foto de obra, ambiente, equipe, produto, ilustração)', tipo: 'textarea', req: true },
+      { id: 'apn_banco_imagens', label: 'As imagens são suas ou podemos usar banco de imagens?', tipo: 'text', req: true },
+      { id: 'apn_graficos', label: 'A apresentação vai ter gráficos ou tabelas? Se sim, quais dados eles mostram?', tipo: 'textarea', req: true },
+      { id: 'apn_numeros', label: 'Quais números da empresa merecem destaque? (anos de mercado, obras entregues, clientes, prazo médio, garantia)', tipo: 'textarea', req: true },
+      { id: 'apn_prova', label: 'Tem depoimentos, avaliações ou logos de clientes para incluir? Cole aqui ou diga onde estão', tipo: 'textarea' },
+      { id: 'apn_portfolio', label: 'Quais trabalhos entram no portfólio da apresentação? Quantos e quais?', tipo: 'textarea', req: true },
+      { id: 'apn_preco', label: 'A apresentação mostra preços ou condições? Se sim, quais?', tipo: 'textarea', req: true },
+      { id: 'apn_final', label: 'O que precisa aparecer no SLIDE FINAL? (chamada para ação, contato, QR Code, redes, agradecimento)', tipo: 'textarea', req: true },
+      { id: 'apn_cta', label: 'Qual a única ação que o cliente deve tomar ao final?', tipo: 'text', req: true },
+      { id: 'apn_pdf', label: 'Além do link, precisa da versão em PDF para enviar no WhatsApp?', tipo: 'text' },
+      { id: 'apn_anim', label: 'Prefere animações e transições ou algo mais sóbrio e estático?', tipo: 'text' }
+    ],
     'site-blog': [
       { id: 'blog_temas', label: 'Sobre quais temas o blog vai falar?', tipo: 'textarea', req: true },
       { id: 'blog_freq', label: 'Com que frequência pretende publicar?', tipo: 'text' },
@@ -474,15 +511,15 @@ const OB = {
     const bloco = blocoNome ? this[blocoNome] : null;
     const espec = this.BRIEFING_ESPECIFICO[tipo];
     const extras = [];
-    if (bloco) extras.push({ sec: bloco === this.BRIEF_BLOCO_MARCA ? 'Personalidade da marca' : 'O projeto e o estilo', campos: bloco });
-    if (espec) extras.push({ sec: 'Detalhes do serviço', campos: espec });
+    if (bloco) extras.push({ sec: bloco === this.BRIEF_BLOCO_MARCA ? 'Personalidade da marca' : (bloco === this.BRIEF_BLOCO_APN ? 'A apresentação' : 'O projeto e o estilo'), campos: bloco });
+    if (espec) extras.push({ sec: tipo === 'apresentacao' ? 'Estrutura e slides' : 'Detalhes do serviço', campos: espec });
     if (!extras.length) return secs;
     // entra antes da última seção (materiais e contato)
     return secs.slice(0, -1).concat(extras, secs.slice(-1));
   },
-  briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site Institucional', 'site-blog': 'Site Institucional + Blog', identidade: 'Identidade Visual', brandbook: 'BrandBook', ecommerce: 'E-commerce', marketplace: 'Marketplace', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas' }[tipo]) || 'Projeto'; },
+  briefingTipoNome(tipo) { return ({ onepage: 'Site OnePage', landing: 'Landing Page', site: 'Site Institucional', 'site-blog': 'Site Institucional + Blog', identidade: 'Identidade Visual', brandbook: 'BrandBook', ecommerce: 'E-commerce', marketplace: 'Marketplace', sistemas: 'Sistema Sob Medida', vendas: 'Página de Vendas', apresentacao: 'Apresentação de Negócios' }[tipo]) || 'Projeto'; },
   /* produto correspondente a um tipo de briefing (biblioteca) */
-  briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', 'site-blog': 'institucional-blog', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', brandbook: 'brandbook', ecommerce: 'ecommerce', marketplace: 'ecommerce', sistemas: 'sistemas' }[tipo]) || 'onepage'; },
+  briefingProdutoDeTipo(tipo) { return ({ site: 'institucional', 'site-blog': 'institucional-blog', landing: 'lp', vendas: 'lp', onepage: 'onepage', identidade: 'identidade', brandbook: 'brandbook', ecommerce: 'ecommerce', marketplace: 'ecommerce', sistemas: 'sistemas', apresentacao: 'apresentacao' }[tipo]) || 'onepage'; },
   /* tela de início (capa) exclusiva por tipo de briefing */
   BRIEFING_INTRO: {
     onepage:     { emoji: '🚀', titulo: 'Vamos criar o seu Site OnePage', frase: 'Uma página única, direta e persuasiva, feita para transformar visitantes em clientes.' },
@@ -494,7 +531,8 @@ const OB = {
     ecommerce:   { emoji: '🛒', titulo: 'Vamos criar a sua Loja Virtual', frase: 'Sua loja online pronta para vender 24 horas por dia, 7 dias por semana.' },
     marketplace: { emoji: '🏬', titulo: 'Vamos criar o seu Marketplace', frase: 'Uma plataforma onde vários vendedores anunciam e você fica com a comissão.' },
     sistemas:    { emoji: '⚙️', titulo: 'Vamos criar o seu Sistema', frase: 'Um sistema sob medida, desenhado para o processo do seu negócio.' },
-    vendas:      { emoji: '💥', titulo: 'Vamos criar a sua Página de Vendas', frase: 'Uma página construída com técnica para vender o seu produto ou serviço.' }
+    vendas:      { emoji: '💥', titulo: 'Vamos criar a sua Página de Vendas', frase: 'Uma página construída com técnica para vender o seu produto ou serviço.' },
+    apresentacao:{ emoji: '📊', titulo: 'Vamos criar a sua Apresentação de Negócios', frase: 'A sua reunião de vendas em um link: roteiro, design e argumento, slide a slide.' }
   },
   briefingIntro(tipo) { return this.BRIEFING_INTRO[tipo] || { emoji: '✨', titulo: 'Vamos começar o seu projeto', frase: 'Preencha o briefing para darmos início com tudo alinhado.' }; },
   /* briefings prontos (biblioteca): formulário publicado por serviço */
@@ -1209,6 +1247,22 @@ const OB = {
       const { data, error: e2 } = await SB.from('contratos').select('id').eq('id', c.id).maybeSingle();
       if (e2) return { ok: false, erro: e2.message || 'falha ao conferir' };
       if (!data) return { ok: false, erro: 'o contrato não apareceu no banco' };
+      return { ok: true };
+    } catch (e) { return { ok: false, erro: (e && e.message) || 'falha de rede' }; }
+  },
+  /* Mesma proteção do contrato, agora para o projeto que sustenta o link do
+     briefing: grava esperando a resposta e confere que a linha existe. */
+  async salvarProjetoConfirmado(p) {
+    if (!p || !p.id) return { ok: false, erro: 'projeto inválido' };
+    const i = this.db.projetos.findIndex(x => x.id === p.id);
+    if (i >= 0) this.db.projetos[i] = p; else this.db.projetos.unshift(p);
+    try {
+      const { error } = await SB.from('projetos').upsert(this._prOut(p));
+      if (error) return { ok: false, erro: error.message || 'falha ao gravar' };
+      const { data, error: e2 } = await SB.from('projetos').select('id,briefing_token').eq('id', p.id).maybeSingle();
+      if (e2) return { ok: false, erro: e2.message || 'falha ao conferir' };
+      if (!data) return { ok: false, erro: 'o projeto não apareceu no banco' };
+      if (!data.briefing_token) return { ok: false, erro: 'o token do briefing não foi gravado' };
       return { ok: true };
     } catch (e) { return { ok: false, erro: (e && e.message) || 'falha de rede' }; }
   },

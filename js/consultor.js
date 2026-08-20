@@ -3977,6 +3977,22 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       App.refreshProjetosBadge();
     };
   },
+  /* Garante que existe um projeto salvo no banco com token de briefing.
+     Devolve o projeto pronto, ou o motivo de não ter conseguido. */
+  async garantirProjetoDoBriefing(s, prods) {
+    let proj = OB.projetoDaVenda(s.id);
+    if (!proj) {
+      proj = { id: OB.uid(), saleId: s.id, consultorId: this.u().id, clientId: s.clientId, produtos: prods,
+        status: 'briefing_enviado', briefingToken: OB.uid().replace(/-/g, ''), briefingLink: '',
+        briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
+      OB.addProjeto(proj);
+    }
+    if (!proj.briefingToken) proj.briefingToken = OB.uid().replace(/-/g, '');
+    proj.briefingLink = (prods || []).map(id => OB.briefingLink(id, proj.id, proj.briefingToken)).join(' ');
+    const r = await OB.salvarProjetoConfirmado(proj);
+    return r.ok ? { ok: true, projeto: proj } : r;
+  },
+
   compartilharLinkBriefing(projId) { const p = OB.projetoById(projId); if (p) this._briefingLinkModal(p); },
   _briefingLinkModal(proj) {
     const cli = OB.clientById(proj.clientId) || {};
@@ -4002,15 +4018,20 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     };
   },
 
-  enviarBriefing(saleId) {
+  async enviarBriefing(saleId) {
     const s = OB.salesOf(this.u().id).find(x => x.id === saleId); if (!s) return;
     if (s.statusPagamento !== 'recebido') return UI.toast('Ainda não liberado', 'O briefing libera após a confirmação do pagamento.', 'err');
     const cli = OB.clientById(s.clientId);
     const prods = OB.produtosDaVenda(s);
-    // o link carrega o id do projeto + token: quando o cliente preenche, o briefing volta sozinho para a esteira
-    const proj0 = OB.projetoDaVenda(s.id);
-    const pid = proj0 ? proj0.id : OB.uid();
-    const token = (proj0 && proj0.briefingToken) ? proj0.briefingToken : OB.uid().replace(/-/g, '');
+    /* O projeto precisa existir no BANCO antes de qualquer link sair daqui.
+       Antes ele só era criado no clique do WhatsApp: quem copiava o link e
+       mandava por outro canal entregava um endereço órfão, e o cliente via
+       "Link inválido ou expirado" depois de preencher o briefing inteiro. */
+    UI.toast('Preparando o briefing', 'Registrando o projeto antes de gerar o link', 'info');
+    const g = await this.garantirProjetoDoBriefing(s, prods);
+    if (!g.ok) return UI.toast('Não foi possível gerar o link', 'O projeto não foi salvo no servidor. (' + g.erro + ')', 'err');
+    const pid = g.projeto.id;
+    const token = g.projeto.briefingToken;
     const links = prods.map(id => ({ nome: (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id, link: OB.briefingLink(id, pid, token) }));
     const primeiro = (cli && cli.nome) ? cli.nome.split(' ')[0] : '';
     const msg = `Olá${primeiro ? ' ' + primeiro : ''}! Que ótimo dar início ao seu projeto com a OutBox 🎉 Para começarmos, preencha o briefing (leva poucos minutos): ${links.map(l => l.link).join(' ')}`;
@@ -4027,14 +4048,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     });
     document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => UI.toast('Link copiado', '', 'ok')));
     const registrar = () => {
-      let proj = OB.projetoDaVenda(s.id);
-      if (!proj) {
-        proj = { id: pid, saleId: s.id, consultorId: this.u().id, clientId: s.clientId, produtos: prods, status: 'briefing_enviado', briefingToken: token, briefingLink: links.map(l => l.link).join(' '), briefingEnviadoEm: new Date().toISOString(), criadoEm: new Date().toISOString() };
-        OB.addProjeto(proj);
-      } else {
-        if (!proj.briefingToken) { proj.briefingToken = token; OB.updateProjeto(proj); }
-        if (proj.status === 'briefing_enviado') OB.setEtapaProjeto(proj, 'briefing_enviado');
-      }
+      const proj = OB.projetoDaVenda(s.id);
+      if (proj && proj.status === 'briefing_enviado') OB.setEtapaProjeto(proj, 'briefing_enviado');
     };
     document.getElementById('bf-wa').onclick = () => {
       const txt = encodeURIComponent(document.getElementById('bf-msg').value);

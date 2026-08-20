@@ -472,6 +472,19 @@ const App = {
       const box = document.getElementById('sel-' + id);
       if (box) box.textContent = sel.length ? sel.join(' · ') : 'Nenhuma opção selecionada';
     });
+    /* Rascunho local. Antes, as respostas viviam só na memória da página:
+       qualquer erro de envio, recarregamento ou toque em Voltar apagava tudo
+       que o cliente tinha digitado. Agora cada resposta é guardada no próprio
+       aparelho dele e devolvida quando ele reabre o link. */
+    const RASCUNHO = 'ob_briefing_' + pid;
+    const salvarRascunho = () => { try { localStorage.setItem(RASCUNHO, JSON.stringify({ respostas: answers, etapa: step, em: Date.now() })); } catch (e) {} };
+    const limparRascunho = () => { try { localStorage.removeItem(RASCUNHO); } catch (e) {} };
+    let retomando = 0;
+    try {
+      const bruto = localStorage.getItem(RASCUNHO);
+      if (bruto) { const r = JSON.parse(bruto);
+        if (r && r.respostas) { Object.keys(r.respostas).forEach(k => { answers[k] = r.respostas[k]; }); retomando = r.etapa || 0; } }
+    } catch (e) {}
     let step = 0;
     const renderCover = () => {
       host.innerHTML = style + `
@@ -481,10 +494,10 @@ const App = {
           <h1>${intro.titulo}</h1>
           <p class="bfx-frase">${intro.frase}</p>
           <div class="bfx-prev">${secs.map((s, i) => `<span class="bfx-chip">${i + 1}. ${s.sec}</span>`).join('')}</div>
-          <button class="bfx-start" id="bfx-start">Começar o briefing</button>
-          <p class="bfx-mini">Leva poucos minutos · ${total} etapa${total > 1 ? 's' : ''}</p>
+          <button class="bfx-start" id="bfx-start">${retomando ? 'Continuar o briefing' : 'Começar o briefing'}</button>
+          <p class="bfx-mini">${retomando ? 'Encontramos o seu preenchimento salvo. Você volta na etapa ' + retomando + '.' : 'Leva poucos minutos · ' + total + ' etapa' + (total > 1 ? 's' : '')}</p>
         </div></div>`;
-      document.getElementById('bfx-start').onclick = () => { step = 1; renderStep(); };
+      document.getElementById('bfx-start').onclick = () => { step = retomando && retomando <= total ? retomando : 1; renderStep(); };
     };
     const submit = async () => {
       const linhas = [];
@@ -495,11 +508,16 @@ const App = {
       try {
         const { data, error } = await SB.rpc('salvar_briefing', { p_pid: pid, p_token: token, p_respostas: texto });
         if (error) throw error;
-        if (data && data.ok) { host.innerHTML = self._ctMsg('#16a34a', 'Briefing enviado! 🎉', 'Recebemos as suas respostas. A OutBox já foi notificada e vai iniciar a produção do seu projeto. Em breve o seu consultor entra em contato.'); }
-        else { err.textContent = 'Link inválido ou expirado. Peça ao seu consultor para reenviar o briefing.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing'; }
+        if (data && data.ok) { limparRascunho(); host.innerHTML = self._ctMsg('#16a34a', 'Briefing enviado! 🎉', 'Recebemos as suas respostas. A OutBox já foi notificada e vai iniciar a produção do seu projeto. Em breve o seu consultor entra em contato.'); }
+        else {
+          salvarRascunho();
+          err.innerHTML = 'Este link não está mais válido. <b>Suas respostas foram salvas neste aparelho</b>, nada se perdeu: peça um link novo ao seu consultor e abra nele, que o formulário volta preenchido.';
+          err.hidden = false; btn.disabled = false; btn.textContent = 'Tentar enviar de novo';
+        }
       } catch (e) {
-        err.textContent = 'Não foi possível enviar agora. Tente novamente em instantes. (' + ((e && e.message) || 'erro') + ')';
-        err.hidden = false; btn.disabled = false; btn.textContent = 'Enviar briefing';
+        salvarRascunho();
+        err.innerHTML = 'Não foi possível enviar agora. <b>Suas respostas estão salvas neste aparelho</b>, pode tentar de novo em instantes. (' + ((e && e.message) || 'erro') + ')';
+        err.hidden = false; btn.disabled = false; btn.textContent = 'Tentar enviar de novo';
       }
     };
     const renderStep = () => {
@@ -539,7 +557,8 @@ const App = {
         });
         if (!ok) { const e = document.getElementById('bfx-err'); e.textContent = 'Preencha os campos obrigatórios (*).'; e.hidden = false; return; }
         saveInputs();
-        if (step < total) { step++; renderStep(); document.querySelector('.bfx-main').scrollTop = 0; }
+        salvarRascunho();
+        if (step < total) { step++; renderStep(); salvarRascunho(); document.querySelector('.bfx-main').scrollTop = 0; }
         else await submit();
       };
       const first = host.querySelector('[data-b]'); if (first) setTimeout(() => first.focus(), 80);
