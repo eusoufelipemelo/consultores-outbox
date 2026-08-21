@@ -711,7 +711,7 @@ const Admin = {
     else if (p.status === 'em_revisao') acoes.push(`<button class="btn brand sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar projeto (link)</button>`);
     else if (p.status === 'entregue') { if (p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`); acoes.push(`<button class="btn ghost sm" data-concluir="${p.id}">${UI.icon('check',14)} Marcar aprovado</button>`); }
     else if (p.status === 'aprovado' && p.linkFinal) acoes.push(`<a class="btn ghost sm" href="${p.linkFinal}" target="_blank" rel="noopener">${UI.icon('external',14)} Abrir projeto</a>`);
-    if (p.briefingRespostas) acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}">${UI.icon('docs',14)} Ver briefing</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}">${UI.icon('download',14)} Baixar briefing</button>`);
+    Consultor.briefingsDoProjeto(p).forEach(b => acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}" data-brief-tipo="${b.tipo}">${UI.icon('docs',14)} Briefing · ${b.nome}</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}" data-brief-tipo="${b.tipo}">${UI.icon('download',14)} Baixar</button>`));
     // botão de anexar arquivos de entrega (docs, artes finais) disponível a partir da produção
     const podeEntregarArq = ['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status);
     if (podeEntregarArq) acoes.push(`<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
@@ -827,7 +827,7 @@ const Admin = {
       <button type="button" class="btn brand sm" data-sol-send="${p.id}">${UI.icon('send',14)} Solicitar</button>
     </div>`;
     const acoes = [];
-    if (p.briefingRespostas) acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}">${UI.icon('docs',14)} Ver briefing</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}">${UI.icon('download',14)} Baixar briefing</button>`);
+    Consultor.briefingsDoProjeto(p).forEach(b => acoes.push(`<button class="btn ghost sm" data-ver-brief="${p.id}" data-brief-tipo="${b.tipo}">${UI.icon('docs',14)} Briefing · ${b.nome}</button>`, `<button class="btn ghost sm" data-baixar-brief="${p.id}" data-brief-tipo="${b.tipo}">${UI.icon('download',14)} Baixar</button>`));
     if (['em_producao', 'em_revisao', 'entregue', 'aprovado'].includes(p.status)) acoes.push(`<button class="btn ghost sm" data-entregar="${p.id}">${UI.icon('external',14)} Entregar (link/arquivos)</button>`, `<button class="btn ghost sm" data-add-entrega="${p.id}">${UI.icon('download',14)} Anexar arquivos</button>`);
     acoes.push(`<button class="btn danger sm" data-del-proj="${p.id}">${UI.icon('trash',14)} Excluir</button>`);
     return `<div class="card proj-card">
@@ -907,8 +907,8 @@ const Admin = {
             <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ver-brief="${p.id}" title="Ver briefing">${UI.icon('eye',15)}</button><button class="iconbtn" data-baixar-brief="${p.id}" title="Baixar briefing">${UI.icon('download',15)}</button></td></tr>`;
         }).join('')}
       </tbody></table></div>`;
-      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => Consultor.visualizarBriefing(b.dataset.verBrief));
-      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => Consultor.baixarBriefing(b.dataset.baixarBrief));
+      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => Consultor.visualizarBriefing(b.dataset.verBrief, b.dataset.briefTipo));
+      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => Consultor.baixarBriefing(b.dataset.baixarBrief, b.dataset.briefTipo));
     };
     const capt = () => { this._bfFiltro = {
       cliente: document.getElementById('bf-cliente').value,

@@ -507,8 +507,18 @@ const App = {
       document.getElementById('bfx-start').onclick = () => { step = retomando && retomando <= total ? retomando : 1; renderStep(); };
     };
     const submit = async () => {
-      const linhas = [];
-      secs.forEach(s => { const parts = []; s.campos.forEach(c => { const val = (answers[c.id] || '').trim(); if (val) parts.push('• ' + c.label + ': ' + val); }); if (parts.length) { linhas.push(s.sec.toUpperCase()); linhas.push(parts.join('\n')); linhas.push(''); } });
+      /* Formato do envio:
+           @@SERVICO:tipo|Nome@@   diz de qual serviço é este briefing
+           ## SEÇÃO                 cabeçalho de seção
+           • pergunta               a resposta vem nas linhas seguintes
+         A resposta em linha própria resolve o caso em que o cliente escreve
+         vários parágrafos: antes, cada linha extra virava um título laranja. */
+      const linhas = ['@@SERVICO:' + tipo + '|' + tipoNome + '@@'];
+      secs.forEach(s => {
+        const parts = [];
+        s.campos.forEach(c => { const val = (answers[c.id] || '').trim(); if (val) parts.push('• ' + c.label + '\n' + val); });
+        if (parts.length) { linhas.push('## ' + s.sec.toUpperCase()); linhas.push(parts.join('\n')); linhas.push(''); }
+      });
       const texto = linhas.join('\n').trim();
       const btn = document.getElementById('bfx-next'); const err = document.getElementById('bfx-err');
       btn.disabled = true; btn.textContent = 'Enviando...';

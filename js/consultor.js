@@ -3522,11 +3522,11 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           return `<tr><td class="nowrap">${OB.dataBR(p.briefingRecebidoEm || p.criadoEm)}</td>
             <td class="strong">${cl.nome || '-'}</td><td>${svc}</td>
             <td><span class="chip ${p.status === 'aprovado' ? 'green' : p.status === 'briefing_recebido' ? 'warn' : 'brand'} nowrap">${et.nome || ''}</span></td>
-            <td class="row" style="justify-content:flex-end;gap:4px"><button class="iconbtn" data-ver-brief="${p.id}" title="Ver briefing">${UI.icon('eye',15)}</button><button class="iconbtn" data-baixar-brief="${p.id}" title="Baixar briefing">${UI.icon('download',15)}</button></td></tr>`;
+            <td class="row" style="justify-content:flex-end;gap:4px;flex-wrap:wrap">${this.briefingsDoProjeto(p).map(b => `<button class="btn ghost sm" data-ver-brief="${p.id}" data-brief-tipo="${b.tipo}" title="Ver o briefing de ${b.nome}">${UI.icon('eye',14)} ${b.nome}</button><button class="iconbtn" data-baixar-brief="${p.id}" data-brief-tipo="${b.tipo}" title="Baixar o briefing de ${b.nome}">${UI.icon('download',15)}</button>`).join('')}</td></tr>`;
         }).join('')}
       </tbody></table></div>`;
-      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief));
-      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
+      el.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief, b.dataset.briefTipo));
+      el.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief, b.dataset.briefTipo));
     };
     const capt = () => { this._bfFiltro = {
       cliente: document.getElementById('bf-cliente').value,
@@ -3639,8 +3639,8 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     root.querySelectorAll('[data-arq-del]').forEach(b => b.onclick = () => { const a = OB.arquivoById(b.dataset.arqDel); if (!a) return; UI.confirm('Remover arquivo', `Remover <b>${(a.nome || 'este item').replace(/</g, '&lt;')}</b>?`, () => { OB.removeArquivo(a.id); UI.toast('Removido', '', 'ok'); if (onDone) onDone(); }, 'Remover'); });
     root.querySelectorAll('[data-arq-up]').forEach(b => b.onclick = () => { const parts = b.dataset.arqUp.split('|'); this.anexarArquivosModal(parts[0], parts[1], 'consultor', onDone); });
     root.querySelectorAll('[data-arq-link]').forEach(b => b.onclick = () => this.adicionarLinkModal(b.dataset.arqLink, onDone));
-    root.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief));
-    root.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief));
+    root.querySelectorAll('[data-ver-brief]').forEach(b => b.onclick = () => this.visualizarBriefing(b.dataset.verBrief, b.dataset.briefTipo));
+    root.querySelectorAll('[data-baixar-brief]').forEach(b => b.onclick = () => this.baixarBriefing(b.dataset.baixarBrief, b.dataset.briefTipo));
     root.querySelectorAll('[data-compartilhar-proj]').forEach(b => b.onclick = () => this.compartilharLinkBriefing(b.dataset.compartilharProj));
     root.querySelectorAll('[data-compartilhar-briefing]').forEach(b => b.onclick = () => this.compartilharBriefingModal(b.dataset.compartilharBriefing || ''));
     root.querySelectorAll('[data-del-proj]').forEach(b => b.onclick = () => this.excluirProjeto(b.dataset.delProj, onDone));
@@ -3658,24 +3658,67 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     }, 'Excluir briefing');
   },
 
+  /* Lista de briefings do projeto, um por serviço vendido.
+     Projetos antigos, gravados antes da separação, viram um único item. */
+  briefingsDoProjeto(proj) {
+    if (!proj) return [];
+    const porServico = proj.briefingPorServico || {};
+    const chaves = Object.keys(porServico).filter(k => (porServico[k] || '').trim());
+    if (chaves.length) {
+      return chaves.map(tipo => ({
+        tipo,
+        nome: OB.briefingTipoNome(tipo),
+        produtoId: OB.briefingProdutoDeTipo(tipo),
+        texto: porServico[tipo]
+      }));
+    }
+    if ((proj.briefingRespostas || '').trim()) {
+      const prod = (proj.produtos || [])[0];
+      const tipo = prod ? OB.briefingTipo(prod) : 'geral';
+      return [{ tipo, nome: OB.briefingTipoNome(tipo), produtoId: prod, texto: proj.briefingRespostas }];
+    }
+    return [];
+  },
+
   /* ---------- BRIEFING preenchido: documento branded (ver/baixar) ---------- */
-  buildBriefingHTML(proj) {
+  buildBriefingHTML(proj, tipoAlvo) {
     const cli = OB.clientById(proj.clientId) || (proj && proj.cliente) || {};
     const cons = OB.userById(proj.consultorId) || {};
-    const servicos = (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(', ');
+    const lista = this.briefingsDoProjeto(proj);
+    const alvo = tipoAlvo ? lista.find(x => x.tipo === tipoAlvo) : lista[0];
+    const servicos = alvo ? alvo.nome : (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(', ');
     const dataBR = OB.dataBR(proj.briefingRecebidoEm || proj.criadoEm);
-    const linhas = (proj.briefingRespostas || '').split('\n');
+    const texto = alvo ? alvo.texto : (proj.briefingRespostas || '');
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     let corpo = '';
-    linhas.forEach(raw => {
-      const l = raw.trim(); if (!l) return;
-      if (l.indexOf('• ') === 0) {
-        const rest = l.slice(2); const idx = rest.indexOf(': ');
-        const label = idx >= 0 ? rest.slice(0, idx) : ''; const val = idx >= 0 ? rest.slice(idx + 2) : rest;
-        corpo += `<div class="bd-item">${label ? `<div class="bd-q">${label.replace(/</g, '&lt;')}</div>` : ''}<div class="bd-a">${val.replace(/</g, '&lt;')}</div></div>`;
-      } else {
-        corpo += `<h2>${l.replace(/</g, '&lt;')}</h2>`;
+    /* Junta cada pergunta com a resposta inteira, mesmo com vários parágrafos.
+       Antes, cada linha que não começasse com o marcador virava um título de
+       seção, e as respostas longas apareciam soltas e em caixa alta. */
+    const blocos = texto.replace(/@@SERVICO:[^@]+@@/g, '').split('\n');
+    let perguntaAberta = null, respostaAberta = [];
+    const fecharPergunta = () => {
+      if (!perguntaAberta) return;
+      const r = respostaAberta.join('\n').trim();
+      corpo += `<div class="bd-item"><div class="bd-q">${esc(perguntaAberta)}</div><div class="bd-a">${esc(r)}</div></div>`;
+      perguntaAberta = null; respostaAberta = [];
+    };
+    blocos.forEach(raw => {
+      const l = raw.replace(/\s+$/, '');
+      const t = l.trim();
+      if (t.indexOf('## ') === 0) { fecharPergunta(); corpo += `<h2>${esc(t.slice(3))}</h2>`; return; }
+      if (t.indexOf('• ') === 0) {
+        fecharPergunta();
+        const rest = t.slice(2);
+        const idx = rest.indexOf(': ');           // formato antigo: pergunta e resposta na mesma linha
+        if (idx >= 0) { perguntaAberta = rest.slice(0, idx); respostaAberta = [rest.slice(idx + 2)]; }
+        else perguntaAberta = rest;
+        return;
       }
+      if (!t) { if (perguntaAberta) respostaAberta.push(''); return; }
+      if (perguntaAberta) respostaAberta.push(l);
+      else corpo += `<h2>${esc(t)}</h2>`;         // seção no formato antigo
     });
+    fecharPergunta();
     if (!corpo) corpo = '<p class="bd-empty">O cliente ainda não enviou as respostas do briefing.</p>';
     const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="110" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -3696,21 +3739,22 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
   <div class="foot"><div>OutBox Soluções Digitais · Briefing do cliente</div><div>www.outboxgroup.com.br</div></div>
 </div><button class="print-hint" onclick="window.print()">Salvar como PDF / Imprimir</button></body></html>`;
   },
-  visualizarBriefing(projId) {
+  visualizarBriefing(projId, tipo) {
     const proj = OB.projetoById(projId); if (!proj) return;
     if (!proj.briefingRespostas) return UI.toast('Sem respostas', 'O cliente ainda não enviou o briefing.', 'err');
-    const blob = new Blob([this.buildBriefingHTML(proj)], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob([this.buildBriefingHTML(proj, tipo)], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob); const w = window.open(url, '_blank', 'noopener');
     if (!w) { URL.revokeObjectURL(url); UI.toast('Não foi possível abrir', 'Permita pop-ups para visualizar.', 'err'); return; }
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   },
-  baixarBriefing(projId) {
+  baixarBriefing(projId, tipo) {
     const proj = OB.projetoById(projId); if (!proj) return;
     if (!proj.briefingRespostas) return UI.toast('Sem respostas', 'O cliente ainda não enviou o briefing.', 'err');
     const cli = OB.clientById(proj.clientId) || {};
-    const blob = new Blob([this.buildBriefingHTML(proj)], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob([this.buildBriefingHTML(proj, tipo)], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `Briefing - ${(cli.nome || 'cliente')}.html`;
+    const a = document.createElement('a'); a.href = url; const alvo = this.briefingsDoProjeto(proj).find(x => !tipo || x.tipo === tipo);
+    a.download = `Briefing ${alvo ? alvo.nome + ' - ' : ''}${(cli.nome || 'cliente')}.html`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     UI.toast('Briefing baixado', 'Abra o arquivo para ler ou salvar em PDF.', 'ok');
@@ -3936,7 +3980,10 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
       linhas.push(`<span class="chip green">${UI.icon('prize',13)} Projeto aprovado e concluído</span>`);
     }
     // ver/baixar o briefing preenchido pelo cliente
-    if (proj.briefingRespostas) { linhas.push(`<button class="btn ghost sm" data-ver-brief="${proj.id}">${UI.icon('docs',14)} Ver briefing</button>`); linhas.push(`<button class="btn ghost sm" data-baixar-brief="${proj.id}">${UI.icon('download',14)} Baixar briefing</button>`); }
+    this.briefingsDoProjeto(proj).forEach(b => {
+      linhas.push(`<button class="btn ghost sm" data-ver-brief="${proj.id}" data-brief-tipo="${b.tipo}">${UI.icon('docs',14)} Briefing · ${b.nome}</button>`);
+      linhas.push(`<button class="btn ghost sm" data-baixar-brief="${proj.id}" data-brief-tipo="${b.tipo}">${UI.icon('download',14)} Baixar</button>`);
+    });
     // excluir (ex.: briefing duplicado) — liberado enquanto a produção não começou
     if (['briefing_enviado', 'briefing_recebido'].includes(proj.status)) linhas.push(`<button class="btn danger sm" data-del-proj="${proj.id}">${UI.icon('trash',14)} Excluir briefing</button>`);
     // relatório sempre disponível a partir do briefing recebido
