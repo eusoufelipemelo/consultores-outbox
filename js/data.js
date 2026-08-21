@@ -344,8 +344,12 @@ const OB = {
   BRIEFING_TIPOS: { onepage: 'onepage', lp: 'landing', institucional: 'site', apresentacao: 'apresentacao', identidade: 'identidade', ecommerce: 'ecommerce', sistemas: 'sistemas' },
   briefingTipo(produtoId) { return this.BRIEFING_TIPOS[produtoId] || 'site'; },
   briefingLink(produtoId, pid, token) {
-    // formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin
-    return this.APP_URL + '/?briefing=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token) + '&p=' + this.briefingTipo(produtoId);
+    /* formulário público DENTRO do próprio sistema: ao enviar, cai em tempo real no painel do admin.
+       O link passa por /b/<tipo>/ porque o robô do WhatsApp não roda JavaScript: era tudo a mesma
+       página com a query mudando, então o preview saía igual para todos os briefings e o cliente
+       não sabia qual tinha recebido. Cada tipo tem OpenGraph e imagem próprios nesse caminho, e a
+       página redireciona sozinha para o formulário. */
+    return this.APP_URL + '/b/' + this.briefingTipo(produtoId) + '/?briefing=' + encodeURIComponent(pid) + '&t=' + encodeURIComponent(token);
   },
   /* ---------- BRIEFING (público) ----------
      Estrutura vinda dos formulários oficiais da OutBox (forms.app), agora nativa e interativa:
@@ -548,7 +552,7 @@ const OB = {
     { tipo: 'brandbook', nome: 'BrandBook' },
     { tipo: 'sistemas', nome: 'Sistema Sob Medida' }
   ],
-  briefingLinkTipo(tipo) { return this.BRIEFING_BASE + '?p=' + tipo; },
+  briefingLinkTipo(tipo) { return this.APP_URL + '/b/' + tipo + '/'; },  // mesmo caminho com preview por serviço; sem pid, cai no formulário avulso
 
   /* ---------- portfólio: cases entregues, por serviço (prova social) ---------- */
   PORTFOLIO_CATS: [

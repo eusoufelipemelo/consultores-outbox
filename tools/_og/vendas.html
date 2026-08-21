@@ -1,0 +1,37 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1200px;height:630px;background:#fff;color:#1f1f1f;font-family:"Geist",sans-serif;
+  display:flex;align-items:center;position:relative;overflow:hidden}
+/* faixa de marca a esquerda e halo quente a direita: a mesma atmosfera do sistema, em claro */
+body::before{content:"";position:absolute;left:0;top:0;bottom:0;width:14px;background:#F15532}
+body::after{content:"";position:absolute;right:-150px;top:-200px;width:720px;height:720px;border-radius:50%;
+  background:radial-gradient(circle,#FEF2ED 0%,rgba(254,242,237,0) 70%)}
+.col{position:relative;z-index:1;padding:0 0 0 86px;width:730px}
+.logo{height:34px;display:block}
+.chip{display:inline-flex;align-items:center;gap:10px;margin-top:44px;font-size:16px;font-weight:600;
+  letter-spacing:.15em;text-transform:uppercase;color:#B8330F;background:#FEF2ED;
+  border:1px solid rgba(241,85,50,.28);border-radius:999px;padding:10px 20px}
+.chip b{width:8px;height:8px;border-radius:50%;background:#F15532;display:block}
+h1{font-family:"Clash Display",sans-serif;font-weight:600;color:#000;
+  font-size:78px;line-height:1.03;letter-spacing:-.028em;margin:24px 0 0}
+p{font-size:24px;line-height:1.45;color:#6b6b6b;margin-top:20px;max-width:640px}
+.pe{position:absolute;left:86px;bottom:52px;font-size:18px;color:#9a9a9a;z-index:1}
+.disco{position:absolute;right:96px;top:50%;transform:translateY(-50%);width:274px;height:274px;
+  border-radius:50%;background:#FEF2ED;border:1px solid rgba(241,85,50,.22);
+  display:grid;place-items:center;z-index:1}
+.disco svg{width:142px;height:142px;color:#F15532}
+</style></head><body>
+<div class="col">
+  <img class="logo" src="../../assets/logo-preta.svg" alt="">
+  <span class="chip"><b></b>Briefing</span>
+  <h1>Página de Vendas</h1>
+  <p>Uma página construída com técnica para vender o seu produto ou serviço.</p>
+</div>
+<div class="disco"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+  stroke-linecap="round" stroke-linejoin="round"><path d="M3 18.5l5.5-5.5 3.5 3.5L20.5 7"/><path d="M15.5 7h5v5"/></svg></div>
+<span class="pe">OutBox Soluções Digitais · consultores.outboxgroup.com.br</span>
+</body></html>
