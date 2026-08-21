@@ -476,8 +476,14 @@ const App = {
     /* Rascunho local. Antes, as respostas viviam só na memória da página:
        qualquer erro de envio, recarregamento ou toque em Voltar apagava tudo
        que o cliente tinha digitado. Agora cada resposta é guardada no próprio
-       aparelho dele e devolvida quando ele reabre o link. */
-    const RASCUNHO = 'ob_briefing_' + pid;
+       aparelho dele e devolvida quando ele reabre o link.
+
+       A chave leva o tipo do serviço, e não só o projeto. Quando o cliente
+       recebe dois briefings do mesmo projeto (site e apresentação, por
+       exemplo), os formulários têm etapas diferentes: um rascunho compartilhado
+       devolvia a etapa do outro formulário e o cliente entrava direto no meio,
+       pulando uma seção inteira sem perceber. */
+    const RASCUNHO = 'ob_briefing_' + pid + '_' + (tipo || 'geral');
     const salvarRascunho = () => { try { localStorage.setItem(RASCUNHO, JSON.stringify({ respostas: answers, etapa: step, em: Date.now() })); } catch (e) {} };
     const limparRascunho = () => { try { localStorage.removeItem(RASCUNHO); } catch (e) {} };
     let retomando = 0;
@@ -486,6 +492,17 @@ const App = {
       if (bruto) { const r = JSON.parse(bruto);
         if (r && r.respostas) { Object.keys(r.respostas).forEach(k => { answers[k] = r.respostas[k]; }); retomando = r.etapa || 0; } }
     } catch (e) {}
+    // rascunho antigo, gravado antes da chave por serviço: aproveita as
+    // respostas em comum, mas nunca a etapa, que é de outro formulário
+    if (!retomando) {
+      try {
+        const velho = localStorage.getItem('ob_briefing_' + pid);
+        if (velho) { const r = JSON.parse(velho);
+          if (r && r.respostas) Object.keys(r.respostas).forEach(k => { if (!answers[k]) answers[k] = r.respostas[k]; }); }
+      } catch (e) {}
+    }
+    // a etapa salva nunca pode passar do fim deste formulário
+    if (retomando > total) retomando = 0;
     /* fechar a aba, girar o telefone ou trocar de aplicativo no celular
        também precisa gravar: é quando mais se perde preenchimento */
     const gravarAoSair = () => { try { saveInputs(); } catch (e) {} salvarRascunho(); };
