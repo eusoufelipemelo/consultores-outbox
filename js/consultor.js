@@ -3715,8 +3715,14 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
         return;
       }
       if (!t) { if (perguntaAberta) respostaAberta.push(''); return; }
+      /* Formato antigo: a seção também é uma linha sem marcador. Distinguimos
+         pelo formato: seção é curta, toda em caixa alta e sem ponto final.
+         Uma resposta em caixa alta, como as da Boa Vista, é longa e pontuada,
+         então continua sendo tratada como continuação da resposta. */
+      const pareceSecao = t === t.toUpperCase() && t.length <= 40 && !/[.!?:,;]$/.test(t);
+      if (pareceSecao) { fecharPergunta(); corpo += `<h2>${esc(t)}</h2>`; return; }
       if (perguntaAberta) respostaAberta.push(l);
-      else corpo += `<h2>${esc(t)}</h2>`;         // seção no formato antigo
+      else corpo += `<h2>${esc(t)}</h2>`;
     });
     fecharPergunta();
     if (!corpo) corpo = '<p class="bd-empty">O cliente ainda não enviou as respostas do briefing.</p>';
