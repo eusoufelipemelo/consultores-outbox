@@ -1031,7 +1031,16 @@ td .strong { color: var(--text); font-weight: 600; }
     position: sticky; top: 0;
     height: calc(100dvh / 0.85); /* compensa o zoom .85 do .shell = altura exata da tela */
     min-height: 0; padding: 14px 14px; gap: 4px;
+    /* Em notebook de tela baixa o menu é mais alto que a janela, principalmente no
+       admin. Sem rolagem própria o fim da barra (grupo do WhatsApp, troca de painel,
+       perfil e sair) ficava cortado e inacessível: a caixa tem altura fixa, então o
+       excedente não empurrava a página. No celular a barra vira gaveta e já rolava. */
+    overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
   .sidebar .brand-desc { padding-bottom: 8px; }
   .nav { gap: 2px; }
   .nav-item { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
