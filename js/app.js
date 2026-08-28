@@ -1143,7 +1143,7 @@ const App = {
     const bloq = document.getElementById('bloq-pill');
     if (bloq) {
       const min = OB.saqueMinimo();
-      const liberado = (r.disponivel + bonusVale) >= min; // o bônus conta para o mínimo
+      const liberado = r.disponivel >= min;
       bloq.classList.toggle('locked', !liberado);
       bloq.classList.toggle('unlocked', liberado);
       bloq.querySelector('.lbl').textContent = liberado ? 'Saque liberado' : 'Mínimo p/ saque';
