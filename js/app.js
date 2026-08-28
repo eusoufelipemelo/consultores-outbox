@@ -778,7 +778,6 @@ const App = {
               : `<div class="com-pills">
                   <button class="commission-pill pending hidden" id="conf-pill" title="Comissão de vendas aprovadas aguardando a confirmação do pagamento pelo administrador"><div style="text-align:left"><div class="lbl">Em conferência</div><div class="val" id="conf-val">R$ 0,00</div></div>${UI.icon('clock',18)}</button>
                   <button class="commission-pill locked" id="bloq-pill"><div style="text-align:left"><div class="lbl">Mínimo p/ saque</div><div class="val" id="bloq-val">R$ 500,00</div></div>${UI.icon('lock',18)}</button>
-                  <button class="commission-pill bv-pill hidden" id="bv-pill" title="Seu bônus de boas-vindas"><span class="bv-pill__ring"></span><div style="text-align:left"><div class="lbl" id="bv-pill-lbl">Bônus de boas-vindas</div><div class="val" id="bv-pill-val">R$ 100,00</div></div>${UI.icon('prize',18)}</button>
                   <button class="commission-pill" id="com-pill" title="Ver o que você pode solicitar"><div style="text-align:left"><div class="lbl" id="com-lbl">Comissão disponível</div><div class="val" id="com-val">R$ 0,00</div></div>${UI.icon('chevron',18)}</button>
                 </div>
                 <button class="rank-badge" id="rank-badge" title="Seu ranking · clique para ver o Top 10">
@@ -845,8 +844,6 @@ const App = {
     }
     // portão de perfil: consultor precisa completar e salvar o perfil antes de usar o sistema
     this.perfilLock = OB.precisaCompletarPerfil();
-    // consultor já com perfil completo (inclusive os antigos) ativa o bônus de boas-vindas
-    if (!this.perfilLock) OB.ativarBonusBV();
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.toggle('perfil-lock', this.perfilLock);
     if (this.perfilLock) { this.go('perfil'); }
@@ -910,7 +907,6 @@ const App = {
   /* libera o sistema depois que o consultor completa e salva o perfil */
   liberarPerfil() {
     this.perfilLock = false;
-    OB.ativarBonusBV(); // perfil completo = ativação: começa o prazo do bônus de boas-vindas
     const shell = document.querySelector('.shell');
     if (shell) shell.classList.remove('perfil-lock');
     this.go(this.mod().HOME || this.mod().NAV[0].id);
@@ -1129,47 +1125,15 @@ const App = {
   },
 
   /* ---------- topbar comissão (sempre atualizada) ---------- */
-  /* pill do bônus no topo: pulsa enquanto está valendo, comemora quando libera */
-  _refreshBonusPill(bv, disponivel) {
-    const pill = document.getElementById('bv-pill');
-    if (!pill) return;
-    const lbl = document.getElementById('bv-pill-lbl');
-    const val = document.getElementById('bv-pill-val');
-    // só aparece enquanto o bônus está vivo (pendente ou liberado e ainda não sacado)
-    if (!bv || !bv.ativo || bv.status === 'resgatado' || bv.status === 'expirado') {
-      pill.classList.add('hidden'); pill.classList.remove('bv-on', 'bv-urg');
-      return;
-    }
-    pill.classList.remove('hidden');
-    if (bv.status === 'liberado') {
-      pill.classList.add('bv-on'); pill.classList.remove('bv-urg');
-      lbl.textContent = 'Bônus liberado! 🎉';
-      val.textContent = '+ ' + OB.fmt(bv.valor);
-      pill.title = 'Seu bônus de boas-vindas já está somado no valor disponível';
-    } else {
-      const urg = bv.diasRestantes != null && bv.diasRestantes <= 15;
-      pill.classList.toggle('bv-urg', urg); pill.classList.remove('bv-on');
-      lbl.textContent = `Bônus · faltam ${OB.fmt(bv.falta)}`;
-      val.textContent = OB.fmt(bv.valor);
-      pill.title = `Chegue a ${OB.fmt(bv.meta)} e o bônus de ${OB.fmt(bv.valor)} é seu` + (bv.diasRestantes != null ? ` · ${bv.diasRestantes} dia(s) restantes` : '');
-    }
-    pill.style.setProperty('--bv-prog', (bv.progresso || 0) + '%');
-    pill.onclick = () => this.go('overview');
-  },
-
   refreshCommission(bump) {
     const u = OB.session();
     if (!u || u.role === 'admin') return;
     const pill = document.getElementById('com-pill');
     if (!pill) return;
     const r = OB.comissaoResumo(u.id);
-    // o bônus de boas-vindas entra SOMADO no topo, para o consultor ver o valor cheio
-    const bv = OB.bonusBV(u.id);
-    const bonusVale = bv && bv.status === 'liberado' ? bv.valor : 0;
-    document.getElementById('com-val').textContent = OB.fmt(r.disponivel + bonusVale);
+    document.getElementById('com-val').textContent = OB.fmt(r.disponivel);
     const comLbl = document.getElementById('com-lbl');
-    if (comLbl) comLbl.textContent = bonusVale ? 'Disponível (com bônus)' : 'Comissão disponível';
-    this._refreshBonusPill(bv, r.disponivel);
+    if (comLbl) comLbl.textContent = 'Comissão disponível';
     const confPill = document.getElementById('conf-pill');
     if (confPill) {
       document.getElementById('conf-val').textContent = OB.fmt(r.emConferencia);

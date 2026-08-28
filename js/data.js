@@ -1891,81 +1891,10 @@ const OB = {
     return u;
   },
 
-  /* ---------- BÔNUS DE BOAS-VINDAS (ativação do consultor) ----------
-     R$ 100 creditados ao novo consultor. NÃO é dinheiro por se cadastrar: só vira saque
-     quando ele soma o mínimo (o bônus CONTA para a meta, então bastam R$ 400 de comissão).
-     O relógio começa quando o consultor conclui o perfil (ativação), não no cadastro,
-     e o bônus expira em 60 dias se a meta não for atingida. */
-  BONUS_BV: { valor: 100, dias: 60 },
-  bonusBVValor() { return this.BONUS_BV.valor; },
-
-  /* comissão APURADA desde uma data (soma mês a mês, respeitando a progressão marginal).
-     Usada pela meta do bônus: o consultor acumula ao longo dos 60 dias, sem zerar na virada do mês. */
-  comissaoAcumulada(consultorId, desdeISO) {
-    const desde = desdeISO ? new Date(desdeISO) : null;
-    return this.comissaoDeVendas(this.salesOf(consultorId).filter(s =>
-      s.statusProposta === 'aprovada' && s.statusPagamento === 'recebido' &&
-      (!desde || new Date(s.data) >= desde)));
-  },
-
-  /* liga o relógio do bônus (idempotente: só age uma vez, na ativação) */
-  ativarBonusBV(user) {
-    const u = user || this.db.profile;
-    if (!u || u.role === 'admin') return null;
-    if (u.bvInicio || (u.bvStatus && u.bvStatus !== 'pendente')) return u; // já ativado ou resolvido
-    const agora = new Date();
-    u.bvValor = u.bvValor != null ? u.bvValor : this.BONUS_BV.valor;
-    u.bvStatus = 'pendente';
-    u.bvInicio = agora.toISOString();
-    u.bvExpira = new Date(agora.getTime() + this.BONUS_BV.dias * 864e5).toISOString();
-    this.upsertUser(u);
-    return u;
-  },
-
-  /* estado do bônus + transições automáticas (libera ao bater a meta, expira no prazo).
-     Persiste só quando o status realmente muda, para não escrever a cada render. */
-  bonusBV(consultorId) {
-    const u = this.userById(consultorId);
-    if (!u || u.role === 'admin') return null;
-    const valor = u.bvValor != null ? Number(u.bvValor) : this.BONUS_BV.valor;
-    const meta = this.saqueMinimo();
-    // acumulado desde a ativação (não zera na virada do mês)
-    const comissao = this.comissaoAcumulada(consultorId, u.bvInicio);
-    const anterior = u.bvStatus || 'pendente';
-    let status = anterior;
-    const agora = Date.now();
-    const expiraMs = u.bvExpira ? new Date(u.bvExpira).getTime() : null;
-    if (status === 'pendente' && u.bvInicio) {
-      if (comissao + valor >= meta) status = 'liberado';           // bateu a meta: bônus é dele
-      else if (expiraMs && agora > expiraMs) status = 'expirado';  // passou de 60 dias: zera
-    }
-    if (status !== anterior) { u.bvStatus = status; this.upsertUser(u); }
-    return {
-      status, valor, meta, comissao,
-      inicio: u.bvInicio || null, expira: u.bvExpira || null,
-      ativo: !!u.bvInicio,
-      falta: Math.max(0, meta - valor - comissao),
-      diasRestantes: expiraMs ? Math.max(0, Math.ceil((expiraMs - agora) / 864e5)) : null,
-      progresso: Math.max(0, Math.min(100, Math.round(((comissao + valor) / meta) * 100)))
-    };
-  },
-
-  /* marca o bônus como resgatado (entrou numa solicitação de saque) */
-  resgatarBonusBV(consultorId) {
-    const u = this.userById(consultorId);
-    if (!u || u.bvStatus !== 'liberado') return false;
-    u.bvStatus = 'resgatado';
-    this.upsertUser(u);
-    return true;
-  },
-
-  /* saldo sacável = comissão liberada + bônus (quando já liberado e ainda não resgatado) */
+  /* saldo sacável = comissão liberada */
   saldoSacavel(consultorId) {
     const com = this.comissaoDisponivel(consultorId);
-    const bv = this.bonusBV(consultorId);
-    const bonus = bv && bv.status === 'liberado' ? bv.valor : 0;
-    const total = com.valor + bonus;
-    return { comissao: com.valor, bonus, total, podeSacar: total >= this.saqueMinimo(), com, bv };
+    return { comissao: com.valor, total: com.valor, podeSacar: com.valor >= this.saqueMinimo(), com };
   },
 
   premioAlcancado(consultorId) { const vol = this.volumeTrimestre(consultorId); let alc = null; for (const p of this.PREMIOS) if (vol >= p.meta) alc = p; return alc; },
