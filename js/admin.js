@@ -450,6 +450,27 @@ const Admin = {
           <div><span class="mut">Agência:</span> ${c.agencia||'-'}</div>
           <div><span class="mut">Conta:</span> ${c.conta?`${c.conta} (${c.contaTipo==='poupanca'?'poupança':c.contaTipo==='pagamento'?'pagamento':'corrente'})`:'-'}</div>
         </div>
+        <div class="nav-label" style="padding-left:0">Fixo do Consultor</div>
+        ${(() => {
+          const fx = OB.fixoResumo(id);
+          const enq = c.enquadramento || 'pf';
+          return `<div class="grid-2" style="font-size:13px;gap:6px 16px;margin-bottom:6px">
+            <div><span class="mut">Vendas pagas no mês:</span> <b>${OB.brl(fx.volume)}</b></div>
+            <div><span class="mut">Régua:</span> ${OB.brl(fx.regua)}</div>
+            <div><span class="mut">Situação:</span> ${!fx.vale ? '<span class="chip gray">Ainda não vale neste mês</span>'
+              : fx.bateu ? '<span class="chip brand">Bateu · ' + OB.brl(fx.valor) + '</span>'
+              : '<span class="chip warn">Faltam ' + OB.brl(fx.falta) + '</span>'}</div>
+            <div><span class="mut">Fecha o mês com:</span> <b style="color:var(--brand)">${OB.brl(fx.total)}</b></div>
+          </div>
+          <div class="field" style="max-width:360px;margin-bottom:14px" id="enq-box">
+            <label>Como o Fixo é pago para este consultor</label>
+            <select id="enq-sel" data-cons="${id}" disabled>
+              <option value="pf" ${enq === 'pf' ? 'selected' : ''}>Pessoa física · entra dentro da comissão</option>
+              <option value="pj" ${enq === 'pj' ? 'selected' : ''}>Pessoa jurídica · parcela fixa contra nota</option>
+            </select>
+            <span class="mut" style="font-size:11.5px;display:block;margin-top:5px" id="enq-msg">Carregando...</span>
+          </div>`;
+        })()}
         <div class="nav-label" style="padding-left:0">Vendas (${vendas.length})</div>
         ${vendas.length?`<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr><th>Data</th><th>Produto</th><th>Valor</th><th>Comissão</th></tr></thead><tbody>
           ${vendas.slice().sort((a,b)=>new Date(b.data)-new Date(a.data)).map(s=>{const p=OB.PRODUTOS.find(x=>x.id===s.produto);return `<tr><td>${OB.dataBR(s.data)}</td><td>${OB.produtosNomes(s)}</td><td>${OB.brl(s.valor)}</td><td><span class="chip ${s.statusComissao==='paga'?'green':s.statusComissao==='solicitada'?'gray':'warn'}">${s.statusComissao}</span></td></tr>`}).join('')}
@@ -458,6 +479,31 @@ const Admin = {
         ${reqs.length?Consultor.reqList(reqs):'<p class="mut" style="font-size:13px">Sem solicitações.</p>'}`,
       footer: `<button class="btn brand" data-close>Fechar</button>`
     });
+
+    // busca o valor real só depois que o modal já está na tela; se a coluna ainda
+    // não existir no banco, o campo fica desligado com o aviso do que falta fazer
+    const sel = document.getElementById('enq-sel');
+    const msg = document.getElementById('enq-msg');
+    if (sel) (async () => {
+      const atual = await OB.getEnquadramento(id);
+      if (atual === null) {
+        sel.disabled = true;
+        msg.innerHTML = 'Indisponível: falta rodar a migração <b>2026-08-28-fixo-consultor.sql</b> no Supabase.';
+        msg.style.color = 'var(--warn, #b45309)';
+        return;
+      }
+      sel.value = atual;
+      sel.disabled = false;
+      msg.textContent = 'Muda só a rubrica do repasse. O valor que o consultor recebe é o mesmo nos dois casos, e ele nunca vê esta informação.';
+      sel.onchange = async () => {
+        const escolhido = sel.value;
+        sel.disabled = true;
+        const r = await OB.setEnquadramento(id, escolhido);
+        sel.disabled = false;
+        if (r.ok) UI.toast('Enquadramento salvo', 'O Fixo deste consultor passa a ser pago como ' + (r.valor === 'pj' ? 'parcela fixa contra nota.' : 'parte da comissão.'), 'ok');
+        else { sel.value = atual; UI.toast('Não salvou', r.erro, 'err'); }
+      };
+    })();
   },
 
   /* ====================== MAPA DA REDE ====================== */

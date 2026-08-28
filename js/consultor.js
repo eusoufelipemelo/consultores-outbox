@@ -14,6 +14,7 @@ const Consultor = {
     { id: 'funil',      label: 'Funil de Vendas',  icon: 'kanban',   sec: 'Operação' },
     { id: 'orcamentos', label: 'Orçamentos',       icon: 'quote',    sec: 'Operação' },
     { id: 'comissao',   label: 'Vendas & Comissão',icon: 'money',    sec: 'Operação' },
+    { id: 'fixo',       label: 'Fixo do Consultor',icon: 'target',   sec: 'Operação' },
     { id: 'contratos',  label: 'Contratos',        icon: 'contract', sec: 'Operação' },
     { id: 'projetos',   label: 'Projetos',         icon: 'briefcase',sec: 'Operação' },
     { id: 'briefings',  label: 'Briefings',        icon: 'docs',     sec: 'Operação' },
@@ -37,6 +38,7 @@ const Consultor = {
     clientes:   ['Meus Clientes', 'Cadastre e gerencie seus clientes'],
     orcamentos: ['Orçamentos', 'Crie propostas e acompanhe os aceites'],
     comissao:   ['Vendas & Comissão', 'Lance vendas, acompanhe propostas e solicite comissão'],
+    fixo:       ['Fixo do Consultor', 'Chegue na régua do mês e feche com R$ 2.000 a mais'],
     projetos:   ['Briefings', 'Envie o briefing e acompanhe a entrega de cada serviço vendido'],
     portfolio:  ['Portfólio de entregas', 'Projetos já entregues pela OutBox para você usar como prova social'],
     premiacoes: ['Premiações', 'Quão perto você está do próximo prêmio'],
@@ -76,6 +78,7 @@ const Consultor = {
     const v = document.getElementById('main-view');
     v.innerHTML = `
       ${this.bonusBVTimeline(OB.bonusBV(u.id))}
+      ${this.fixoCard()}
       <div class="cards cols-4" style="margin-bottom:18px">
         ${this.kpi('cart', OB.fmt(volMes), 'Vendido no mês', `Nível ${nivel.nome} · ${(nivel.rate*100)|0}% de comissão`)}
         ${this.kpi('money', OB.fmt(com.valor), 'Comissão disponível', com.vendas.length + ' venda(s) a solicitar')}
@@ -118,6 +121,13 @@ const Consultor = {
       }
       Charts.line('ch-line', this.last6Labels(), this.last6Values(vendas));
     }, 50);
+
+    const fx = document.getElementById('fixo-card');
+    if (fx) {
+      const abrir = () => App.go('fixo');
+      fx.onclick = abrir;
+      fx.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } };
+    }
   },
 
   metaLadder(vol, nivel, prox) {
@@ -135,6 +145,185 @@ const Consultor = {
       <div class="row" style="gap:8px;margin-top:14px;flex-wrap:wrap">
         ${[...OB.NIVEIS].reverse().map(n => `<span class="chip ${vol>=n.meta?'brand':'gray'}">${n.nome} · ${(n.rate*100)|0}%</span>`).join('')}
       </div>`;
+  },
+
+
+  /* ====================== FIXO DO CONSULTOR ======================
+     Régua mensal: fechou o volume em vendas PAGAS dentro do mês, entra o valor
+     do Fixo somado à comissão. A tela mostra três estados: ainda não começou,
+     falta chegar na régua, e chegou. Nada aqui fala de enquadramento: o valor
+     é o mesmo para todo consultor, muda só a rubrica no fechamento do admin. */
+  fixoBarra(r) {
+    const pct = r.vale ? Math.round(r.pct) : 0;
+    return `
+      <div class="row between" style="margin-bottom:8px;font-size:13px;gap:12px">
+        <span class="soft"><b style="color:var(--text)">${OB.fmt(r.volume)}</b> em vendas pagas</span>
+        <span class="mut">Régua: ${OB.fmt(r.regua)}</span>
+      </div>
+      <div class="bar" style="height:14px"><i data-w="${pct}"></i></div>`;
+  },
+
+  /* faixa compacta que aparece no alto da Visão Geral */
+  fixoCard() {
+    const r = OB.fixoResumo(this.u().id);
+    if (!OB.FIXO.ativo) return '';
+    const titulo = !r.vale ? 'Começa em 1º de setembro'
+      : r.bateu ? 'Régua batida. O Fixo entra neste fechamento.'
+      : `Faltam ${OB.fmt(r.falta)} para o Fixo entrar`;
+    return `
+      <div class="card" id="fixo-card" role="button" tabindex="0"
+           style="margin-bottom:18px;cursor:pointer;border-color:${r.bateu ? 'var(--brand)' : 'var(--border)'}">
+        <div class="row between alc" style="gap:14px;flex-wrap:wrap;margin-bottom:14px">
+          <div class="row alc" style="gap:10px">
+            <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:10px;
+              background:var(--brand-soft);color:var(--brand)">${UI.icon('target',18)}</span>
+            <div>
+              <b style="display:block;font-size:15px">Fixo do Consultor</b>
+              <span class="mut" style="font-size:13px">${titulo}</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <span class="mut" style="display:block;font-size:12px">Fecha o mês com</span>
+            <b style="font-size:20px;color:${r.bateu ? 'var(--brand)' : 'var(--text)'}">${OB.fmt(r.total)}</b>
+          </div>
+        </div>
+        ${this.fixoBarra(r)}
+      </div>`;
+  },
+
+
+  /* Regulamento do Fixo. Texto único: serve para qualquer consultor, porque o
+     valor é o mesmo para todos. A cláusula de revisão é o que mantém a política
+     como campanha comercial revisável, e não como obrigação permanente. */
+  fixoRegulamentoHTML() {
+    const cfg = OB.FIXO;
+    const item = (t, d) => `<li style="margin-bottom:13px"><b style="color:var(--text)">${t}</b><br><span class="soft">${d}</span></li>`;
+    return `
+      <ol style="padding-left:18px;font-size:14px;line-height:1.6">
+        ${item('O que é',
+          `Todo consultor que fechar <b>${OB.fmt(cfg.regua)}</b> em vendas com pagamento confirmado dentro do mês recebe
+           <b>${OB.fmt(cfg.valor)}</b> somados ao seu fechamento, além da comissão normal.`)}
+        ${item('Quem participa',
+          'Todos os consultores ativos da OutBox, sem exceção e sem inscrição. Basta chegar na régua.')}
+        ${item('O que conta para a régua',
+          `Vendas suas, aprovadas e com pagamento confirmado pela OutBox, dentro do mês. É o mesmo critério que já libera
+           a sua comissão. Venda assinada mas ainda não paga não entra enquanto o pagamento não é confirmado.`)}
+        ${item('Como é a contagem do mês',
+          'Do dia 1 ao último dia de cada mês. Cada mês é independente: o que passou não acumula para o mês seguinte.')}
+        ${item('Quando é pago',
+          'Junto com o repasse da sua comissão, no fechamento do mês.')}
+        ${item('O que não conta',
+          'Vendas canceladas, estornadas ou com pagamento revertido. Se o estorno acontecer depois do fechamento, o valor é ajustado no repasse seguinte.')}
+        ${item('A comissão continua igual',
+          `Este valor é somado, não substitui nada. A sua comissão segue a tabela de faixas de sempre, chegando aos 20%.
+           Acima de ${OB.fmt(cfg.regua)} ela continua subindo normalmente.`)}
+        ${item('Vigência',
+          `Vale para os meses fechados a partir de ${OB.dataBR(cfg.inicio + 'T12:00:00')}. A OutBox pode revisar os valores, a régua ou
+           encerrar esta política a qualquer tempo, comunicando os consultores com 30 dias de antecedência. O valor é devido
+           somente nos meses em que a régua for efetivamente atingida.`)}
+      </ol>`;
+  },
+  fixoRegulamento() {
+    UI.modal({
+      size: 'lg',
+      title: 'Regulamento do Fixo do Consultor',
+      sub: `Régua de ${OB.fmt(OB.FIXO.regua)} em vendas pagas no mês`,
+      body: this.fixoRegulamentoHTML(),
+      footer: `<button class="btn brand" data-close>Entendi</button>`
+    });
+  },
+
+  view_fixo() {
+    const u = this.u();
+    const r = OB.fixoResumo(u.id);
+    const cfg = OB.FIXO;
+    const pagas = OB.salesOf(u.id)
+      .filter(s => s.statusProposta === 'aprovada' && s.statusPagamento === 'recebido' && OB.isSameMonth(s.data))
+      .sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    // três estados possíveis, cada um com a sua chamada
+    let faixa;
+    if (!r.vale) {
+      faixa = `<span class="chip gray">Começa em 1º de setembro</span>
+        <h2 style="font-size:26px;margin:14px 0 6px">A régua é ${OB.fmt(cfg.regua)}</h2>
+        <p class="soft" style="max-width:60ch">A partir de setembro, todo mês que você fechar ${OB.fmt(cfg.regua)} em vendas
+        pagas, entram <b style="color:var(--brand)">${OB.fmt(cfg.valor)}</b> a mais no seu fechamento. Suas vendas de agora
+        já valem para aquecer o funil.</p>`;
+    } else if (r.bateu) {
+      faixa = `<span class="chip brand">${UI.icon('check',13)} Régua batida</span>
+        <h2 style="font-size:26px;margin:14px 0 6px">Você garantiu ${OB.fmt(cfg.valor)} a mais</h2>
+        <p class="soft" style="max-width:60ch">Já são <b style="color:var(--text)">${OB.fmt(r.volume)}</b> em vendas pagas neste mês.
+        O Fixo entra somado à comissão no fechamento. Daqui para frente, cada venda nova só aumenta o seu total.</p>`;
+    } else {
+      faixa = `<span class="chip gray">Faltam ${OB.fmt(r.falta)}</span>
+        <h2 style="font-size:26px;margin:14px 0 6px">Você fecha o mês com ${OB.fmt(r.total)}</h2>
+        <p class="soft" style="max-width:60ch">Chegando em ${OB.fmt(cfg.regua)} em vendas pagas, esse número vira
+        <b style="color:var(--brand)">${OB.fmt(OB.fixoFechamento(cfg.regua))}</b>. São ${OB.fmt(cfg.valor)} a mais no mesmo mês.</p>`;
+    }
+
+    const degraus = [...new Set([cfg.regua, 25000, 30000, 40000])].sort((a, b) => a - b);
+    const projecao = degraus.map(vol => {
+      return `<tr${vol === cfg.regua ? ' style="background:var(--brand-soft)"' : ''}>
+          <td><b>${OB.fmt(vol)}</b></td>
+          <td class="mut">${OB.fmt(Math.round(OB.comissaoMarginal(vol)))}</td>
+          <td class="mut">${OB.fmt(vol >= cfg.regua ? cfg.valor : 0)}</td>
+          <td><b style="color:var(--brand)">${OB.fmt(OB.fixoFechamento(vol))}</b></td>
+        </tr>`;
+    }).join('');
+
+    const lista = pagas.length ? `
+      <div class="table-wrap">
+        <table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${pagas.map(s => {
+          const c = OB.clientById(s.clientId);
+          return `<tr><td class="mut">${OB.dataBR(s.data)}</td>
+            <td>${c ? c.nome : '<span class="mut">Sem cliente</span>'}</td>
+            <td class="mut">${(s.produtos || [s.produto]).map(id => OB.produtoNome(id)).join(', ')}</td>
+            <td style="text-align:right"><b>${OB.fmt(s.valor)}</b></td></tr>`;
+        }).join('')}</tbody></table>
+      </div>` : this.emptyMini('Nenhuma venda paga neste mês ainda. Assim que o pagamento for confirmado, ela aparece aqui.');
+
+    const v = document.getElementById('main-view');
+    v.innerHTML = `
+      <div class="card" style="margin-bottom:18px">
+        ${faixa}
+        <div style="margin-top:20px">${this.fixoBarra(r)}</div>
+        <button class="btn ghost sm" id="fixo-reg" style="margin-top:16px">${UI.icon('docs',15)} Ver regulamento</button>
+      </div>
+
+      <div class="cards cols-3" style="margin-bottom:18px">
+        ${this.kpi('cart', OB.fmt(r.volume), 'Vendas pagas no mês', 'Só entra o que o cliente já pagou')}
+        ${!r.vale
+          ? this.kpi('target', OB.fmt(cfg.regua), 'Régua do mês', 'Vale a partir de 1º de setembro')
+          : this.kpi('target', OB.fmt(r.falta), 'Falta para a régua', r.bateu ? 'Régua batida' : 'Régua de ' + OB.fmt(cfg.regua))}
+        ${this.kpi('money', OB.fmt(r.total), 'Fecha o mês com', r.bateu ? 'Comissão + ' + OB.fmt(cfg.valor) : 'Comissão do mês')}
+      </div>
+
+      <div class="cards cols-2">
+        <div class="card">
+          <div class="card-head"><h3>Quanto você fecha</h3><span class="mut">Projeção</span></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Vendeu</th><th>Comissão</th><th>Fixo</th><th>Fecha com</th></tr></thead>
+            <tbody>${projecao}</tbody></table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Como funciona</h3></div>
+          <ul style="list-style:none;display:grid;gap:12px;font-size:14px" class="soft">
+            <li><b style="color:var(--text)">Conta venda paga.</b> O mesmo critério que já libera a sua comissão. Assim que o pagamento é confirmado, a venda entra na conta.</li>
+            <li><b style="color:var(--text)">Do dia 1 ao último dia do mês.</b> Cada mês é um mês. Chegou na régua, o Fixo entra. Não chegou, comissão normal e vida que segue.</li>
+            <li><b style="color:var(--text)">É a mais, não substitui nada.</b> A sua comissão continua igual, por faixa, chegando aos 20%.</li>
+            <li><b style="color:var(--text)">Acima da régua segue valendo.</b> Passou dos ${OB.fmt(cfg.regua)}, a comissão continua subindo normalmente por cima.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-head"><h3>Vendas que já contaram</h3><span class="mut">${pagas.length} venda(s) neste mês</span></div>
+        ${lista}
+      </div>`;
+
+    document.getElementById('fixo-reg').onclick = () => this.fixoRegulamento();
   },
 
   /* ====================== CLIENTES ====================== */

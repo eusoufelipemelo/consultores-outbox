@@ -247,6 +247,94 @@ const OB = {
     return this.FAIXAS[this.FAIXAS.length - 1].rate;
   },
 
+  /* ---------- Fixo do Consultor ----------
+     Quem fechar a régua em vendas COM PAGAMENTO CONFIRMADO dentro do mês recebe
+     o valor abaixo somado ao fechamento. Duas observações que valem ouro aqui:
+
+     1. A base é venda paga, não venda assinada. É o mesmo critério que já libera
+        a comissão (statusPagamento === 'recebido'), então o consultor não precisa
+        aprender regra nova e a OutBox não paga sobre contrato que não entrou.
+     2. O valor é idêntico nos dois enquadramentos: para PJ sai como parcela fixa,
+        para PF entra dentro da comissão. Muda a rubrica, nunca o que cai na conta,
+        por isso nada disso aparece na tela do consultor. */
+  FIXO: {
+    ativo: true,
+    nome: 'Fixo do Consultor',
+    regua: 20000,          // vendas pagas no mês que destravam
+    valor: 2000,           // quanto entra a mais no fechamento
+    inicio: '2026-09-01'   // primeiro mês em que a regra vale
+  },
+  /* mês de referência: 'AAAA-MM' ou vazio para o mês corrente */
+  _mesRef(ref) {
+    const d = ref ? new Date(ref + '-01T12:00:00') : new Date();
+    return { ano: d.getFullYear(), mes: d.getMonth() };
+  },
+  /* o Fixo só vale a partir do mês de início */
+  fixoValeNoMes(ref) {
+    const { ano, mes } = this._mesRef(ref);
+    const i = new Date(this.FIXO.inicio + 'T12:00:00');
+    return this.FIXO.ativo && (ano > i.getFullYear() || (ano === i.getFullYear() && mes >= i.getMonth()));
+  },
+  /* volume que conta para o Fixo: venda aprovada E com pagamento confirmado */
+  volumeFixo(consultorId, ref) {
+    const { ano, mes } = this._mesRef(ref);
+    return this.salesOf(consultorId)
+      .filter(s => s.statusProposta === 'aprovada' && s.statusPagamento === 'recebido')
+      .filter(s => { const d = new Date(s.data); return d.getFullYear() === ano && d.getMonth() === mes; })
+      .reduce((t, s) => t + s.valor, 0);
+  },
+  /* situação do Fixo no mês: quanto já entrou, quanto falta e como fecha */
+  fixoResumo(consultorId, ref) {
+    const cfg = this.FIXO;
+    const vale = this.fixoValeNoMes(ref);
+    const volume = this.volumeFixo(consultorId, ref);
+    const bateu = vale && volume >= cfg.regua;
+    const comissao = Math.round(this.comissaoMarginal(volume));
+    const valor = bateu ? cfg.valor : 0;
+    return {
+      vale, regua: cfg.regua, volume, bateu, valor, comissao,
+      falta: Math.max(0, cfg.regua - volume),
+      pct: cfg.regua > 0 ? Math.min(100, (volume / cfg.regua) * 100) : 0,
+      total: comissao + valor
+    };
+  },
+  /* quanto o consultor fecha o mês com um volume qualquer (usado nas projeções) */
+  fixoFechamento(volume) {
+    const c = Math.round(this.comissaoMarginal(volume));
+    return c + (this.FIXO.ativo && volume >= this.FIXO.regua ? this.FIXO.valor : 0);
+  },
+
+  /* enquadramento do consultor: só o admin altera, e só muda a rubrica do Fixo
+     no fechamento (PJ recebe como parcela fixa, PF dentro da comissão).
+
+     Lido sob demanda, e não na lista de perfis, porque aquela lista carrega o
+     sistema inteiro: pedir uma coluna que ainda não existe derrubaria o app.
+     Aqui o erro fica contido e devolve null, que a tela lê como migração pendente. */
+  async getEnquadramento(consultorId) {
+    try {
+      const { data, error } = await SB.from('profiles').select('enquadramento').eq('id', consultorId).maybeSingle();
+      if (error) throw error;
+      const v = (data && data.enquadramento) === 'pj' ? 'pj' : 'pf';
+      const alvo = this.userById(consultorId);
+      if (alvo) alvo.enquadramento = v;
+      return v;
+    } catch (e) { return null; }
+  },
+
+  async setEnquadramento(consultorId, valor) {
+    const v = valor === 'pj' ? 'pj' : 'pf';
+    const alvo = this.userById(consultorId);
+    if (!alvo) return { ok: false, erro: 'Consultor não encontrado.' };
+    try {
+      const { error } = await SB.from('profiles').update({ enquadramento: v }).eq('id', consultorId);
+      if (error) throw error;
+      alvo.enquadramento = v;
+      return { ok: true, valor: v };
+    } catch (e) {
+      return { ok: false, erro: (e && e.message) || 'Não foi possível salvar.' };
+    }
+  },
+
   /* bônus de campanha trimestral = 3% sobre o volume acima de R$30 mil */
   BONUS_PCT: 0.03,
   BONUS_PISO: 30000,
@@ -691,14 +779,14 @@ const OB = {
   /* ============================================================
      MAPPERS  (camelCase no app  <->  snake_case no banco)
      ============================================================ */
-  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null, _full: Object.prototype.hasOwnProperty.call(r, 'foto') }; },
+  _pIn(r)  { return r && { id: r.id, role: r.role, email: r.email, nome: r.nome, sobrenome: r.sobrenome, nascimento: r.nascimento, doc: r.doc, celular: r.celular, instagram: r.instagram, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, pais: r.pais || '', foto: r.foto, twoFA: r.two_fa, provider: r.provider, moeda: r.moeda || 'BRL', termosVersao: r.termos_versao || null, termosAceitoEm: r.termos_aceito_em || null, banco: r.banco || '', agencia: r.agencia || '', conta: r.conta || '', contaTipo: r.conta_tipo || 'corrente', pix: r.pix || '', criadoEm: r.criado_em || null, lastSeenEm: r.last_seen_em || null, bvValor: r.bonus_bv_valor != null ? Number(r.bonus_bv_valor) : null, bvStatus: r.bonus_bv_status || 'pendente', bvInicio: r.bonus_bv_inicio || null, bvExpira: r.bonus_bv_expira || null, whatsGrupoEm: r.whats_grupo_em || null, equipeCargo: r.equipe_cargo || null, equipeNivel: r.equipe_nivel != null ? Number(r.equipe_nivel) : null, contaVinculada: r.conta_vinculada || null, enquadramento: r.enquadramento || 'pf', _full: Object.prototype.hasOwnProperty.call(r, 'foto') }; },
   _pOut(u) {
     const o = this._pOutBase(u);
     // linha reduzida (sem a coluna foto): omite o campo para o upsert não apagar a foto no banco
     if (u.foto === undefined || u._full === false) delete o.foto;
     return o;
   },
-  _pOutBase(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null }; },
+  _pOutBase(u) { return { id: u.id, role: u.role, email: u.email, nome: u.nome, sobrenome: u.sobrenome, nascimento: u.nascimento || null, doc: u.doc, celular: u.celular, instagram: u.instagram, cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro, cidade: u.cidade, uf: u.uf, pais: u.pais || null, foto: u.foto, two_fa: !!u.twoFA, provider: u.provider, moeda: u.moeda || 'BRL', termos_versao: u.termosVersao || null, termos_aceito_em: u.termosAceitoEm || null, banco: u.banco || null, agencia: u.agencia || null, conta: u.conta || null, conta_tipo: u.contaTipo || null, pix: u.pix || null, bonus_bv_valor: u.bvValor != null ? u.bvValor : null, bonus_bv_status: u.bvStatus || 'pendente', bonus_bv_inicio: u.bvInicio || null, bonus_bv_expira: u.bvExpira || null, whats_grupo_em: u.whatsGrupoEm || null, equipe_cargo: u.equipeCargo || null, equipe_nivel: u.equipeNivel != null ? u.equipeNivel : null, enquadramento: u.enquadramento || 'pf' }; },
 
   _cIn(r)  { return { id: r.id, consultorId: r.consultor_id, nome: r.nome, contato: r.contato, doc: r.doc, telefone: r.telefone, instagram: r.instagram, email: r.email, cep: r.cep, logradouro: r.logradouro, numero: r.numero, complemento: r.complemento, bairro: r.bairro, cidade: r.cidade, uf: r.uf, tipo: r.tipo, recorrenciaMeses: r.recorrencia_meses != null ? Number(r.recorrencia_meses) : null, servico: r.servico, porte: r.porte || 'pequena', obs: r.obs, criadoEm: r.criado_em }; },
   _cOut(c) { return { id: c.id, consultor_id: c.consultorId, nome: c.nome, contato: c.contato, doc: c.doc, telefone: c.telefone, instagram: c.instagram, email: c.email, cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, cidade: c.cidade, uf: c.uf, tipo: c.tipo, recorrencia_meses: c.recorrenciaMeses != null ? c.recorrenciaMeses : null, servico: c.servico, porte: c.porte || 'pequena', obs: c.obs, criado_em: c.criadoEm }; },
