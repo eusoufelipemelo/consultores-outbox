@@ -87,7 +87,7 @@ p{font-size:24px;line-height:1.45;color:#6b6b6b;margin-top:20px;max-width:640px}
 /* ---------- pagina de entrada: le o OpenGraph e manda o cliente para o formulario ---------- */
 function entradaHTML({ t, n, f }) {
   const titulo = `Briefing · ${n}`;
-  const img = `${APP}/b/${t}/og.png?v=182`;
+  const img = `${APP}/b/${t}/og.png?v=183`;
   return `<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8">
@@ -96,7 +96,7 @@ function entradaHTML({ t, n, f }) {
 <meta name="description" content="${esc(f)}">
 <meta name="theme-color" content="#F15532">
 <meta name="robots" content="noindex,nofollow">
-<link rel="icon" href="/assets/logo-mark.svg?v=182" type="image/svg+xml">
+<link rel="icon" href="/assets/logo-mark.svg?v=183" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="OutBox Soluções Digitais">
 <meta property="og:locale" content="pt_BR">
@@ -141,7 +141,7 @@ function entradaHTML({ t, n, f }) {
 </style>
 </head><body>
   <div class="c">
-    <img src="/assets/logo-preta.svg" alt="OutBox Soluções Digitais">
+    <img src="/assets/logo-preta.svg?v=183" alt="OutBox Soluções Digitais">
     <div class="a" aria-hidden="true"></div>
     <h1>Abrindo o seu briefing</h1>
     <p>${esc(n)}. Se a página não abrir sozinha, toque no botão abaixo.</p>

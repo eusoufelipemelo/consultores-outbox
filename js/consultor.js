@@ -3903,7 +3903,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
           </svg>
           <span class="bcard__hash">#TudoPassa.AVendaNão</span>
           <div class="bcard__foot">
-            <img class="bcard__mark" src="assets/logo-mark.svg" alt="OutBox"/>
+            <img class="bcard__mark" src="assets/logo-mark.svg?v=183" alt="OutBox"/>
             <div class="bcard__id"><span class="bcard__kicker">Briefing</span><b>${b.nome}</b></div>
           </div>
         </div>

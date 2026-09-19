@@ -715,14 +715,16 @@ const App = {
     OB._set(OB.KEYS.theme, this.theme);
     document.querySelectorAll('#theme-btn').forEach(b => b.innerHTML = UI.icon(this.theme === 'dark' ? 'sun' : 'moon', 18));
     // redesenha gráficos e logos com as novas cores
-    document.querySelectorAll('[data-logo]').forEach(img => img.src = `assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg`);
+    /* imagens ficam 30 dias no cache do navegador (nginx.conf): a logo precisa da
+       versão na URL, senão uma logo nova só aparece para quem nunca abriu o sistema */
+    document.querySelectorAll('[data-logo]').forEach(img => img.src = `assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg?v=183`);
     if (this.current && document.getElementById('app').style.display !== 'none') {
       this.mod().render(this.current);
       this.animateBars();
     }
     // atualiza logo da tela de login se estiver aberta
     if (document.getElementById('auth').style.display === 'grid') {
-      document.querySelectorAll('.mob-logo').forEach(img => img.src = `assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg`);
+      document.querySelectorAll('.mob-logo').forEach(img => img.src = `assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg?v=183`);
     }
   },
 
@@ -745,7 +747,7 @@ const App = {
       <div class="shell">
         <aside class="sidebar" id="sidebar">
           <div class="brand-row">
-            <img data-logo src="assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg" alt="OutBox Soluções Digitais"/>
+            <img data-logo src="assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg?v=183" alt="OutBox Soluções Digitais"/>
             <span class="side-tag">${isAdmin ? 'Admin' : 'Consultor'}</span>
           </div>
           <nav class="nav" id="nav">

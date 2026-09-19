@@ -236,8 +236,10 @@ img { max-width: 100%; display: block; }
 /* A logo nova já traz "Soluções Digitais" dentro dela, então a linha de texto
    que ficava embaixo saiu. O respiro que ela dava passou para a própria faixa,
    para o menu não encostar na logo. */
-.sidebar .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
-.sidebar .brand-row img { height: 34px; }
+/* Logo em cima e a etiqueta (Admin/Consultor) embaixo: a logo nova é mais larga
+   e, lado a lado, a etiqueta passava 37px para fora da barra. */
+.sidebar .brand-row { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 4px 8px 16px; }
+.sidebar .brand-row img { height: 34px; max-width: 100%; width: auto; }
 .side-tag { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   color: var(--brand); background: var(--brand-soft); padding: 3px 8px; border-radius: 6px; }
 .nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
@@ -1042,7 +1044,7 @@ td .strong { color: var(--text); font-weight: 600; }
   .sidebar::-webkit-scrollbar { width: 6px; }
   .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
   .sidebar::-webkit-scrollbar-track { background: transparent; }
-  .sidebar .brand-row { padding-bottom: 8px; }
+  .sidebar .brand-row { padding-bottom: 14px; }
   .nav { gap: 2px; }
   .nav-item { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
   .nav-item svg { width: 18px; height: 18px; }

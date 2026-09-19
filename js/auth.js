@@ -10,7 +10,7 @@ const Auth = {
     return `
     <div class="grid-fx"></div>
     <div>
-      <img class="a-logo" src="assets/logo-branca.svg" alt="OutBox Soluções Digitais"/>
+      <img class="a-logo" src="assets/logo-branca.svg?v=183" alt="OutBox Soluções Digitais"/>
       <h1>Portal do <b>Consultor</b><br/>OutBox Soluções Digitais</h1>
       <p>Gerencie suas vendas, clientes, comissões e prêmios em um só lugar. Acompanhe suas metas em tempo real e cresça de Bronze a Black.</p>
     </div>
@@ -40,7 +40,7 @@ const Auth = {
   viewLogin() {
     this.mode = 'login';
     document.getElementById('auth-card').innerHTML = `
-      <img class="mob-logo" src="assets/logo-${App.theme === 'dark' ? 'branca' : 'preta'}.svg"/>
+      <img class="mob-logo" src="assets/logo-${App.theme === 'dark' ? 'branca' : 'preta'}.svg?v=183"/>
       <h2>Bem-vindo de volta</h2>
       <p class="sub">Acesse sua conta para continuar</p>
 
@@ -73,7 +73,7 @@ const Auth = {
   viewSignup() {
     this.mode = 'signup';
     document.getElementById('auth-card').innerHTML = `
-      <img class="mob-logo" src="assets/logo-${App.theme === 'dark' ? 'branca' : 'preta'}.svg"/>
+      <img class="mob-logo" src="assets/logo-${App.theme === 'dark' ? 'branca' : 'preta'}.svg?v=183"/>
       <h2>Criar conta</h2>
       <p class="sub">Comece a vender com a OutBox Soluções Digitais</p>
 
