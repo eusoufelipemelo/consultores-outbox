@@ -1564,7 +1564,7 @@ const Consultor = {
       }
       linhasSvc = itens.map(i => `<tr><td><b>${i.nome}</b><br><span style="color:var(--mut);font-size:13px;line-height:1.55">${i.escopo}</span></td><td style="text-align:right">${OB.money(i.mostra, s.moeda)}</td></tr>`).join('');
     }
-    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><g transform="translate(74.63 74.63) scale(0.232163)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#F15532"/></g></svg>`;
     const temDesc = s.descontoTipo && s.descontoValor > 0;
     const hoje = new Date(); const val = new Date(hoje.getTime() + 7 * 864e5);
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -1733,7 +1733,7 @@ const Consultor = {
     const contratantePessoa = (cl.tipo || '').toUpperCase().includes('PJ') || (cl.doc || '').replace(/\D/g, '').length > 11 ? 'pessoa jurídica' : 'pessoa física';
     const cidadeSede = (e.cidade || 'Santa Cruz do Rio Pardo/SP');
     const assin = (typeof OB !== 'undefined' && OB.ASSINATURA_OUTBOX) ? OB.ASSINATURA_OUTBOX : '';
-    const markHead = `<svg viewBox="0 0 439 439" width="34" height="34" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="90" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const markHead = `<svg viewBox="0 0 439 439" width="34" height="34" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="90" fill="#F15532"/><g transform="translate(87.80 87.80) scale(0.211058)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#fff"/></g></svg>`;
     const aceiteUrl = c.acceptToken ? `${OB.APP_URL}/?contrato=${encodeURIComponent(c.id)}&t=${encodeURIComponent(c.acceptToken)}` : '';
     const objetos = (d.servicos || []).map(x => `<li><b>${x.nome}.</b> ${x.objeto}. <span class="mut">Prazo estimado de entrega: ${x.prazo}.</span></li>`).join('');
     const revisoes = (d.servicos || []).map(x => `<li><b>${x.nome}:</b> ${x.revisoes}.</li>`).join('');
@@ -2866,7 +2866,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
 
   /* gera o HTML branded do documento (arquivo autossuficiente) */
   buildDocHTML(doc) {
-    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><g transform="translate(74.63 74.63) scale(0.232163)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#F15532"/></g></svg>`;
     const secoes = doc.secoes.map(s => `
       <section class="sec">
         <div class="sec-h"><span class="sec-ic">${UI.icon(s.icon, 20)}</span><h2>${s.titulo}</h2></div>
@@ -3060,7 +3060,7 @@ ul{margin:5px 0 5px 18px}li{margin-bottom:4px}
     const docLabel = digs.length > 11 ? 'CNPJ' : 'CPF';
     const docFmt = (typeof UI !== 'undefined' && UI.maskDoc) ? UI.maskDoc(u.doc || '') : (u.doc || '');
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const mark = `<svg class="mk" viewBox="0 0 439 439" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><g transform="translate(87.80 87.80) scale(0.211058)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#fff"/></g></svg>`;
     const notaPct = o.geral ? (o.media != null ? o.media : 100) : (o.nota != null ? o.nota : 100);
     const sub = o.geral ? 'De Conclusão da Trilha' : 'De Conclusão';
     const desc = o.geral
@@ -3845,7 +3845,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     });
     fecharPergunta();
     if (!corpo) corpo = '<p class="bd-empty">O cliente ainda não enviou as respostas do briefing.</p>';
-    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="110" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="110" fill="#fff"/><g transform="translate(87.80 87.80) scale(0.211058)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#F15532"/></g></svg>`;
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Briefing · ${(cli.nome || '').replace(/"/g, '')}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -4289,7 +4289,7 @@ h1{font-family:'Playfair Display',serif;font-size:60px;font-weight:900;letter-sp
     const u = this.u(); const cli = OB.clientById(proj.clientId);
     const servicos = s ? OB.produtosNomes(s) : (proj.produtos || []).map(id => (OB.PRODUTOS.find(p => p.id === id) || {}).nome || id).join(' + ');
     const atual = OB.etapaIndex(proj.status);
-    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const mark = `<svg viewBox="0 0 439 439" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="219.5" fill="#fff"/><g transform="translate(74.63 74.63) scale(0.232163)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#F15532"/></g></svg>`;
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Relatório do Projeto · ${cli ? cli.nome : ''}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">

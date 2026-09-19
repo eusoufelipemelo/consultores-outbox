@@ -392,8 +392,8 @@ const App = {
     const secs = OB.briefingCampos(tipo);
     const total = secs.length;
     const answers = {};
-    const markW = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#fff"/><path fill="#F15532" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#F15532" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
-    const markB = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><path fill="#fff" d="M211.531 155.988v86.854h17.765v-86.855l20.953 20.941 12.562-12.555L220.414 122l-42.397 42.373 12.562 12.555 20.952-20.94Z"/><path fill="#fff" d="M385.827 214.342v103.68H55v-103.68h16.675v87.014h297.477v-87.014h16.675Z"/></svg>`;
+    const markW = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#fff"/><g transform="translate(87.80 87.80) scale(0.211058)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#F15532"/></g></svg>`;
+    const markB = `<svg viewBox="0 0 439 439" width="26" height="26" xmlns="http://www.w3.org/2000/svg"><rect width="439" height="439" rx="120" fill="#F15532"/><g transform="translate(87.80 87.80) scale(0.211058)"><path d="M845.429 0C1137.29 0.00297119 1248 128.377 1248 470.681V777.319C1248 1119.62 1137.29 1248 845.429 1248H402.571C110.707 1248 0 1117.84 0 777.319L-2.5944e-10 251.376H218.539V757.714C218.539 944.914 260.249 996.624 409.779 996.624H836.794C986.323 996.624 1028.03 944.914 1028.03 757.714V490.286C1028.03 303.086 986.323 251.376 836.794 251.376H218.539V0H845.429Z" fill="#fff"/></g></svg>`;
     const style = `<style>
       #briefing-page *{box-sizing:border-box}
       #briefing-page .bfx-cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(120% 90% at 50% -10%,#ff6f4d 0%,#F15532 45%,#d83f1e 100%);overflow:auto}
@@ -748,7 +748,6 @@ const App = {
             <img data-logo src="assets/logo-${this.theme === 'dark' ? 'branca' : 'preta'}.svg" alt="OutBox Soluções Digitais"/>
             <span class="side-tag">${isAdmin ? 'Admin' : 'Consultor'}</span>
           </div>
-          <div class="brand-desc">Soluções Digitais</div>
           <nav class="nav" id="nav">
             ${nav.map((n, i) => { const prevSec = i > 0 ? (nav[i - 1].sec || '') : ''; const grp = (n.sec && n.sec !== prevSec) ? `<div class="nav-group">${n.sec}</div>` : ''; return `${n.home ? '' : grp}<button class="nav-item" data-view="${n.id}">${UI.icon(n.icon)}<span>${n.label}</span>${n.soon ? '<span class="soon-badge">em breve</span>' : ''}${n.id === 'financeiro' ? '<span class="badge hidden" id="fin-badge"></span>' : ''}${n.id === 'bonus' ? '<span class="badge hidden" id="bonus-badge"></span>' : ''}${n.id === 'funil' ? '<span class="badge hidden" id="fu-badge"></span>' : ''}${n.id === 'projetos' ? '<span class="badge hidden" id="proj-badge"></span>' : ''}${n.id === 'timeline' ? '<span class="badge hidden" id="tl-badge"></span>' : ''}${n.id === 'atendimento' ? '<span class="badge hidden" id="atend-badge"></span>' : ''}</button>${n.home ? '<div class="nav-sep" aria-hidden="true"></div>' : ''}`; }).join('')}
           </nav>

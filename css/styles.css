@@ -233,10 +233,11 @@ img { max-width: 100%; display: block; }
   display: flex; flex-direction: column; padding: 22px 16px; gap: 6px;
   min-height: 100dvh; /* box estica até o fim da página, tudo aparente, sem scroll interno */
 }
-.sidebar .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px; }
-.sidebar .brand-row img { height: 30px; }
-.sidebar .brand-desc { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--text-mut); padding: 0 8px 16px; }
+/* A logo nova já traz "Soluções Digitais" dentro dela, então a linha de texto
+   que ficava embaixo saiu. O respiro que ela dava passou para a própria faixa,
+   para o menu não encostar na logo. */
+.sidebar .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+.sidebar .brand-row img { height: 34px; }
 .side-tag { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   color: var(--brand); background: var(--brand-soft); padding: 3px 8px; border-radius: 6px; }
 .nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
@@ -1041,7 +1042,7 @@ td .strong { color: var(--text); font-weight: 600; }
   .sidebar::-webkit-scrollbar { width: 6px; }
   .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
   .sidebar::-webkit-scrollbar-track { background: transparent; }
-  .sidebar .brand-desc { padding-bottom: 8px; }
+  .sidebar .brand-row { padding-bottom: 8px; }
   .nav { gap: 2px; }
   .nav-item { padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
   .nav-item svg { width: 18px; height: 18px; }
